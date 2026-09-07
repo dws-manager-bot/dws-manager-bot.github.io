@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import DateTimeField from '../components/DateTimeField.jsx'
 import TimezoneField from '../components/TimezoneField.jsx'
 import { zonedToIso } from '../lib/tz.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
+import ChannelLink from '../components/ChannelLink.jsx'
 import { withServerTime } from '../lib/servertime.js'
 
 /**
@@ -62,6 +63,7 @@ export default function Setup({ onDone }) {
   const [ev, setEv] = useState({ ...BLANK_EVENT })
   const [ann, setAnn] = useState({ ...BLANK_ANN })
   const [channels, setChannels] = useState([])
+  const bodyRef = useRef(null)
   const [dates, setDates] = useState([])
   const [dateError, setDateError] = useState(null)
   const [error, setError] = useState(null)
@@ -388,13 +390,25 @@ export default function Setup({ onDone }) {
               </label>
 
               <label>
-                Message
+                <span className="label-row">
+                  Message
+                  <ChannelLink
+                    channels={channels}
+                    textareaRef={bodyRef}
+                    value={ann.body}
+                    onChange={(v) => setAnn((a) => ({ ...a, body: v }))}
+                  />
+                </span>
                 <textarea
+                  ref={bodyRef}
                   rows="5" value={ann.body}
                   onChange={(e) => setAnn((a) => ({ ...a, body: e.target.value }))}
                   placeholder={`${ev.name} starts in ${ann.lead_minutes} minutes — rally up!`}
                 />
-                <small className="muted">**bold**, *italic*, `code` all work.</small>
+                <small className="muted">
+                  **bold**, *italic*, `code` all work, and a linked channel posts as a
+                  clickable #name.
+                </small>
               </label>
 
               <label>
@@ -421,7 +435,10 @@ export default function Setup({ onDone }) {
             {/* Live, beside the inputs — the point is to see it while writing. */}
             <div className="wiz-preview">
               <div className="preview-label muted small">In Discord, this will look like</div>
-              <EmbedPreview announcement={{ ...ann, body: ann.body || `${ev.name} starts soon!` }} />
+              <EmbedPreview
+                announcement={{ ...ann, body: ann.body || `${ev.name} starts soon!` }}
+                channels={channels}
+              />
             </div>
           </div>
 
@@ -462,7 +479,7 @@ export default function Setup({ onDone }) {
 
           <div className="wiz-preview" style={{ marginTop: 16 }}>
             <div className="preview-label muted small">The post itself</div>
-            <EmbedPreview announcement={ann} />
+            <EmbedPreview announcement={ann} channels={channels} />
           </div>
 
           <div className="card-actions">

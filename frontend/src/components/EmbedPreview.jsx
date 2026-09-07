@@ -8,13 +8,20 @@
  * The markdown subset is the one the bot actually supports in an embed
  * description: bold, italic, inline code, and line breaks. Anything else is
  * shown literally, which is also what Discord does.
+ *
+ * Channel links are the exception worth resolving: <#123…> is a snowflake in
+ * the box and a blue #channel over there, so leaving it raw here would make
+ * the preview the one place the message looks wrong.
  */
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;' }
 const escape = (s) => s.replace(/[&<>]/g, (c) => ESCAPES[c])
 
-function renderMarkdown(text) {
+function renderMarkdown(text, channelName) {
   return escape(text)
+    // After escaping, so the angle brackets to match are the escaped ones.
+    .replace(/&lt;#(\d+)&gt;/g, (_m, id) =>
+      `<span class="dc-chan">#${escape(channelName(id))}</span>`)
     .replace(/`([^`\n]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
@@ -24,14 +31,19 @@ function renderMarkdown(text) {
 
 const MENTION_LABEL = { '@everyone': '@everyone', '@here': '@here' }
 
-export default function EmbedPreview({ announcement, sample }) {
+export default function EmbedPreview({ announcement, sample, channels }) {
   const a = announcement
   const color = a.use_embed ? (a.embed_color || '#5865F2') : null
+
+  // A channel the bot cannot post to is absent from the list but still links
+  // fine in Discord, so name what is known and keep the shape of the rest.
+  const channelName = (id) =>
+    channels?.find((c) => String(c.id) === String(id))?.name ?? 'channel'
 
   const body = (
     <div
       className="dc-desc"
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(a.body || '') }}
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(a.body || '', channelName) }}
     />
   )
 

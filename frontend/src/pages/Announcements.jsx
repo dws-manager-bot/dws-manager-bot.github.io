@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import ListRow from '../components/ListRow.jsx'
@@ -6,6 +6,7 @@ import { briefWhen, soonest } from '../lib/when.js'
 import { utcToZoned, zonedToIso } from '../lib/tz.js'
 import { withServerTime } from '../lib/servertime.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
+import ChannelLink from '../components/ChannelLink.jsx'
 import ScheduleBuilder from '../components/ScheduleBuilder.jsx'
 import DateTimeField, { nextRoundedNow, toDateTimeStr } from '../components/DateTimeField.jsx'
 
@@ -78,6 +79,7 @@ export default function Announcements() {
   // Which card's Discord preview is open, by id, or 'form' for the editor.
   const [preview, setPreview] = useState(null)
   const [open, setOpen] = useState(null)
+  const bodyRef = useRef(null)
   const [hideOff, setHideOff] = useState(false)
 
   const refresh = () =>
@@ -271,7 +273,7 @@ export default function Announcements() {
             {row.last_error && <div className="banner error small"><div className="banner-body">{row.last_error}</div></div>}
 
             {preview === row.id && (
-              <EmbedPreview announcement={row} />
+              <EmbedPreview announcement={row} channels={channels} />
             )}
             <div className="card-actions">
               <button
@@ -357,9 +359,20 @@ export default function Announcements() {
             </label>
 
             <label className="wide">
-              Message
-              <textarea rows="6" value={form.body} onChange={set('body')} required />
-              <small className="muted">Discord markdown works: **bold**, *italic*, `code`.</small>
+              <span className="label-row">
+                Message
+                <ChannelLink
+                  channels={channels}
+                  textareaRef={bodyRef}
+                  value={form.body}
+                  onChange={(v) => setForm((f) => ({ ...f, body: v }))}
+                />
+              </span>
+              <textarea ref={bodyRef} rows="6" value={form.body} onChange={set('body')} required />
+              <small className="muted">
+                Discord markdown works: **bold**, *italic*, `code`. A linked channel posts as a
+                clickable #name.
+              </small>
             </label>
 
             <label className="inline">
@@ -382,7 +395,7 @@ export default function Announcements() {
 
           <div className="wiz-preview form-preview">
             <div className="preview-label muted small">How it will look in Discord</div>
-            <EmbedPreview announcement={form} />
+            <EmbedPreview announcement={form} channels={channels} />
           </div>
 
           <div className="card-actions">

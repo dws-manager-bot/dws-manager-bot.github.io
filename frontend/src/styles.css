@@ -250,6 +250,17 @@ main:has(.pw-layout) { max-width: 1680px; }
 .dot.bad { background: var(--bad); }
 .dot.off { background: var(--border); }
 
+/* A field label with a small action beside it — the action belongs to the
+   field, so it shares the label's line rather than taking one of its own. */
+.label-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.link-insert {
+  flex: none; width: auto; min-height: 32px; padding: 4px 8px;
+  font-size: 12.5px; color: var(--muted); margin: 0;
+  max-width: 55%;
+}
+
 /* ---------- list rows ---------- */
 
 /* A list of scheduled things is scanned far more often than it is read, so an
@@ -609,6 +620,10 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .dc-title { color: #f2f3f5; font-weight: 600; margin-bottom: 6px; }
 .dc-title-plain { color: #f2f3f5; font-weight: 700; margin-bottom: 4px; }
 .dc-desc { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dc-chan {
+  color: #c9cdfb; background: rgba(88, 101, 242, 0.15);
+  border-radius: 3px; padding: 0 2px; cursor: pointer;
+}
 .dc-desc code, .dc-quote code {
   background: #1e1f22; border-radius: 3px; padding: 1px 4px; font-size: 13px;
 }
