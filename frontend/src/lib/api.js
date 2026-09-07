@@ -86,6 +86,11 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  /* The Pass War app talks to /lineups directly. Exposing the same helper
+     the typed calls use means one implementation of token handling, which
+     is what its own auth.js used to duplicate. */
+  raw: (path, opts) => request(path, opts),
+
   me: () => request('/auth/me'),
   health: () => request('/health'),
   channels: () => request('/channels'),

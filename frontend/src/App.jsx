@@ -3,6 +3,7 @@ import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/
 import Announcements from './pages/Announcements.jsx'
 import Events from './pages/Events.jsx'
 import History from './pages/History.jsx'
+import PassWar from './pages/PassWar.jsx'
 import Setup from './pages/Setup.jsx'
 
 const TABS = [
@@ -10,6 +11,8 @@ const TABS = [
   { id: 'announcements', label: 'Announcements', Component: Announcements },
   { id: 'events', label: 'Events', Component: Events },
   { id: 'history', label: 'History', Component: History },
+  // Any guild member may open this; the officer-only tabs are hidden from them.
+  { id: 'passwar', label: 'Pass War map', Component: PassWar, everyone: true },
 ]
 
 export default function App() {
@@ -71,7 +74,11 @@ export default function App() {
     )
   }
 
-  const Active = TABS.find((t) => t.id === tab).Component
+  // A member who is not an officer can only use the map; showing them four
+  // tabs that answer 403 would be worse than not showing them at all.
+  const visible = user.is_admin ? TABS : TABS.filter((t) => t.everyone)
+  const current = visible.find((t) => t.id === tab) ?? visible[0]
+  const Active = current.Component
 
   return (
     <div className="app">
@@ -106,10 +113,10 @@ export default function App() {
         {/* Scrolls sideways rather than wrapping, which would double the
             header height on a narrow phone. */}
         <nav className="tabs">
-          {TABS.map((t) => (
+          {visible.map((t) => (
             <button
               key={t.id}
-              className={t.id === tab ? 'tab active' : 'tab'}
+              className={t.id === current.id ? 'tab active' : 'tab'}
               onClick={() => setTab(t.id)}
             >
               {t.label}
@@ -118,7 +125,7 @@ export default function App() {
         </nav>
       </header>
       <main>
-        <Active onDone={setTab} />
+        <Active onDone={setTab} user={user} />
       </main>
     </div>
   )
