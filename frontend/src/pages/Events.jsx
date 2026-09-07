@@ -7,6 +7,7 @@ import { briefWhen, soonest } from '../lib/when.js'
 import { withServerTime } from '../lib/servertime.js'
 import DateTimeField from '../components/DateTimeField.jsx'
 import TimezoneField from '../components/TimezoneField.jsx'
+import { zonedToIso } from '../lib/tz.js'
 
 // Weekday names in the viewer's language; the indices stay 0 = Monday, which
 // is what the API stores.
@@ -43,9 +44,13 @@ function toPayload(form) {
     ...form,
     weekdays: form.schedule_type === 'weekly' ? form.weekdays.map(Number) : null,
     rotation_days: form.schedule_type === 'rotation' ? Number(form.rotation_days) : null,
+    /* Midnight in the event's own zone, not this browser's. Stored as an
+       instant but read back as a calendar date in that zone, so a browser-local
+       midnight landed a day early for any zone behind UTC — server time
+       included, which is exactly where a rotation is most likely set. */
     reference_date:
       form.schedule_type === 'rotation' && form.reference_date
-        ? new Date(form.reference_date).toISOString()
+        ? zonedToIso(`${String(form.reference_date).slice(0, 10)}T00:00`, form.timezone)
         : null,
     fixed_dates: form.schedule_type === 'fixed' ? form.fixed_dates : null,
     duration_minutes: Number(form.duration_minutes),
@@ -239,7 +244,7 @@ export default function Events() {
             </div>
 
             {openDates === row.id && (
-              <Occurrences eventId={row.id} onError={setError} />
+              <Occurrences eventId={row.id} timezone={row.timezone} onError={setError} />
             )}
           </ListRow>
         ))}

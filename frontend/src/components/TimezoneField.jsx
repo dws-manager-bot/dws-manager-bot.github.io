@@ -9,10 +9,13 @@
  * Etc/GMT+2 inverts the sign, as the Etc zones do: it is UTC−2, which is game
  * server time, and it has no daylight saving — matching the game.
  */
-export default function TimezoneField({ value, onChange, hint = true }) {
+import { zoneLabel } from '../lib/tz.js'
+
+export default function TimezoneField({ value, onChange, label = 'Times are in' }) {
+  const offset = zoneLabel(value)
   return (
     <label>
-      Timezone
+      {label}
       <input
         list="tz-options"
         value={value ?? ''}
@@ -24,7 +27,10 @@ export default function TimezoneField({ value, onChange, hint = true }) {
         <option value="Etc/GMT+2">Game server time (ST)</option>
         <option value="UTC">UTC</option>
       </datalist>
-      {hint && <small className="muted">Etc/GMT+2 is server time — 00:00 ST is 11:00 KST.</small>}
+      <small className="muted">
+        {offset && `${offset} · `}every time on this form is read against it.
+        {' '}Etc/GMT+2 is server time — 00:00 ST is 11:00 KST.
+      </small>
     </label>
   )
 }

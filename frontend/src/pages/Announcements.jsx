@@ -3,6 +3,7 @@ import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import ListRow from '../components/ListRow.jsx'
 import { briefWhen, soonest } from '../lib/when.js'
+import { utcToZoned, zonedToIso } from '../lib/tz.js'
 import { withServerTime } from '../lib/servertime.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import ScheduleBuilder from '../components/ScheduleBuilder.jsx'
@@ -30,20 +31,6 @@ const EMPTY = {
   lead_minutes: 0,
 }
 
-/**
- * A datetime-local input needs "YYYY-MM-DDTHH:mm" in local time, but the API
- * returns an ISO string with an offset. Without this, editing a one-shot
- * showed an empty date field and silently cleared it on save.
- */
-function toLocalInput(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-         `T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 /** Compact, locale-aware: "Sat 5 Sep, 21:30" — no seconds, no ambiguity. */
 const fmtWhen = (iso) =>
   new Intl.DateTimeFormat(undefined, {
@@ -61,8 +48,15 @@ function toPayload(form) {
     // Number.MAX_SAFE_INTEGER, so Number() silently rounds it into a channel
     // that does not exist. The API accepts and returns these as strings.
     channel_id: form.channel_id,
-    interval_minutes: form.kind === 'interval' ? Number(form.interval_minutes) : null,
-    run_at: form.kind === 'once' && form.run_at ? new Date(form.run_at).toISOString() : null,
+    // A rotation needs both: the period, and the first post it counts from.
+    interval_minutes:
+      form.kind === 'interval' || form.kind === 'rotation'
+        ? Number(form.interval_minutes) : null,
+    // Read against the announcement's own timezone, not this browser's, so the
+    // same form gives the same moment wherever it is filled in.
+    run_at:
+      form.kind === 'once' || form.kind === 'rotation'
+        ? zonedToIso(form.run_at, form.timezone) : null,
     cron_expr: form.kind === 'cron' ? form.cron_expr : null,
     event_id: form.kind === 'event' ? Number(form.event_id) : null,   // DB serial, not a snowflake
     lead_minutes: Number(form.lead_minutes) || 0,
@@ -287,7 +281,7 @@ export default function Announcements() {
                     ...EMPTY,
                     ...row,
                     channel_id: String(row.channel_id),
-                    run_at: toLocalInput(row.run_at),
+                    run_at: utcToZoned(row.run_at, row.timezone),
                   })
                 }
               >

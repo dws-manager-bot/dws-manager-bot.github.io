@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import DateTimeField from '../components/DateTimeField.jsx'
+import TimezoneField from '../components/TimezoneField.jsx'
+import { zonedToIso } from '../lib/tz.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import { withServerTime } from '../lib/servertime.js'
 
@@ -80,9 +82,11 @@ export default function Setup({ onDone }) {
     ...ev,
     weekdays: ev.schedule_type === 'weekly' ? ev.weekdays.map(Number) : null,
     rotation_days: ev.schedule_type === 'rotation' ? Number(ev.rotation_days) : null,
+    // Midnight in the event's own zone: read back as a calendar date there,
+    // a browser-local midnight lands a day early for any zone behind UTC.
     reference_date:
       ev.schedule_type === 'rotation' && ev.reference_date
-        ? new Date(ev.reference_date).toISOString()
+        ? zonedToIso(`${String(ev.reference_date).slice(0, 10)}T00:00`, ev.timezone)
         : null,
     fixed_dates: ev.schedule_type === 'fixed' ? ev.fixed_dates : null,
     duration_minutes: Number(ev.duration_minutes),
@@ -303,17 +307,11 @@ export default function Setup({ onDone }) {
                 onChange={(e) => setEv((s) => ({ ...s, start_time: e.target.value }))}
               />
             </label>
-            <label>
-              In which clock?
-              <select
-                value={ev.timezone}
-                onChange={(e) => setEv((s) => ({ ...s, timezone: e.target.value }))}
-              >
-                <option value="Asia/Seoul">Korea time (KST)</option>
-                <option value="Etc/GMT+2">Game server time (ST)</option>
-                <option value="UTC">UTC</option>
-              </select>
-            </label>
+            <TimezoneField
+              label="In which clock?"
+              value={ev.timezone}
+              onChange={(v) => setEv((s) => ({ ...s, timezone: v }))}
+            />
           </div>
 
           <div className={dateError ? 'sched-preview bad' : 'sched-preview'}>

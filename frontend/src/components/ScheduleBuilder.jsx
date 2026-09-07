@@ -3,6 +3,7 @@ import { api } from '../lib/api.js'
 import DateTimeField, { nextRoundedNow, toDateTimeStr } from './DateTimeField.jsx'
 import TimezoneField from './TimezoneField.jsx'
 import { withServerTime } from '../lib/servertime.js'
+import { zonedToIso } from '../lib/tz.js'
 
 /**
  * Choosing when an announcement goes out, without writing cron.
@@ -129,7 +130,7 @@ export default function ScheduleBuilder({ form, setForm, events }) {
           kind: form.kind,
           cron_expr: form.cron_expr,
           interval_minutes: Number(form.interval_minutes) || null,
-          run_at: form.run_at ? new Date(form.run_at).toISOString() : null,
+          run_at: zonedToIso(form.run_at, form.timezone),
           timezone: form.timezone,
         })
         .then(setPreview)
@@ -138,12 +139,8 @@ export default function ScheduleBuilder({ form, setForm, events }) {
     return () => clearTimeout(id)
   }, [form.kind, form.cron_expr, form.interval_minutes, form.run_at, form.timezone, mode])
 
-  /* Guarded, because this runs while the field is still being typed into. */
-  const runAtIso = (() => {
-    if (!form.run_at) return null
-    const d = new Date(form.run_at)
-    return Number.isNaN(d.getTime()) ? null : d.toISOString()
-  })()
+  // Null while the field is still half-typed, which is most keystrokes.
+  const runAtIso = zonedToIso(form.run_at, form.timezone)
 
   const toggleDay = (d) =>
     apply({ days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d] })
@@ -165,6 +162,17 @@ export default function ScheduleBuilder({ form, setForm, events }) {
       </div>
 
       <div className="sched-body">
+        {/* First, because it settles what every field under it means. Shown for
+            anything that reads a clock — not for an interval, which counts
+            elapsed minutes, nor an event-linked post, which takes the event's
+            own zone. */}
+        {mode !== 'interval' && mode !== 'event' && (
+          <TimezoneField
+            value={form.timezone}
+            onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
+          />
+        )}
+
         {(mode === 'daily' || mode === 'weekly') && (
           <>
             {mode === 'weekly' && (
@@ -268,17 +276,6 @@ export default function ScheduleBuilder({ form, setForm, events }) {
               />
             </label>
           </>
-        )}
-
-        {/* Only a cron schedule reads a clock. A one-off carries its own
-            offset, an interval counts from now, and an event-linked post takes
-            the event's zone — so offering the field there would suggest it
-            does something it does not. */}
-        {(mode === 'daily' || mode === 'weekly' || mode === 'advanced') && (
-          <TimezoneField
-            value={form.timezone}
-            onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
-          />
         )}
 
         {mode === 'advanced' && (

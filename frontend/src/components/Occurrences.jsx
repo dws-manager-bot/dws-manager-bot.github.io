@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import { withServerTime } from '../lib/servertime.js'
-import DateTimeField, { toDateTimeStr } from './DateTimeField.jsx'
+import DateTimeField from './DateTimeField.jsx'
+import { utcToZoned, zonedToIso } from '../lib/tz.js'
 
 /**
  * The upcoming dates for one event, each moveable or skippable on its own.
@@ -16,7 +17,7 @@ const fmtLocal = (iso) =>
     hour: '2-digit', minute: '2-digit',
   }).format(new Date(iso))
 
-export default function Occurrences({ eventId, onError }) {
+export default function Occurrences({ eventId, timezone = 'Asia/Seoul', onError }) {
   const [rows, setRows] = useState(null)
   const [editing, setEditing] = useState(null)   // original_starts_at being moved
   const [draft, setDraft] = useState('')
@@ -48,7 +49,8 @@ export default function Occurrences({ eventId, onError }) {
   const startMove = (o) => {
     setEditing(o.original_starts_at)
     // Seed the picker with the current time so it is a nudge, not a re-entry.
-    setDraft(toDateTimeStr(new Date(o.starts_at)))
+    // The event's clock, not this browser's — the same clock the row shows.
+    setDraft(utcToZoned(o.starts_at, timezone))
     setNote(o.note ?? '')
   }
 
@@ -107,9 +109,9 @@ export default function Occurrences({ eventId, onError }) {
                   onChange={setDraft}
                   placeholder="New date and time…"
                 />
-                {draft && (
+                {zonedToIso(draft, timezone) && (
                   <div className="muted small">
-                    {withServerTime(new Date(draft).toISOString())} in server time
+                    {withServerTime(zonedToIso(draft, timezone))} in server time
                   </div>
                 )}
                 <input
@@ -121,7 +123,7 @@ export default function Occurrences({ eventId, onError }) {
                   <button type="button" className="btn primary small" disabled={busy || !draft}
                           onClick={() => run(() => api.overrideOccurrence(eventId, {
                             original_starts_at: o.original_starts_at,
-                            starts_at: new Date(draft).toISOString(),
+                            starts_at: zonedToIso(draft, timezone),
                             note: note || null,
                           }))}>
                     {busy ? 'Saving…' : 'Save this date'}
