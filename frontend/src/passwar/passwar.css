@@ -2,6 +2,19 @@
    .passwar so they cannot reach the rest of the backoffice. The sign-in
    gate and app chrome are dropped: the host page supplies those. */
 
+/* The original :root was dropped with the chrome, but four of its variables
+   are load-bearing here and the backoffice does not define them — an unset
+   custom property makes the whole declaration invalid, which is why the map
+   looked unstyled. Redefined on the scope root, alongside the larger radius
+   this component was drawn for. */
+.passwar {
+  --map-bg: #f5f3ee;
+  --glass: rgba(39, 39, 42, 0.7);
+  --glass-border: 1px solid rgba(251, 191, 36, 0.1);
+  --portal: #60a5fa;
+  --radius: 12px;
+}
+
 .passwar :root { --bg:#18181b; --card:#27272a; --card-hover:#3f3f46; --border:#52525b;
     --text:#fafafa; --muted:#a1a1aa;
     --accent:#fbbf24; --accent-light:#fcd34d; --accent-text:#18181b;
@@ -108,3 +121,17 @@
   .passwar main { padding:14px 12px }
   .passwar .field { font-size:12px }
 }
+
+/* The host page supplies the header, so the ported one is reduced to the line
+   of context it carried plus the node app.js writes the signed-in name into. */
+.passwar .pw-intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.passwar .pw-who { font-size: 13px; }

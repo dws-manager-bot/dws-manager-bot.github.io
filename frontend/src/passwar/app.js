@@ -252,13 +252,13 @@ export function init({ root, api, user }) {
         : "No official plan published yet.";
       if (who.admin) note += " Your edits here save to your own draft.";
     } else if (readOnly) {
-      const owner = (state.server && state.server.owner_name) || "another officer";
+      const owner = (state.server && state.server.owner_name) || "another admin";
       note = "Viewing " + owner + "'s draft — you cannot overwrite it.";
     } else {
-      note = "Your own draft. No other officer can overwrite it.";
+      note = "Your own draft. No other admin can overwrite it.";
       if (state.dirty) note += " Unsaved changes.";
     }
-    if (!who.admin) note += " Officers keep the drafts.";
+    if (!who.admin) note += " Admins keep the drafts.";
     $("#savenote").textContent = note;
   }
 
@@ -494,7 +494,7 @@ export function init({ root, api, user }) {
   // ------------------------------- boot -------------------------------------
   async function start(who) {
     // No gate to hide: the host page only mounts this once signed in.
-    $("#whoami").textContent = who.name + (who.admin ? " · officer" : "");
+    $("#whoami").textContent = who.name + (who.admin ? " · admin" : "");
     await loadRoster(true);
     state.dirty = false;                 // whatever we just loaded is the baseline
     syncControls(); bind(); initDrag(); draw();

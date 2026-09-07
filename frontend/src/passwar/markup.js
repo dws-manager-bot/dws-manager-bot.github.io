@@ -1,17 +1,15 @@
 /* The Pass War markup, lifted from the original index.html.
  * A template rather than JSX because app.js drives these nodes by id: React
- * owns the host element, and everything inside it belongs to app.js. */
+ * owns the host element, and everything inside it belongs to app.js.
+ * Only the brand block is dropped — its title, logo and sign-out duplicate
+ * what the host page already shows. The toolbar shares that header, so the
+ * header element itself has to stay. */
 export default `
 <header class="appbar">
   <div class="inner">
-    <div class="brand">
-      <span class="logo">🚪</span>
-      <div>
-        <h1 class="text-gradient">PoU Pass Occupation War</h1>
-        <div class="sub">Portal &amp; shelter placement around the pass</div>
-      </div>
-      <span class="spacer"></span>
-      <span class="who"><span id="whoami"></span></span>
+    <div class="pw-intro">
+      <span>Portal &amp; shelter placement around the pass</span>
+      <span class="pw-who" id="whoami"></span>
     </div>
 
     <div class="toolbar">

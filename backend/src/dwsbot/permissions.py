@@ -35,7 +35,7 @@ def admin_only():
             interaction.user if isinstance(interaction.user, discord.Member) else None
         ):
             raise discord.app_commands.CheckFailure(
-                "This command is limited to alliance officers."
+                "This command is limited to alliance admins."
             )
         return True
 

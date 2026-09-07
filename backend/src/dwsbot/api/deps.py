@@ -39,7 +39,7 @@ async def require_admin(
 ) -> MeOut:
     if not user.is_admin:
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "This action needs an alliance officer role"
+            status.HTTP_403_FORBIDDEN, "This action needs an alliance admin role"
         )
     return user
 

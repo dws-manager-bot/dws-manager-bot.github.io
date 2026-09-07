@@ -25,7 +25,7 @@ export default function App() {
   useEffect(() => {
     const result = consumeTokenFromUrl()
     if (result?.error === 'not_authorised') {
-      setAuthError('That Discord account does not hold an officer role in the alliance.')
+      setAuthError('That Discord account does not hold an admin role in the alliance.')
       setStatus('anonymous')
       return
     }
@@ -63,7 +63,7 @@ export default function App() {
           </h1>
           <p className="brand-sub muted">Alliance Manager</p>
           <p className="muted">
-            Sign in with the Discord account that holds your officer role.
+            Sign in with the Discord account that holds your admin role.
           </p>
           {authError && <p className="error">{authError}</p>}
           <a className="btn primary" href={loginUrl()}>

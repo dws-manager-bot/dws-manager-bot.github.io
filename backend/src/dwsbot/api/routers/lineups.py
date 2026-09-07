@@ -98,7 +98,7 @@ async def put_lineup(
         if row is not None and row.owner_id not in (None, user.discord_id):
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
-                f"That draft belongs to {row.owner_name or 'another officer'}",
+                f"That draft belongs to {row.owner_name or 'another admin'}",
             )
         if slug != draft_slug(user.discord_id):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Save to your own draft")
@@ -155,7 +155,7 @@ async def delete_lineup(slug: str, session: DbSession, user: AdminUser) -> None:
     if row is None:
         return
     if slug != OFFICIAL and row.owner_id not in (None, user.discord_id):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "That draft belongs to another officer")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "That draft belongs to another admin")
     await session.delete(row)
     await write_audit(session, user, "lineup.delete", "war_lineup", slug)
     await session.commit()
