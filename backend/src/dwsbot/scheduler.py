@@ -117,6 +117,18 @@ class AnnouncementScheduler:
                 log.warning("announcement %s is INTERVAL but has no interval", ann.id)
                 return False
             trigger = IntervalTrigger(minutes=ann.interval_minutes, timezone=tz)
+        elif ann.kind == ScheduleKind.ROTATION:
+            if not ann.interval_minutes or not ann.run_at:
+                log.warning("announcement %s is ROTATION but has no period or first post", ann.id)
+                return False
+            # start_date is the whole difference from a bare interval: it anchors
+            # the cycle, so "every 14 days from the 9th" keeps landing on the
+            # 9th, 23rd and 7th rather than on whenever the process last
+            # restarted. A first post already past is fine -- APScheduler counts
+            # whole periods forward from it.
+            trigger = IntervalTrigger(
+                minutes=ann.interval_minutes, start_date=ann.run_at, timezone=tz,
+            )
         elif ann.kind == ScheduleKind.ONCE:
             if not ann.run_at or ann.run_at <= datetime.now(tz):
                 return False

@@ -219,6 +219,31 @@ async def preview_schedule(payload: SchedulePreviewIn, _: AdminUser):
         unit = "minute" if every == 1 else "minutes"
         return SchedulePreviewOut(description=f"Every {every} {unit}", next_runs=runs)
 
+    if payload.kind == ScheduleKind.ROTATION:
+        if not payload.interval_minutes:
+            return SchedulePreviewOut(description="", error="No rotation set yet")
+        if payload.interval_minutes % 1440:
+            return SchedulePreviewOut(description="", error="A rotation repeats in whole days")
+        if not payload.run_at:
+            return SchedulePreviewOut(description="", error="No first post set yet")
+        from apscheduler.triggers.interval import IntervalTrigger
+
+        # The same trigger the scheduler builds, so the dates shown are the
+        # dates that will happen.
+        trigger = IntervalTrigger(
+            minutes=payload.interval_minutes, start_date=payload.run_at, timezone=tz,
+        )
+        prev = None
+        for _i in range(5):
+            prev = trigger.get_next_fire_time(prev, now)
+            if prev is None:
+                break
+            runs.append(prev)
+        days = payload.interval_minutes // 1440
+        at = payload.run_at.astimezone(tz).strftime("%H:%M")
+        every = f"Every day at {at}" if days == 1 else f"Every {days} days at {at}"
+        return SchedulePreviewOut(description=every, next_runs=runs)
+
     if payload.kind == ScheduleKind.ONCE:
         if not payload.run_at:
             return SchedulePreviewOut(description="", error="No date set yet")

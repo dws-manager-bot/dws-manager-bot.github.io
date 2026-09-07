@@ -33,7 +33,8 @@ class ScheduleKind(enum.StrEnum):
     """How an announcement decides its next fire time."""
 
     CRON = "cron"            # standard 5-field cron, evaluated in `timezone`
-    INTERVAL = "interval"    # every N minutes from `anchor_at`
+    INTERVAL = "interval"    # every N minutes, counted from whenever it loaded
+    ROTATION = "rotation"    # every N days, counted from `run_at` -- the first post
     ONCE = "once"            # single shot at `run_at`, then auto-disables
     EVENT = "event"          # derived from a linked EventDefinition occurrence
 
@@ -97,7 +98,10 @@ class Announcement(Base, TimestampMixin):
         nullable=False,
     )
     cron_expr: Mapped[str | None] = mapped_column(String(120))
+    # The period, for INTERVAL and ROTATION alike; a rotation stores whole days
+    # as minutes so there is one column meaning one thing.
     interval_minutes: Mapped[int | None] = mapped_column(Integer)
+    # The moment for ONCE, and the cycle's anchor for ROTATION.
     run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Seoul", nullable=False)
 

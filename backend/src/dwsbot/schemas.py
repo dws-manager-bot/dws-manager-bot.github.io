@@ -81,6 +81,15 @@ class AnnouncementCreate(AnnouncementBase):
                 raise ValueError(f"invalid cron expression: {self.cron_expr}")
         elif self.kind == ScheduleKind.INTERVAL and not self.interval_minutes:
             raise ValueError("interval_minutes is required when kind is 'interval'")
+        elif self.kind == ScheduleKind.ROTATION:
+            if not self.interval_minutes:
+                raise ValueError("interval_minutes is required when kind is 'rotation'")
+            # Stored as minutes, but a rotation repeats in whole days: anything
+            # else would be an interval wearing the wrong name.
+            if self.interval_minutes % 1440:
+                raise ValueError("a rotation must be a whole number of days")
+            if not self.run_at:
+                raise ValueError("run_at is required when kind is 'rotation': it is the first post")
         elif self.kind == ScheduleKind.ONCE:
             if not self.run_at:
                 raise ValueError("run_at is required when kind is 'once'")

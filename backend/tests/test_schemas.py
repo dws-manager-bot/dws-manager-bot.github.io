@@ -187,3 +187,42 @@ def test_update_still_enforces_the_future_rule():
             **BASE, kind=ScheduleKind.ONCE,
             run_at=datetime.now(UTC) - timedelta(hours=1),
         )
+
+
+# ------------------------------------------------------- every N days
+
+def test_rotation_requires_a_first_post():
+    """It is the anchor: without it there is nothing to count periods from."""
+    from datetime import datetime, timedelta
+
+    with pytest.raises(ValidationError, match="run_at is required"):
+        AnnouncementCreate(**BASE, kind=ScheduleKind.ROTATION, interval_minutes=14 * 1440)
+    ann = AnnouncementCreate(
+        **BASE, kind=ScheduleKind.ROTATION, interval_minutes=14 * 1440,
+        run_at=datetime.now(UTC) + timedelta(days=2),
+    )
+    assert ann.interval_minutes == 20160
+
+
+def test_rotation_must_be_whole_days():
+    """Stored as minutes, but anything under a day is an interval by another
+    name, and would read as "every 0 days" everywhere it is shown."""
+    from datetime import datetime, timedelta
+
+    with pytest.raises(ValidationError, match="whole number of days"):
+        AnnouncementCreate(
+            **BASE, kind=ScheduleKind.ROTATION, interval_minutes=90,
+            run_at=datetime.now(UTC) + timedelta(days=2),
+        )
+
+
+def test_a_rotation_may_be_anchored_in_the_past():
+    """Unlike a one-shot. "It ran last Wednesday, keep going" is a real case,
+    and the trigger counts whole periods forward from whenever it was."""
+    from datetime import datetime, timedelta
+
+    past = datetime.now(UTC) - timedelta(days=30)
+    ann = AnnouncementCreate(
+        **BASE, kind=ScheduleKind.ROTATION, interval_minutes=14 * 1440, run_at=past,
+    )
+    assert ann.run_at == past

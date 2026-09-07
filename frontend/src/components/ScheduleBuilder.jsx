@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
-import DateTimeField from './DateTimeField.jsx'
+import DateTimeField, { nextRoundedNow, toDateTimeStr } from './DateTimeField.jsx'
 import TimezoneField from './TimezoneField.jsx'
 import { withServerTime } from '../lib/servertime.js'
 
@@ -62,9 +62,15 @@ export function buildCron({ mode, time, days }) {
   return null
 }
 
+/* A fortnight is the case this exists for, and no cron expression can say it:
+   cron's day-of-week field repeats every seven days with nothing to carry a
+   longer cycle. */
+const FORTNIGHT = 14 * 1440
+
 const MODES = [
   { id: 'daily', label: 'Every day' },
   { id: 'weekly', label: 'Certain days' },
+  { id: 'days', label: 'Every N days' },
   { id: 'interval', label: 'Every N minutes' },
   { id: 'once', label: 'One time' },
   { id: 'event', label: 'Before an event' },
@@ -76,9 +82,10 @@ export default function ScheduleBuilder({ form, setForm, events }) {
   // is derived from both rather than stored separately.
   const derived =
     form.kind === 'interval' ? { mode: 'interval' }
-      : form.kind === 'once' ? { mode: 'once' }
-        : form.kind === 'event' ? { mode: 'event' }
-          : parseCron(form.cron_expr)
+      : form.kind === 'rotation' ? { mode: 'days' }
+        : form.kind === 'once' ? { mode: 'once' }
+          : form.kind === 'event' ? { mode: 'event' }
+            : parseCron(form.cron_expr)
 
   const [mode, setMode] = useState(derived.mode)
   const [time, setTime] = useState(derived.time ?? '09:00')
@@ -94,6 +101,15 @@ export default function ScheduleBuilder({ form, setForm, events }) {
     if (next.days !== undefined) setDays(next.days)
 
     if (m === 'interval') setForm((f) => ({ ...f, kind: 'interval' }))
+    else if (m === 'days') setForm((f) => ({
+      ...f,
+      kind: 'rotation',
+      // A period left over from another mode is rarely whole days; a fortnight
+      // is the sensible thing to land on rather than "every 0 days".
+      interval_minutes: f.interval_minutes && f.interval_minutes % 1440 === 0
+        ? f.interval_minutes : FORTNIGHT,
+      run_at: f.run_at || toDateTimeStr(nextRoundedNow()),
+    }))
     else if (m === 'once') setForm((f) => ({ ...f, kind: 'once' }))
     else if (m === 'event') setForm((f) => ({ ...f, kind: 'event' }))
     else if (m === 'advanced') setForm((f) => ({ ...f, kind: 'cron' }))
@@ -121,6 +137,13 @@ export default function ScheduleBuilder({ form, setForm, events }) {
     }, 250)
     return () => clearTimeout(id)
   }, [form.kind, form.cron_expr, form.interval_minutes, form.run_at, form.timezone, mode])
+
+  /* Guarded, because this runs while the field is still being typed into. */
+  const runAtIso = (() => {
+    if (!form.run_at) return null
+    const d = new Date(form.run_at)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  })()
 
   const toggleDay = (d) =>
     apply({ days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d] })
@@ -164,6 +187,35 @@ export default function ScheduleBuilder({ form, setForm, events }) {
             <label className="sched-time">
               At
               <input type="time" value={time} onChange={(e) => apply({ time: e.target.value })} />
+            </label>
+          </>
+        )}
+
+        {mode === 'days' && (
+          <>
+            <label>
+              Every (days)
+              <input
+                type="number" inputMode="numeric" min="1" max="365"
+                value={Math.max(1, Math.round((form.interval_minutes || 1440) / 1440))}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  interval_minutes: Math.min(365, Math.max(1, Number(e.target.value) || 1)) * 1440,
+                }))}
+              />
+            </label>
+            <label>
+              First post
+              <DateTimeField
+                mode="datetime"
+                value={form.run_at}
+                onChange={(v) => setForm((f) => ({ ...f, run_at: v }))}
+                placeholder="Pick the first date and time…"
+              />
+              <small className="muted">
+                Every repeat counts from here
+                {runAtIso ? ` — ${withServerTime(runAtIso)}` : ''}.
+              </small>
             </label>
           </>
         )}

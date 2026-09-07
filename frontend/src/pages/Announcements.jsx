@@ -222,6 +222,9 @@ export default function Announcements() {
               <span className="pill">{row.kind}</span>
               {row.kind === 'cron' && <code>{row.cron_expr}</code>}
               {row.kind === 'interval' && <code>every {row.interval_minutes}m</code>}
+              {row.kind === 'rotation' && (
+                <code>every {Math.round((row.interval_minutes ?? 1440) / 1440)} days</code>
+              )}
               <span className="muted">{row.timezone}</span>
             </div>
             <p className="card-body">{row.body.slice(0, 160)}</p>
