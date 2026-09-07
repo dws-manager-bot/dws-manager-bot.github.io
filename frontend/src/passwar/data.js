@@ -20,6 +20,10 @@ export const draftSlug = (discordId) => `draft:${discordId}`
 
 export const DEFAULT_OPTS = {
   version: 1,
+  // How deep the shelter block is, and how wide each layer is. A version
+  // supplies the starting shape; these are what the officer then adjusts.
+  shelterRows: 2,
+  shelterCols: 4,
   orient: 'bottom',
   portalOwners: 24,
   portalLayers: 4,

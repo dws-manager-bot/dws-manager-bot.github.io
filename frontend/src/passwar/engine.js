@@ -23,13 +23,24 @@ const ns = {};
        liftBlock    raise the block one portal height, leaving a portal layer
                     between the shelters and our border */
   const VERSIONS = {
-    1: { shelterRows: SHELTER_ROWS_DEFAULT, liftBlock: true },
-    2: { shelterRows: SHELTER_ROWS_DEFAULT, liftBlock: false },
-    3: { shelterRows: 0, liftBlock: false },
-    4: { shelterRows: 4, liftBlock: false }
+    1: { shelterRows: SHELTER_ROWS_DEFAULT, shelterCols: SHELTER_ROW_N, liftBlock: true },
+    2: { shelterRows: SHELTER_ROWS_DEFAULT, shelterCols: SHELTER_ROW_N, liftBlock: false },
+    3: { shelterRows: 0, shelterCols: SHELTER_ROW_N, liftBlock: false },
+    4: { shelterRows: 4, shelterCols: SHELTER_ROW_N, liftBlock: false }
   };
   const versionSpec = (v) => VERSIONS[v] || VERSIONS[1];
-  const shelterCountFor = (v) => SHELTER_ROW_N * versionSpec(v).shelterRows;
+
+  /* A version supplies the starting shape; the caller may override either
+     dimension, so any layout can be made deeper or wider. */
+  function shelterGrid(o) {
+    const spec = versionSpec(o.version);
+    const rows = o.shelterRows == null ? spec.shelterRows : Math.max(0, o.shelterRows | 0);
+    const cols = o.shelterCols == null ? spec.shelterCols : Math.max(1, o.shelterCols | 0);
+    return { rows, cols };
+  }
+  const shelterCountFor = (v, rows, cols) =>
+    shelterGrid({ version: v, shelterRows: rows, shelterCols: cols }).rows *
+    shelterGrid({ version: v, shelterRows: rows, shelterCols: cols }).cols;
   const RULER = 5;
   const MARGIN = 56, TITLE_H = 78, LEGEND_H = 66;
 
@@ -142,15 +153,17 @@ const ns = {};
     g.PW = PW; g.PH = PH; g.SW = SW; g.SH = SH;
 
     const spec = versionSpec(g.version);
-    g.shelterRows = spec.shelterRows;
+    const grid = shelterGrid(o);
+    g.shelterRows = grid.rows;
+    g.shelterCols = grid.cols;
     g.BLOCK_Y1 = g.CONN_Y0 - (spec.liftBlock ? PH : 0);
     g.BLOCK_H = g.shelterRows * SH || 6;
     g.BLOCK_Y0 = g.BLOCK_Y1 - g.BLOCK_H;
 
-    const ideal = g.AXIS_X - (SHELTER_ROW_N * SW) / 2;
+    const ideal = g.AXIS_X - (g.shelterCols * SW) / 2;
     g.BLOCK_X0 = Math.floor(ideal) + (o.shelterBias === "right" ? 1 : 0);
-    g.BLOCK_X1 = g.BLOCK_X0 + SHELTER_ROW_N * SW;
-    g.offset = (g.BLOCK_X0 + (SHELTER_ROW_N * SW) / 2) - g.AXIS_X;
+    g.BLOCK_X1 = g.BLOCK_X0 + g.shelterCols * SW;
+    g.offset = (g.BLOCK_X0 + (g.shelterCols * SW) / 2) - g.AXIS_X;
 
     g.layers = o.portalLayers;
     g.RING_TOP = g.BLOCK_Y0 - g.layers * PH;
@@ -264,7 +277,7 @@ const ns = {};
     if (!g.shelterRows) return 0;
     const slots = [];
     for (let r = 0; r < g.shelterRows; r++)
-      for (let i = 0; i < SHELTER_ROW_N; i++) slots.push([g.BLOCK_X0 + i * g.SW, g.BLOCK_Y0 + r * g.SH]);
+      for (let i = 0; i < g.shelterCols; i++) slots.push([g.BLOCK_X0 + i * g.SW, g.BLOCK_Y0 + r * g.SH]);
     slots.sort((a, b) => cmpTuple(passDist(g, a[0], a[1], g.SW, g.SH), passDist(g, b[0], b[1], g.SW, g.SH)));
     slots.forEach((c, i) => board.place("SHELTER", c[0], c[1], "S" + (i + 1), null, lineup[i] || null));
     return slots.length;
@@ -513,7 +526,7 @@ const ns = {};
 
   global.PassWar = {
     SIZES, FILLS, FREE_PORTAL, SHELTER_ROW_N, SHELTER_ROWS_DEFAULT,
-    VERSIONS, versionSpec, shelterCountFor,
+    VERSIONS, versionSpec, shelterCountFor, shelterGrid,
     parseCSV, parseMembers, shortCP, geometry, buildPlan, render, passDist, wrect
   };
 })(ns);
