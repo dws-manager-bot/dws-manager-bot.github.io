@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
+import ListRow from '../components/ListRow.jsx'
 import Occurrences from '../components/Occurrences.jsx'
+import { briefWhen, soonest } from '../lib/when.js'
 import { withServerTime } from '../lib/servertime.js'
 import DateTimeField from '../components/DateTimeField.jsx'
 
@@ -58,6 +60,8 @@ export default function Events() {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState({})
   const [openDates, setOpenDates] = useState(null)
+  const [open, setOpen] = useState(null)
+  const [hideOff, setHideOff] = useState(false)
 
   const refresh = () => api.listEvents().then(setRows).catch((e) => setError(e.message))
   useEffect(() => { refresh() }, [])
@@ -130,13 +134,39 @@ export default function Events() {
     }
   }
 
+  /* The recurrence in a few words, for the line you read while scrolling. */
+  const scheduleOf = (row) =>
+    row.schedule_type === 'weekly'
+      ? (row.weekdays ?? []).map((d) => DAYS[d]).join(', ') || 'no days'
+      : row.schedule_type === 'rotation'
+        ? `every ${row.rotation_days} days`
+        : row.schedule_type
+
+  /* Soonest first, so the next event to run is the first one read. */
+  const offCount = rows.filter((r) => !r.enabled).length
+  const visible = rows
+    .filter((r) => !hideOff || r.enabled)
+    .slice()
+    .sort((a, b) => soonest(a.upcoming?.[0]) - soonest(b.upcoming?.[0]) || a.name.localeCompare(b.name))
+
   return (
     <div className="page">
       <div className="page-head">
         <h2>Event schedule</h2>
-        <button className="btn primary" onClick={() => { setForm({ ...EMPTY }); setPreview([]) }}>
-          New event
-        </button>
+        <div className="row">
+          {offCount > 0 && (
+            <button
+              type="button"
+              className={hideOff ? 'chip on' : 'chip'}
+              onClick={() => setHideOff(!hideOff)}
+            >
+              {hideOff ? `${offCount} off hidden` : `Hide ${offCount} off`}
+            </button>
+          )}
+          <button className="btn primary" onClick={() => { setForm({ ...EMPTY }); setPreview([]) }}>
+            New event
+          </button>
+        </div>
       </div>
 
       <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
@@ -146,29 +176,38 @@ export default function Events() {
         </p>
       )}
 
-      <div className="cards">
-        {rows.map((row) => (
-          <div key={row.id} className={row.enabled ? 'card' : 'card disabled'}>
-            <div className="card-head">
-              <span className={`dot ${row.enabled ? 'ok' : 'off'}`} />
-              <strong>{row.name}</strong>
+      {rows.length > 0 && visible.length === 0 && (
+        <p className="muted">Every event is switched off. Show them to edit one.</p>
+      )}
+
+      <div className="cards rows">
+        {visible.map((row) => (
+          <ListRow
+            key={row.id}
+            id={row.id}
+            enabled={row.enabled}
+            title={row.name}
+            where={scheduleOf(row)}
+            when={briefWhen(row.upcoming?.[0]) ?? 'no dates'}
+            whenNote={row.upcoming?.[0] ? withServerTime(row.upcoming[0]) : null}
+            open={open === row.id}
+            onToggle={() => setOpen(open === row.id ? null : row.id)}
+          >
+            <div className="card-meta">
               <span className="pill">{row.schedule_type}</span>
               <code className="muted">{row.key}</code>
-            </div>
-            {row.description && <p className="card-body">{row.description}</p>}
-            <div className="card-meta">
-              {row.schedule_type === 'weekly' && (
-                <span>{(row.weekdays ?? []).map((d) => DAYS[d]).join(', ')}</span>
-              )}
-              {row.schedule_type === 'rotation' && <span>every {row.rotation_days} days</span>}
               <span>{row.start_time}</span>
               <span className="muted">{row.timezone}</span>
             </div>
+            {row.description && <p className="card-body">{row.description}</p>}
             {row.upcoming?.length > 0 && (
-              <div className="card-meta">
-                <span>Next: {fmtWhen(row.upcoming[0])}</span>
-                <span className="muted">{withServerTime(row.upcoming[0])}</span>
-              </div>
+              <dl className="when">
+                <dt>Next</dt>
+                <dd>
+                  {fmtWhen(row.upcoming[0])}{' '}
+                  <span className="muted">· {withServerTime(row.upcoming[0])}</span>
+                </dd>
+              </dl>
             )}
             {(row.created_by_name || row.updated_by_name) && (
               <div className="byline muted">
@@ -201,7 +240,7 @@ export default function Events() {
             {openDates === row.id && (
               <Occurrences eventId={row.id} onError={setError} />
             )}
-          </div>
+          </ListRow>
         ))}
       </div>
 

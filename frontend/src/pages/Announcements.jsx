@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
+import ListRow from '../components/ListRow.jsx'
+import { briefWhen, soonest } from '../lib/when.js'
 import { withServerTime } from '../lib/servertime.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import ScheduleBuilder from '../components/ScheduleBuilder.jsx'
@@ -81,6 +83,8 @@ export default function Announcements() {
   const [pending, setPending] = useState({})
   // Which card's Discord preview is open, by id, or 'form' for the editor.
   const [preview, setPreview] = useState(null)
+  const [open, setOpen] = useState(null)
+  const [hideOff, setHideOff] = useState(false)
 
   const refresh = () =>
     api
@@ -160,13 +164,33 @@ export default function Announcements() {
   const channelName = (id) =>
     channels.find((c) => String(c.id) === String(id))?.name ?? id
 
+  /* Soonest first: the question this page answers is "what goes out next", and
+     the answer should be at the top rather than wherever it happened to be
+     created. Anything unscheduled sinks to the bottom. */
+  const offCount = rows.filter((r) => !r.enabled).length
+  const visible = rows
+    .filter((r) => !hideOff || r.enabled)
+    .slice()
+    .sort((a, b) => soonest(a.next_run_at) - soonest(b.next_run_at) || a.name.localeCompare(b.name))
+
   return (
     <div className="page">
       <div className="page-head">
         <h2>Scheduled announcements</h2>
-        <button className="btn primary" onClick={() => setForm(blankForm())}>
-          New announcement
-        </button>
+        <div className="row">
+          {offCount > 0 && (
+            <button
+              type="button"
+              className={hideOff ? 'chip on' : 'chip'}
+              onClick={() => setHideOff(!hideOff)}
+            >
+              {hideOff ? `${offCount} off hidden` : `Hide ${offCount} off`}
+            </button>
+          )}
+          <button className="btn primary" onClick={() => setForm(blankForm())}>
+            New announcement
+          </button>
+        </div>
       </div>
 
       <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
@@ -176,16 +200,26 @@ export default function Announcements() {
         <p className="muted">Nothing scheduled yet. Create one to get started.</p>
       )}
 
-      <div className="cards">
-        {rows.map((row) => (
-          <div key={row.id} className={row.enabled ? 'card' : 'card disabled'}>
-            <div className="card-head">
-              <span className={`dot ${row.enabled ? 'ok' : 'off'}`} />
-              <strong>{row.name}</strong>
-              <span className="pill">{row.kind}</span>
-            </div>
+      {rows.length > 0 && visible.length === 0 && (
+        <p className="muted">Every announcement is switched off. Show them to edit one.</p>
+      )}
+
+      <div className="cards rows">
+        {visible.map((row) => (
+          <ListRow
+            key={row.id}
+            id={row.id}
+            enabled={row.enabled}
+            title={row.name}
+            where={`#${channelName(row.channel_id)}`}
+            warn={row.last_error ? 'last send failed' : null}
+            when={briefWhen(row.next_run_at) ?? 'not scheduled'}
+            whenNote={row.next_run_at ? withServerTime(row.next_run_at) : null}
+            open={open === row.id}
+            onToggle={() => setOpen(open === row.id ? null : row.id)}
+          >
             <div className="card-meta">
-              <span>#{channelName(row.channel_id)}</span>
+              <span className="pill">{row.kind}</span>
               {row.kind === 'cron' && <code>{row.cron_expr}</code>}
               {row.kind === 'interval' && <code>every {row.interval_minutes}m</code>}
               <span className="muted">{row.timezone}</span>
@@ -277,7 +311,7 @@ export default function Announcements() {
                 {pending[row.id] === 'deleting' ? 'Deleting…' : 'Delete'}
               </button>
             </div>
-          </div>
+          </ListRow>
         ))}
       </div>
 
