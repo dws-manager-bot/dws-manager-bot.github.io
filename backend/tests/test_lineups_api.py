@@ -2,7 +2,7 @@
 
 Runs on SQLite so it needs no server; JSONB is told to compile as JSON there.
 That covers routing, permissions and the JSON round-trip. It does not prove
-anything about Postgres-specific behaviour — the deployed database is Postgres 16.
+anything about Postgres-specific behavior — the deployed database is Postgres 16.
 """
 from __future__ import annotations
 
@@ -227,7 +227,7 @@ async def test_member_cannot_delete_an_officers_draft(client_factory):
 async def test_names_come_from_the_current_nickname_not_the_saved_one(client_factory):
     """A stored name is a snapshot; app_users carries the truth.
 
-    Someone who saves a plan and later sets a PoU nickname should be labelled the
+    Someone who saves a plan and later sets a PoU nickname should be labeled the
     new name even on plans saved before it — which is exactly what went wrong live,
     where a plan published earlier still read "by gnar_.".
     """

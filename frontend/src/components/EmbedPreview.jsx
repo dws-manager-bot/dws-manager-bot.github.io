@@ -26,7 +26,7 @@ const MENTION_LABEL = { '@everyone': '@everyone', '@here': '@here' }
 
 export default function EmbedPreview({ announcement, sample }) {
   const a = announcement
-  const colour = a.use_embed ? (a.embed_color || '#5865F2') : null
+  const color = a.use_embed ? (a.embed_color || '#5865F2') : null
 
   const body = (
     <div
@@ -49,7 +49,7 @@ export default function EmbedPreview({ announcement, sample }) {
       )}
 
       {a.use_embed ? (
-        <div className="dc-embed" style={{ borderLeftColor: colour }}>
+        <div className="dc-embed" style={{ borderLeftColor: color }}>
           {a.title && <div className="dc-title">{a.title}</div>}
           {body}
           {sample?.moved && (

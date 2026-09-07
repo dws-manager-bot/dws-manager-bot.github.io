@@ -180,7 +180,7 @@ async def preview_schedule(payload: SchedulePreviewIn, _: AdminUser):
     """When would this schedule actually fire?
 
     Computed with the same trigger the scheduler uses, so the answer cannot
-    drift from the behaviour. Errors are returned rather than raised: the UI
+    drift from the behavior. Errors are returned rather than raised: the UI
     calls this on every keystroke, and a half-typed expression is normal.
     """
     from datetime import datetime, timedelta

@@ -47,7 +47,7 @@ async def resolve_occurrences(
     count: int = 5,
     horizon_days: int = 90,
 ) -> list[Occurrence]:
-    """The next `count` occurrences, honouring moves and skips."""
+    """The next `count` occurrences, honoring moves and skips."""
     tz = ZoneInfo(definition.timezone or "UTC")
     now = (now or datetime.now(tz)).astimezone(tz)
 

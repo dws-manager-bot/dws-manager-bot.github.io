@@ -412,7 +412,7 @@ export default function Setup({ onDone }) {
               </label>
 
               <label>
-                Accent colour
+                Accent color
                 <input
                   type="color" value={ann.embed_color ?? '#FBBF24'}
                   onChange={(e) => setAnn((a) => ({ ...a, embed_color: e.target.value }))}

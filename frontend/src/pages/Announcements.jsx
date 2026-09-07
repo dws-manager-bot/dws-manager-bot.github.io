@@ -338,7 +338,7 @@ export default function Announcements() {
 
             {form.use_embed && (
               <label>
-                Embed colour
+                Embed color
                 <input type="color" value={form.embed_color ?? '#5865F2'} onChange={set('embed_color')} />
               </label>
             )}

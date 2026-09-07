@@ -2,7 +2,7 @@
 
 A name written into a row is frozen: change your server nickname and every
 byline you ever created keeps the old one. These cover the lookup that
-replaces that behaviour.
+replaces that behavior.
 """
 from __future__ import annotations
 

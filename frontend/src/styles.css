@@ -252,7 +252,7 @@ main:has(.pw-layout) { max-width: 1680px; }
 
 /* ---------- the "when" block ---------- */
 
-/* Label above value on a phone: a two-column layout leaves a long localised
+/* Label above value on a phone: a two-column layout leaves a long localized
    timestamp too little room and forces the page sideways. */
 .when {
   display: grid;
@@ -495,7 +495,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .hkind.move { color: var(--accent); border-color: rgba(251, 191, 36, 0.4); }
 
 /* ---------- Discord embed preview ----------
-   Deliberately Discord's colours, not the app's: this answers "how will it
+   Deliberately Discord's colors, not the app's: this answers "how will it
    look over there", so matching the backoffice theme would defeat it. */
 
 .preview-label { margin: 18px 0 6px; }

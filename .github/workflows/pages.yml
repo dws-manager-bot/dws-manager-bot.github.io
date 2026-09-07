@@ -43,7 +43,7 @@ jobs:
           # Set this under Settings > Secrets and variables > Actions > Variables.
           # It is baked into the bundle, so it must be a public URL — never a secret.
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://dws-api.xronocore.qzz.io' }}
-          # Organisation site: served from the root, not a repo subpath.
+          # Organization site: served from the root, not a repo subpath.
           VITE_BASE: /
 
       # Pages serves static files, so a deep link like /events would 404 on

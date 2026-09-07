@@ -25,7 +25,7 @@ async def _names(session, *ids) -> dict[int, str]:
     """Current display name per Discord id.
 
     Names are resolved when a plan is read, not frozen when it was saved: a member
-    who changes their PoU nickname should be labelled the new one everywhere,
+    who changes their PoU nickname should be labeled the new one everywhere,
     including on plans they saved long ago.
     """
     wanted = {i for i in ids if i}

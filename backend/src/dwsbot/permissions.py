@@ -1,4 +1,4 @@
-"""Shared authorisation rules for both the bot and the API."""
+"""Shared authorization rules for both the bot and the API."""
 from __future__ import annotations
 
 import discord
@@ -12,7 +12,7 @@ def member_is_admin(member: discord.Member | None) -> bool:
     The server owner always qualifies, so a role rename can never lock
     everyone out of the bot.
 
-    Discord's Administrator permission is deliberately *not* honoured as a
+    Discord's Administrator permission is deliberately *not* honored as a
     shortcut. On a typical alliance server it is handed to several roles —
     helpers, bot integrations, secondary ranks — and treating it as officer
     rights would let all of them schedule alliance-wide announcements. This

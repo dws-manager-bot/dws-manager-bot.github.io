@@ -137,7 +137,7 @@ In the GitHub repo: **Settings → Pages → Source: GitHub Actions**, and set
 repository variable `VITE_API_URL` to `https://dws-api.xronocore.qzz.io`.
 
 The repo is named `dws-manager-bot.github.io` inside the org of the same
-name, which makes it an *organisation site* served from the domain root.
+name, which makes it an *organization site* served from the domain root.
 That is why Vite's `base` is `/` rather than a repo subpath.
 
 Pushing to `main` builds and publishes it. The API's `CORS_ORIGINS` must include

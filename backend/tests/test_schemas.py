@@ -44,7 +44,7 @@ def test_unknown_timezone_is_rejected():
         )
 
 
-def test_embed_colour_must_be_a_hex_triplet():
+def test_embed_color_must_be_a_hex_triplet():
     with pytest.raises(ValidationError):
         AnnouncementCreate(
             **BASE, kind=ScheduleKind.CRON, cron_expr="0 9 * * *", embed_color="red"
@@ -84,7 +84,7 @@ def test_snowflake_is_larger_than_javascript_can_represent():
     assert int(float(REAL_CHANNEL_ID)) != REAL_CHANNEL_ID
 
 
-def test_channel_id_serialises_to_json_as_a_string():
+def test_channel_id_serializes_to_json_as_a_string():
     """Sent as a JSON number it would round in the browser and point nowhere."""
     ann = AnnouncementCreate(
         name="Daily reset", channel_id=REAL_CHANNEL_ID, body="x",
@@ -104,14 +104,14 @@ def test_channel_id_accepts_a_string_and_keeps_full_precision():
     assert str(ann.channel_id) == "1498289516216193194"
 
 
-def test_channel_out_also_serialises_as_a_string():
+def test_channel_out_also_serializes_as_a_string():
     from dwsbot.schemas import ChannelOut
 
     out = ChannelOut(id=REAL_CHANNEL_ID, name="bot-heaven").model_dump(mode="json")
     assert out["id"] == "1498289516216193194"
 
 
-def test_member_discord_id_serialises_as_a_string():
+def test_member_discord_id_serializes_as_a_string():
     from dwsbot.schemas import MemberOut
 
     out = MemberOut(
