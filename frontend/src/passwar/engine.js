@@ -64,9 +64,15 @@ const ns = {};
   function normalizeOpts(o) {
     const grid = shelterGrid(o);
     const out = { ...o, version: resolve(o).version, shelterRows: grid.rows, shelterCols: grid.cols };
+    /* The rival camp used to be six tiles deep with no way to change it, so a
+       plan saved before the portal target existed carries that depth without
+       anyone having chosen it. Those take the new default; a plan saved since
+       is left alone, which keeps six a settable value. */
+    if (out.portalCount == null && out.rivalDepth === 6) out.rivalDepth = 2;
     if (out.portalCount == null) out.portalCount = 100;
     delete out.portalLayers;   // the ring depth follows from the portal target now
     delete out.mapTiles;       // one square dimension, since split into width and depth
+    delete out.gateW; delete out.gateH;   // the gate's size is the game's, not ours
     return out;
   }
 
@@ -176,14 +182,14 @@ const ns = {};
     g.tile = o.tile;
     g.mapW = Math.max(12, Math.round(o.mapW != null ? o.mapW : (o.mapTiles != null ? o.mapTiles : 40)));
     g.mapH = Math.max(12, Math.round(o.mapH != null ? o.mapH : (o.mapTiles != null ? o.mapTiles : 40)));
-    g.rivalDepth = Math.max(1, Math.round(o.rivalDepth != null ? o.rivalDepth : 6));
+    g.rivalDepth = Math.max(1, Math.round(o.rivalDepth != null ? o.rivalDepth : 2));
     g.orient = o.orient;
 
-    g.GATE_W = Math.max(PASS_W, Math.round(o.gateW != null ? o.gateW : CONNECTOR_W));
-    // Short of this the portal band and its keep-clear strip have nowhere to sit.
-    g.GATE_H = Math.max(PASS_H + 2 * (PH + KEEP_CLEAR_H),
-                        Math.round(o.gateH != null ? o.gateH : CONNECTOR_H));
-    // null means "keep it centred", so resizing the map carries the gate along.
+    // The gate is the game's own structure: where it sits varies by map, how
+    // big it is does not.
+    g.GATE_W = CONNECTOR_W;
+    g.GATE_H = CONNECTOR_H;
+    // null means "keep it centered", so resizing the map carries the gate along.
     g.GATE_X = o.gateX == null
       ? Math.floor((g.mapW - g.GATE_W) / 2)
       : Math.min(g.mapW - g.GATE_W, Math.max(0, Math.round(o.gateX)));
@@ -196,7 +202,7 @@ const ns = {};
     g.APRON_H = g.PASS_Y0 - g.CONN_Y0;
     g.PORTAL_ROW = g.CONN_Y0;
     g.AXIS_X = g.CONN_X0 + g.GATE_W / 2;
-    // The pair at the gate stays centred on it however wide the gate is.
+    // The pair at the gate stays centered on it however wide the gate is.
     g.GATE_P_X0 = g.CONN_X0 + Math.floor((g.GATE_W - (2 * PW + PORTAL_GAP)) / 2);
 
     g.version = resolve(o).version;
@@ -314,7 +320,7 @@ const ns = {};
     return s;
   };
 
-  /* Centre-to-pass distance: to the pass rectangle, tie-broken by its centre, then by
+  /* Center-to-pass distance: to the pass rectangle, tie-broken by its center, then by
      tile so the order is stable whatever the construction sequence. */
   function passDist(g, x, y, w, h) {
     const cx = x + w / 2, cy = y + h / 2;
@@ -608,7 +614,7 @@ const ns = {};
 
     let note = "1 tile = " + g.tile + "px  ·  pass at " + g.orient + "  ·  connector " +
       g.GATE_W + "×" + g.GATE_H + "  ·  apron " + g.APRON[2] + "×" + g.APRON[3] +
-      "  ·  " + plan.stats.owned + " prioritised";
+      "  ·  " + plan.stats.owned + " prioritized";
     note += g.CHANNELS.length
       ? "  ·  " + g.CHANNELS.map((c) => c[2] + "×" + c[3]).join(" and ") +
         " kept clear: shelters tile in 3s, portals in 2s"
@@ -655,6 +661,7 @@ const ns = {};
   global.PassWar = {
     SIZES, FILLS, FREE_PORTAL, SHELTER_ROW_N, SHELTER_ROWS_DEFAULT,
     VERSIONS, versionSpec, shelterCountFor, shelterGrid, normalizeOpts,
+    GATE_W: CONNECTOR_W, GATE_H: CONNECTOR_H,
     parseCSV, parseMembers, shortCP, geometry, buildPlan, render, passDist, wrect
   };
 })(ns);

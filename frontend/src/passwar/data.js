@@ -34,13 +34,11 @@ export const DEFAULT_OPTS = {
   tile: 30,
   // The board itself. Camps differ from map to map and the gate is not always
   // halfway along the border, so both are the officer's to set. A null gateX
-  // means "keep it centred", so resizing the camp carries the gate with it.
+  // means "keep it centered", so resizing the camp carries the gate with it.
   mapW: 40,
   mapH: 40,
   gateX: null,
-  gateW: 5,
-  gateH: 12,
-  rivalDepth: 6,
+  rivalDepth: 2,
 }
 
 /** The roster, live from the published sheet, falling back to the bundled copy. */

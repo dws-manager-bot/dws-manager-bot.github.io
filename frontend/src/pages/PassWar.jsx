@@ -37,7 +37,7 @@ const shortCP = (n) => PassWarEngine.shortCP(n)
 
 /* ------------------------------------------------------------------ line-up */
 
-function LineupRow({ member, index, shelters, prioritised, onMove, onRemove, dragging, onDragStart }) {
+function LineupRow({ member, index, shelters, prioritized, onMove, onRemove, dragging, onDragStart }) {
   return (
     <li className={dragging ? 'pw-row dragging' : 'pw-row'} data-index={index}>
       <button
@@ -59,7 +59,7 @@ function LineupRow({ member, index, shelters, prioritised, onMove, onRemove, dra
 
       <div className="pw-badges">
         {index < shelters && <span className="pw-badge s">S{index + 1}</span>}
-        {index < prioritised && <span className="pw-badge p">P{index + 1}</span>}
+        {index < prioritized && <span className="pw-badge p">P{index + 1}</span>}
       </div>
 
       <div className="pw-nudge">
@@ -199,7 +199,7 @@ export default function PassWar({ user }) {
   const channels = plan?.g.CHANNELS ?? []
   const evenRows = opts.shelterRows + (opts.shelterRows % 2)
   const evenCols = opts.shelterCols + (opts.shelterCols % 2)
-  const maxGateX = Math.max(0, opts.mapW - opts.gateW)
+  const maxGateX = Math.max(0, opts.mapW - PassWarEngine.GATE_W)
   const gateX = opts.gateX == null ? Math.floor(maxGateX / 2) : Math.min(maxGateX, opts.gateX)
 
   /* --------------------------------------------------------------- mutating */
@@ -381,7 +381,7 @@ export default function PassWar({ user }) {
               {stats && (
                 <span className="muted small">
                   {`${stats.shelters} shelters · ${stats.portals} portals `}
-                  {`(${stats.owned} prioritised, ${stats.free} free) · ${stats.named} placed`}
+                  {`(${stats.owned} prioritized, ${stats.free} free) · ${stats.named} placed`}
                 </span>
               )}
             </div>
@@ -491,7 +491,7 @@ export default function PassWar({ user }) {
                 </div>
               ) : (
                 <p className="card-body wide muted small">
-                  {shelters} shelters, every structure flush against its neighbours.
+                  {shelters} shelters, every structure flush against its neighbors.
                 </p>
               )}
 
@@ -527,7 +527,7 @@ export default function PassWar({ user }) {
 
               <label className="wide">
                 <span className="pw-slider-label">
-                  Prioritised portals
+                  Prioritized portals
                   <b>{opts.portalOwners} named</b>
                   <span className="muted">the rest are left free</span>
                 </span>
@@ -549,7 +549,7 @@ export default function PassWar({ user }) {
             <p className="card-body">
               The board underneath the formation. Camps differ from map to map, and the
               gate is not always halfway along the border — set these to match the one
-              you are fighting on.
+              you are fighting on. The gate itself is a fixed {PassWarEngine.GATE_W}×{PassWarEngine.GATE_H}.
             </p>
             <div className="grid">
               <label>
@@ -571,26 +571,11 @@ export default function PassWar({ user }) {
                   Gate along the border
                   <b>tile {gateX}</b>
                   <span className="muted">
-                    {opts.gateX == null ? 'centred, and stays centred' : `of ${maxGateX}`}
+                    {opts.gateX == null ? 'centered, and stays centered' : `of ${maxGateX}`}
                   </span>
                 </span>
                 <input type="range" min="0" max={maxGateX} step="1" value={gateX}
                        onChange={(e) => setOpt('gateX', +e.target.value)} />
-              </label>
-
-              <label>
-                Gate width
-                <input type="number" inputMode="numeric" min="5" max={opts.mapW}
-                       value={opts.gateW}
-                       onChange={(e) => setOpt('gateW', clamp(e.target.value, 5, opts.mapW))} />
-                <small className="muted">The pass is 5 wide.</small>
-              </label>
-
-              <label>
-                Gate length
-                <input type="number" inputMode="numeric" min="12" max="60" value={opts.gateH}
-                       onChange={(e) => setOpt('gateH', clamp(e.target.value, 12, 60))} />
-                <small className="muted">Our border to theirs.</small>
               </label>
 
               <label>
@@ -610,11 +595,10 @@ export default function PassWar({ user }) {
               <div className="card-actions wide">
                 <button className="btn small" onClick={() => setOpt('gateX', null)}
                         disabled={opts.gateX == null}>
-                  Centre the gate
+                  Center the gate
                 </button>
                 <button className="btn small" onClick={() => edit(() => setOpts((o) => ({
                   ...o, mapW: DEFAULT_OPTS.mapW, mapH: DEFAULT_OPTS.mapH, gateX: null,
-                  gateW: DEFAULT_OPTS.gateW, gateH: DEFAULT_OPTS.gateH,
                   rivalDepth: DEFAULT_OPTS.rivalDepth, tile: DEFAULT_OPTS.tile,
                 })))}>
                   Standard board
@@ -652,7 +636,7 @@ export default function PassWar({ user }) {
                 <LineupRow
                   key={`${m.name}-${i}`}
                   member={m} index={i}
-                  shelters={shelters} prioritised={stats?.owned ?? opts.portalOwners}
+                  shelters={shelters} prioritized={stats?.owned ?? opts.portalOwners}
                   dragging={drag?.index === i}
                   onDragStart={onDragStart}
                   onMove={move}
