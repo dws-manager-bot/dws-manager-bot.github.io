@@ -196,6 +196,9 @@ export default function PassWar({ user }) {
   // runs past the edge of the camp.
   const stats = plan?.stats
   const shelters = stats?.shelters ?? 0
+  const channels = plan?.g.CHANNELS ?? []
+  const evenRows = opts.shelterRows + (opts.shelterRows % 2)
+  const evenCols = opts.shelterCols + (opts.shelterCols % 2)
   const maxGateX = Math.max(0, opts.mapW - opts.gateW)
   const gateX = opts.gateX == null ? Math.floor(maxGateX / 2) : Math.min(maxGateX, opts.gateX)
 
@@ -217,6 +220,11 @@ export default function PassWar({ user }) {
     edit(() => setLineup((l) => [...l, makeMerc(name, bgb)]))
     return setNotice(`Added ${name}.`)
   }
+
+  /* Both counts up to the next even number, which is the whole of the fix: a
+     3-tile shelter and a 2-tile portal only ever tile together in pairs. */
+  const evenUp = () =>
+    edit(() => setOpts((o) => ({ ...o, shelterRows: evenRows, shelterCols: evenCols })))
 
   const resetOrder = () =>
     edit(() => setLineup((l) => applyOrder(roster, l.filter((m) => m.merc), [])))
@@ -469,14 +477,23 @@ export default function PassWar({ user }) {
                 <small className="muted">Width of each layer.</small>
               </label>
 
-              <p className="card-body wide muted small">
-                {opts.shelterRows * opts.shelterCols} shelters asked for, {shelters} on the map.
-                {(plan?.g.PAD_X || plan?.g.PAD_Y) ? (
-                  <> Shelters are 3 tiles, portals 2, so an odd count leaves a one-tile
-                  channel along the {[plan.g.PAD_X && 'lean', plan.g.PAD_Y && 'rear']
-                    .filter(Boolean).join(' and ')} side. Even counts sit flush.</>
-                ) : ' Every structure sits flush against its neighbours.'}
-              </p>
+              {channels.length > 0 ? (
+                <div className="banner note small wide" role="status">
+                  <div className="banner-body">
+                    A shelter is 3 tiles and a portal 2, so an odd grid never divides:
+                    {' '}{channels.map((c) => `${c[2]}×${c[3]}`).join(' and ')} of ground
+                    behind the block takes neither, and is drawn as kept clear. Even
+                    numbers leave every structure flush.
+                  </div>
+                  <button className="btn small" onClick={evenUp}>
+                    Use {evenRows} × {evenCols}
+                  </button>
+                </div>
+              ) : (
+                <p className="card-body wide muted small">
+                  {shelters} shelters, every structure flush against its neighbours.
+                </p>
+              )}
 
               <label>
                 Pass at
@@ -486,10 +503,13 @@ export default function PassWar({ user }) {
               </label>
 
               <label>
-                Portal layers
-                <input type="number" inputMode="numeric" min="0" max="16" value={opts.portalLayers}
-                       onChange={(e) => setOpt('portalLayers', clamp(e.target.value, 0, 16))} />
-                <small className="muted">Rings around the shelters.</small>
+                Portals
+                <input type="number" inputMode="numeric" min="0" max="400" value={opts.portalCount}
+                       onChange={(e) => setOpt('portalCount', clamp(e.target.value, 0, 400))} />
+                <small className="muted">
+                  {stats ? `${stats.portals} on the map, named and free together.`
+                    : 'Named and free together.'}
+                </small>
               </label>
 
               <div>
@@ -511,8 +531,8 @@ export default function PassWar({ user }) {
                   <b>{opts.portalOwners} named</b>
                   <span className="muted">the rest are left free</span>
                 </span>
-                <input type="range" min="0" max={Math.max(100, lineup.length)} step="1"
-                       value={opts.portalOwners}
+                <input type="range" min="0" max={opts.portalCount} step="1"
+                       value={Math.min(opts.portalOwners, opts.portalCount)}
                        onChange={(e) => setOpt('portalOwners', +e.target.value)} />
               </label>
 

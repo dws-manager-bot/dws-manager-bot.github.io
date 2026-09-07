@@ -63,7 +63,11 @@ const ns = {};
      screen and the engine always agree on what is being drawn. */
   function normalizeOpts(o) {
     const grid = shelterGrid(o);
-    return { ...o, version: resolve(o).version, shelterRows: grid.rows, shelterCols: grid.cols };
+    const out = { ...o, version: resolve(o).version, shelterRows: grid.rows, shelterCols: grid.cols };
+    if (out.portalCount == null) out.portalCount = 100;
+    delete out.portalLayers;   // the ring depth follows from the portal target now
+    delete out.mapTiles;       // one square dimension, since split into width and depth
+    return out;
   }
 
   const RULER = 5;
@@ -223,10 +227,25 @@ const ns = {};
     g.FRAME_Y1 = g.BLOCK_Y1;
     g.FRAME_Y0 = g.BLOCK_Y0 - g.PAD_Y;
 
-    g.layers = o.portalLayers;
-    g.RING_TOP = g.FRAME_Y0 - g.layers * PH;
-    g.FORM_X0 = g.FRAME_X0 - g.layers * PW;
-    g.FORM_X1 = g.FRAME_X1 + g.layers * PW;
+    /* How many portals the formation is built to hold, all told -- named and
+       free alike. Rings are grown outward until that many are placed, so the
+       count is the setting and the ring depth follows from it. */
+    g.portalCount = Math.max(0, Math.round(o.portalCount != null ? o.portalCount : 100));
+    // Enough rings to cover the camp; the target decides how many get used.
+    g.maxLayers = Math.ceil(Math.max(g.mapW, g.mapH) / PH) + 2;
+
+    /* The tile the parity padding leaves over, as the L-shaped strip it really
+       is. Nothing in the game is one tile wide, so it is drawn as kept clear
+       rather than left looking like a portal that failed to appear. */
+    g.CHANNELS = [];
+    if (g.PAD_Y) g.CHANNELS.push([g.FRAME_X0, g.FRAME_Y0, g.FRAME_X1 - g.FRAME_X0, g.PAD_Y]);
+    if (g.PAD_X) g.CHANNELS.push([o.shelterBias === "right" ? g.FRAME_X0 : g.BLOCK_X1,
+                                  g.BLOCK_Y0, g.PAD_X, g.BLOCK_H]);
+
+    // Placeholders until buildPlan measures what actually landed on the board.
+    g.RING_TOP = g.FRAME_Y0;
+    g.FORM_X0 = g.FRAME_X0;
+    g.FORM_X1 = g.FRAME_X1;
 
     g.OURS = [0, 0, g.mapW, g.mapH];
     g.CONN = [g.CONN_X0, g.CONN_Y0, g.GATE_W, g.GATE_H];
@@ -236,12 +255,7 @@ const ns = {};
     g.KEEP_CLEAR = [g.CONN_X0, g.PORTAL_ROW + PH, g.GATE_W, Math.max(0, g.APRON_H - PH)];
     g.GAP_RECT = [g.GATE_P_X0 + PW, g.PORTAL_ROW, PORTAL_GAP, PH];
 
-    const rear = g.shelterRows ? ["SHELTER", "shelters"] : ["PORTAL", "portals"];
-    g.ZONES = [
-      [[0, 0, g.mapW, g.RING_TOP], rear[0], rear[1]],
-      [[0, g.RING_TOP, g.FORM_X0, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"],
-      [[g.FORM_X1, g.RING_TOP, g.mapW - g.FORM_X1, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"]
-    ];
+    g.ZONES = [];
 
     g.W_TILES = g.mapW;
     g.H_TILES = g.mapH + g.GATE_H + g.rivalDepth;
@@ -311,6 +325,23 @@ const ns = {};
   }
   const cmpTuple = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i]; return 0; };
 
+  /* Where there is still room to build, measured from what actually landed
+     rather than from the requested ring count -- the two differ once the target
+     runs out mid-ring, or the camp edge trims one. */
+  function refreshZones(g, board) {
+    const inCamp = board.items.filter((s) => s.y + s.h <= g.CONN_Y0);
+    if (!inCamp.length) { g.ZONES = []; return; }
+    g.RING_TOP = Math.min.apply(null, inCamp.map((s) => s.y));
+    g.FORM_X0 = Math.min.apply(null, inCamp.map((s) => s.x));
+    g.FORM_X1 = Math.max.apply(null, inCamp.map((s) => s.x + s.w));
+    const rear = g.shelterRows ? ["SHELTER", "shelters"] : ["PORTAL", "portals"];
+    g.ZONES = [
+      [[0, 0, g.mapW, g.RING_TOP], rear[0], rear[1]],
+      [[0, g.RING_TOP, g.FORM_X0, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"],
+      [[g.FORM_X1, g.RING_TOP, g.mapW - g.FORM_X1, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"]
+    ];
+  }
+
   /* Every slot a portal may take, gate pair first, then outward ring by ring.
      The frame rect has even sides by construction, so a ring runs from its left
      column across to its right column and lands exactly on it -- corners fall
@@ -325,7 +356,7 @@ const ns = {};
       layers.push(core);
     }
     let x0 = g.FRAME_X0, x1 = g.FRAME_X1, y0 = g.FRAME_Y0, y1 = g.FRAME_Y1;
-    for (let n = 0; n < g.layers; n++) {
+    for (let n = 0; n < g.maxLayers; n++) {
       const left = x0 - g.PW, right = x1, top = y0 - g.PH, bottom = y1, ring = [];
       for (let y = y0; y < y1; y += g.PH) { ring.push([left, y]); ring.push([right, y]); }
       for (let x = left; x <= right; x += g.PW) ring.push([x, top]);
@@ -355,15 +386,29 @@ const ns = {};
     return usable.length;
   }
 
-  /* Portals, with the `owners` slots nearest the pass given an owner. A separate pass over
-     the same lineup the shelters use, so the top members hold both. The rest are free. */
-  function placePortals(board, lineup, owners) {
-    const g = board.g, layers = portalSlots(g);
-    const cand = [].concat.apply([], layers).filter((c) => board.fits("PORTAL", c[0], c[1]));
-    cand.sort((a, b) => cmpTuple(passDist(g, a[0], a[1], g.PW, g.PH), passDist(g, b[0], b[1], g.PW, g.PH)));
+  /* Portals, outward ring by ring until the formation holds `target` of them --
+     the gate pair included, named and free alike. A ring the target runs out
+     inside is filled nearest-the-pass first, so an unfinished formation is open
+     at the rear rather than ragged the whole way round.
+
+     The `owners` slots nearest the pass are then named from the same line-up the
+     shelters read, so the strongest members hold both. The rest are free. */
+  function placePortals(board, lineup, target, owners) {
+    const g = board.g, byPass = (a, b) =>
+      cmpTuple(passDist(g, a[0], a[1], g.PW, g.PH), passDist(g, b[0], b[1], g.PW, g.PH));
+    const taken = [];
+    for (const ring of portalSlots(g)) {
+      if (taken.length >= target) break;
+      const usable = ring.filter((c) => board.fits("PORTAL", c[0], c[1])).sort(byPass);
+      for (const c of usable) {
+        if (taken.length >= target) break;
+        taken.push(c);
+      }
+    }
     const rank = new Map();
-    cand.slice(0, Math.max(0, owners)).forEach((c, i) => rank.set(c[0] + "," + c[1], i));
-    for (const ring of layers) for (const c of ring) {
+    [...taken].sort(byPass).slice(0, Math.max(0, owners))
+      .forEach((c, i) => rank.set(c[0] + "," + c[1], i));
+    for (const c of taken) {
       const i = rank.get(c[0] + "," + c[1]);
       const m = i === undefined ? null : (lineup[i] || null);
       board.place("PORTAL", c[0], c[1], "", m ? null : FREE_PORTAL, m);
@@ -375,7 +420,8 @@ const ns = {};
     const g = geometry(o), board = new Board(g);
     board.place("PASS", g.PASS_X0, g.PASS_Y0, "PASS");
     placeShelters(board, lineup);
-    placePortals(board, lineup, o.portalOwners);
+    placePortals(board, lineup, g.portalCount, o.portalOwners);
+    refreshZones(g, board);
     const portals = board.items.filter((s) => s.kind === "PORTAL");
     const shelters = board.items.filter((s) => s.kind === "SHELTER");
     const named = new Set(board.items.filter((s) => s.member).map((s) => s.member.name));
@@ -386,6 +432,7 @@ const ns = {};
         owned: portals.filter((s) => s.member).length,
         free: portals.filter((s) => !s.member).length,
         shelters: shelters.length,
+        wanted: g.portalCount,
         named: named.size
       }
     };
@@ -559,9 +606,13 @@ const ns = {};
     x += 32;
     ltext(ctx, x, ly, "kept clear", 14, INK);
 
-    const note = "1 tile = " + g.tile + "px  ·  pass at " + g.orient + "  ·  connector " +
+    let note = "1 tile = " + g.tile + "px  ·  pass at " + g.orient + "  ·  connector " +
       g.GATE_W + "×" + g.GATE_H + "  ·  apron " + g.APRON[2] + "×" + g.APRON[3] +
-      "  ·  " + plan.stats.owned + " prioritised  ·  no overlapping structures";
+      "  ·  " + plan.stats.owned + " prioritised";
+    note += g.CHANNELS.length
+      ? "  ·  " + g.CHANNELS.map((c) => c[2] + "×" + c[3]).join(" and ") +
+        " kept clear: shelters tile in 3s, portals in 2s"
+      : "  ·  every structure flush";
     ctx.textAlign = "right";
     ltext(ctx, 0, 0, "", 13, INK);
     ctx.font = fontStr(13); ctx.fillStyle = "rgb(120,120,120)";
@@ -584,6 +635,7 @@ const ns = {};
 
     hatchRegion(ctx, g, g.KEEP_CLEAR);
     hatchRegion(ctx, g, g.GAP_RECT);
+    for (const c of g.CHANNELS) hatchRegion(ctx, g, c);
     if (plan.showZones) for (const z of g.ZONES)
       if (z[0][2] > 0 && z[0][3] > 0) fillRegion(ctx, g, z[0], ZONE_TINT[z[1]]);
     for (const r of [g.OURS, g.CONN, g.RIVAL]) gridRegion(ctx, g, r);

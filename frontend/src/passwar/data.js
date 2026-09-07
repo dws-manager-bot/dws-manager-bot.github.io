@@ -26,7 +26,9 @@ export const DEFAULT_OPTS = {
   shelterCols: 4,
   orient: 'bottom',
   portalOwners: 24,
-  portalLayers: 4,
+  // How many portals the formation holds in total, named and free together.
+  // Rings grow outward until it is met, so this replaces counting layers.
+  portalCount: 100,
   shelterBias: 'left',
   showZones: true,
   tile: 30,
