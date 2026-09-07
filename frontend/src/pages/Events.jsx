@@ -6,6 +6,7 @@ import Occurrences from '../components/Occurrences.jsx'
 import { briefWhen, soonest } from '../lib/when.js'
 import { withServerTime } from '../lib/servertime.js'
 import DateTimeField from '../components/DateTimeField.jsx'
+import TimezoneField from '../components/TimezoneField.jsx'
 
 // Weekday names in the viewer's language; the indices stay 0 = Monday, which
 // is what the API stores.
@@ -349,16 +350,10 @@ export default function Events() {
               Duration (minutes)
               <input type="number" min="1" value={form.duration_minutes} onChange={set('duration_minutes')} />
             </label>
-            <label>
-              Timezone
-              <input list="tz-options" value={form.timezone} onChange={set('timezone')} />
-              <datalist id="tz-options">
-                <option value="Asia/Seoul">Korea</option>
-                <option value="Etc/GMT+2">Game server time (ST)</option>
-                <option value="UTC">UTC</option>
-              </datalist>
-              <small className="muted">Etc/GMT+2 is server time — 00:00 ST is 11:00 KST.</small>
-            </label>
+            <TimezoneField
+              value={form.timezone}
+              onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
+            />
             <label className="inline">
               <input type="checkbox" checked={form.signup_enabled} onChange={set('signup_enabled')} />
               Allow signups

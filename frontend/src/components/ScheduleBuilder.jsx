@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import DateTimeField from './DateTimeField.jsx'
+import TimezoneField from './TimezoneField.jsx'
 import { withServerTime } from '../lib/servertime.js'
 
 /**
@@ -215,6 +216,17 @@ export default function ScheduleBuilder({ form, setForm, events }) {
               />
             </label>
           </>
+        )}
+
+        {/* Only a cron schedule reads a clock. A one-off carries its own
+            offset, an interval counts from now, and an event-linked post takes
+            the event's zone — so offering the field there would suggest it
+            does something it does not. */}
+        {(mode === 'daily' || mode === 'weekly' || mode === 'advanced') && (
+          <TimezoneField
+            value={form.timezone}
+            onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
+          />
         )}
 
         {mode === 'advanced' && (
