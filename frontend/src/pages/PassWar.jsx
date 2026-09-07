@@ -19,12 +19,17 @@ import {
  * as it is made; a phone has no room for that, and it stacks.
  */
 
+/* A version is a starting shape, not a fixed layout — the depth and width of
+   the shelter block are settings now. That is what retired v4: it was v2 with
+   four layers, which these two numbers say plainly. Plans saved under it open
+   as the v2 they always were. */
 const VERSION_LABELS = {
   1: 'Portal layer under the shelters',
   2: 'Shelters on the border',
   3: 'All portals, no shelters',
-  4: 'Four shelter layers on the border',
 }
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Number.isFinite(+v) ? Math.round(+v) : lo))
 
 const ORIENTS = [['bottom', 'Bottom'], ['top', 'Top'], ['left', 'Left'], ['right', 'Right']]
 
@@ -149,7 +154,7 @@ export default function PassWar({ user }) {
     // The published plan outranks this device's cache; the cache only exists so
     // a reload is not a blank page when the API is unreachable.
     const use = saved || readCache()
-    if (use?.opts) setOpts((o) => ({ ...o, ...use.opts }))
+    if (use?.opts) setOpts((o) => PassWarEngine.normalizeOpts({ ...o, ...use.opts }))
     const mercs = (use?.mercs || []).map((m) => makeMerc(m.name, m.bgb))
     setLineup(applyOrder(members, mercs, use?.order || []))
     setDirty(false)
@@ -187,8 +192,12 @@ export default function PassWar({ user }) {
     if (lineup.length) writeCache(snapshot(opts, lineup))
   }, [opts, lineup])
 
-  const shelters = (opts.shelterRows || 0) * (opts.shelterCols || 0)
+  // What was actually drawn, which is fewer than rows x cols once the block
+  // runs past the edge of the camp.
   const stats = plan?.stats
+  const shelters = stats?.shelters ?? 0
+  const maxGateX = Math.max(0, opts.mapW - opts.gateW)
+  const gateX = opts.gateX == null ? Math.floor(maxGateX / 2) : Math.min(maxGateX, opts.gateX)
 
   /* --------------------------------------------------------------- mutating */
 
@@ -448,17 +457,26 @@ export default function PassWar({ user }) {
 
               <label>
                 Shelter layers
-                <input type="number" inputMode="numeric" min="0" max="8" value={opts.shelterRows}
-                       onChange={(e) => setOpt('shelterRows', Math.max(0, Math.min(8, +e.target.value)))} />
+                <input type="number" inputMode="numeric" min="0" max="20" value={opts.shelterRows}
+                       onChange={(e) => setOpt('shelterRows', clamp(e.target.value, 0, 20))} />
                 <small className="muted">Depth back from the border.</small>
               </label>
 
               <label>
                 Shelters per layer
-                <input type="number" inputMode="numeric" min="1" max="10" value={opts.shelterCols}
-                       onChange={(e) => setOpt('shelterCols', Math.max(1, Math.min(10, +e.target.value)))} />
+                <input type="number" inputMode="numeric" min="1" max="20" value={opts.shelterCols}
+                       onChange={(e) => setOpt('shelterCols', clamp(e.target.value, 1, 20))} />
                 <small className="muted">Width of each layer.</small>
               </label>
+
+              <p className="card-body wide muted small">
+                {opts.shelterRows * opts.shelterCols} shelters asked for, {shelters} on the map.
+                {(plan?.g.PAD_X || plan?.g.PAD_Y) ? (
+                  <> Shelters are 3 tiles, portals 2, so an odd count leaves a one-tile
+                  channel along the {[plan.g.PAD_X && 'lean', plan.g.PAD_Y && 'rear']
+                    .filter(Boolean).join(' and ')} side. Even counts sit flush.</>
+                ) : ' Every structure sits flush against its neighbours.'}
+              </p>
 
               <label>
                 Pass at
@@ -469,8 +487,9 @@ export default function PassWar({ user }) {
 
               <label>
                 Portal layers
-                <input type="number" inputMode="numeric" min="0" max="8" value={opts.portalLayers}
-                       onChange={(e) => setOpt('portalLayers', Math.max(0, Math.min(8, +e.target.value)))} />
+                <input type="number" inputMode="numeric" min="0" max="16" value={opts.portalLayers}
+                       onChange={(e) => setOpt('portalLayers', clamp(e.target.value, 0, 16))} />
+                <small className="muted">Rings around the shelters.</small>
               </label>
 
               <div>
@@ -492,7 +511,8 @@ export default function PassWar({ user }) {
                   <b>{opts.portalOwners} named</b>
                   <span className="muted">the rest are left free</span>
                 </span>
-                <input type="range" min="0" max="100" step="1" value={opts.portalOwners}
+                <input type="range" min="0" max={Math.max(100, lineup.length)} step="1"
+                       value={opts.portalOwners}
                        onChange={(e) => setOpt('portalOwners', +e.target.value)} />
               </label>
 
@@ -505,13 +525,92 @@ export default function PassWar({ user }) {
           </div>
 
           <div className="card">
+            <div className="card-head"><strong>Map &amp; gate</strong></div>
+            <p className="card-body">
+              The board underneath the formation. Camps differ from map to map, and the
+              gate is not always halfway along the border — set these to match the one
+              you are fighting on.
+            </p>
+            <div className="grid">
+              <label>
+                Camp width
+                <input type="number" inputMode="numeric" min="12" max="120" value={opts.mapW}
+                       onChange={(e) => setOpt('mapW', clamp(e.target.value, 12, 120))} />
+                <small className="muted">Tiles across our territory.</small>
+              </label>
+
+              <label>
+                Camp depth
+                <input type="number" inputMode="numeric" min="12" max="120" value={opts.mapH}
+                       onChange={(e) => setOpt('mapH', clamp(e.target.value, 12, 120))} />
+                <small className="muted">Rear wall to the border.</small>
+              </label>
+
+              <label className="wide">
+                <span className="pw-slider-label">
+                  Gate along the border
+                  <b>tile {gateX}</b>
+                  <span className="muted">
+                    {opts.gateX == null ? 'centred, and stays centred' : `of ${maxGateX}`}
+                  </span>
+                </span>
+                <input type="range" min="0" max={maxGateX} step="1" value={gateX}
+                       onChange={(e) => setOpt('gateX', +e.target.value)} />
+              </label>
+
+              <label>
+                Gate width
+                <input type="number" inputMode="numeric" min="5" max={opts.mapW}
+                       value={opts.gateW}
+                       onChange={(e) => setOpt('gateW', clamp(e.target.value, 5, opts.mapW))} />
+                <small className="muted">The pass is 5 wide.</small>
+              </label>
+
+              <label>
+                Gate length
+                <input type="number" inputMode="numeric" min="12" max="60" value={opts.gateH}
+                       onChange={(e) => setOpt('gateH', clamp(e.target.value, 12, 60))} />
+                <small className="muted">Our border to theirs.</small>
+              </label>
+
+              <label>
+                Rival camp depth
+                <input type="number" inputMode="numeric" min="1" max="60" value={opts.rivalDepth}
+                       onChange={(e) => setOpt('rivalDepth', clamp(e.target.value, 1, 60))} />
+                <small className="muted">How much of theirs to draw.</small>
+              </label>
+
+              <label>
+                Tile size
+                <input type="number" inputMode="numeric" min="12" max="60" value={opts.tile}
+                       onChange={(e) => setOpt('tile', clamp(e.target.value, 12, 60))} />
+                <small className="muted">Pixels per tile in the PNG.</small>
+              </label>
+
+              <div className="card-actions wide">
+                <button className="btn small" onClick={() => setOpt('gateX', null)}
+                        disabled={opts.gateX == null}>
+                  Centre the gate
+                </button>
+                <button className="btn small" onClick={() => edit(() => setOpts((o) => ({
+                  ...o, mapW: DEFAULT_OPTS.mapW, mapH: DEFAULT_OPTS.mapH, gateX: null,
+                  gateW: DEFAULT_OPTS.gateW, gateH: DEFAULT_OPTS.gateH,
+                  rivalDepth: DEFAULT_OPTS.rivalDepth, tile: DEFAULT_OPTS.tile,
+                })))}>
+                  Standard board
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
             <div className="card-head">
               <strong>Line-up</strong>
               <span className="pill">{lineup.length}</span>
             </div>
             <p className="card-body">
               Order is priority: the top of this list takes the slots nearest the pass —
-              currently <b>{shelters} shelters and {opts.portalOwners} portals</b>.
+              currently <b>{shelters} shelters and {stats?.owned ?? opts.portalOwners} portals</b>.
               Drag the number, or nudge with the arrows.
             </p>
 
@@ -533,7 +632,7 @@ export default function PassWar({ user }) {
                 <LineupRow
                   key={`${m.name}-${i}`}
                   member={m} index={i}
-                  shelters={shelters} prioritised={opts.portalOwners}
+                  shelters={shelters} prioritised={stats?.owned ?? opts.portalOwners}
                   dragging={drag?.index === i}
                   onDragStart={onDragStart}
                   onMove={move}

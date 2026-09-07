@@ -19,28 +19,53 @@ const ns = {};
 
   /* What each version changes. Everything else -- the two portals at the gate
      above all -- is common to every layout and lives outside this table.
-       shelterRows  rows of SHELTER_ROW_N shelters; 0 fills the block with portals
+       shelterRows  how deep the shelter block starts; 0 fills it with portals
+       shelterCols  how wide each shelter layer starts
        liftBlock    raise the block one portal height, leaving a portal layer
-                    between the shelters and our border */
+                    between the shelters and our border
+     Both counts are only a starting point: the officer sets them per plan. */
   const VERSIONS = {
     1: { shelterRows: SHELTER_ROWS_DEFAULT, shelterCols: SHELTER_ROW_N, liftBlock: true },
     2: { shelterRows: SHELTER_ROWS_DEFAULT, shelterCols: SHELTER_ROW_N, liftBlock: false },
-    3: { shelterRows: 0, shelterCols: SHELTER_ROW_N, liftBlock: false },
-    4: { shelterRows: 4, shelterCols: SHELTER_ROW_N, liftBlock: false }
+    3: { shelterRows: 0, shelterCols: SHELTER_ROW_N, liftBlock: false }
   };
+
+  /* v4 was "v2, but four shelter layers deep", which the shelter controls now
+     say directly, so it is gone as a version. Plans saved under it still open,
+     as the v2 they always were, keeping the four layers they were drawn with. */
+  const RETIRED = { 4: { version: 2, shelterRows: 4, shelterCols: SHELTER_ROW_N } };
   const versionSpec = (v) => VERSIONS[v] || VERSIONS[1];
+
+  function resolve(o) {
+    const was = RETIRED[o.version];
+    if (!was) return { version: VERSIONS[o.version] ? o.version : 1, rows: o.shelterRows, cols: o.shelterCols };
+    return {
+      version: was.version,
+      rows: o.shelterRows == null ? was.shelterRows : o.shelterRows,
+      cols: o.shelterCols == null ? was.shelterCols : o.shelterCols
+    };
+  }
 
   /* A version supplies the starting shape; the caller may override either
      dimension, so any layout can be made deeper or wider. */
   function shelterGrid(o) {
-    const spec = versionSpec(o.version);
-    const rows = o.shelterRows == null ? spec.shelterRows : Math.max(0, o.shelterRows | 0);
-    const cols = o.shelterCols == null ? spec.shelterCols : Math.max(1, o.shelterCols | 0);
+    const r = resolve(o), spec = versionSpec(r.version);
+    const rows = r.rows == null ? spec.shelterRows : Math.max(0, Math.round(r.rows));
+    const cols = r.cols == null ? spec.shelterCols : Math.max(1, Math.round(r.cols));
     return { rows, cols };
   }
-  const shelterCountFor = (v, rows, cols) =>
-    shelterGrid({ version: v, shelterRows: rows, shelterCols: cols }).rows *
-    shelterGrid({ version: v, shelterRows: rows, shelterCols: cols }).cols;
+  const shelterCountFor = (v, rows, cols) => {
+    const grid = shelterGrid({ version: v, shelterRows: rows, shelterCols: cols });
+    return grid.rows * grid.cols;
+  };
+
+  /* Saved options with a retired version and any missing field settled, so the
+     screen and the engine always agree on what is being drawn. */
+  function normalizeOpts(o) {
+    const grid = shelterGrid(o);
+    return { ...o, version: resolve(o).version, shelterRows: grid.rows, shelterCols: grid.cols };
+  }
+
   const RULER = 5;
   const MARGIN = 56, TITLE_H = 78, LEGEND_H = 66;
 
@@ -137,21 +162,40 @@ const ns = {};
   // ------------------------------- geometry ---------------------------------
   function geometry(o) {
     const g = {};
-    g.tile = o.tile; g.map = o.mapTiles; g.rivalDepth = o.rivalDepth;
-    g.version = o.version; g.orient = o.orient;
-
-    g.CONN_X0 = Math.floor((g.map - CONNECTOR_W) / 2);
-    g.CONN_Y0 = g.map;
-    g.PASS_X0 = g.CONN_X0;
-    g.PASS_Y0 = g.CONN_Y0 + Math.floor((CONNECTOR_H - PASS_H) / 2);
-    g.RIVAL_Y0 = g.CONN_Y0 + CONNECTOR_H;
-    g.APRON_H = g.PASS_Y0 - g.CONN_Y0;
-    g.PORTAL_ROW = g.CONN_Y0;
-    g.AXIS_X = g.CONN_X0 + CONNECTOR_W / 2;
-
     const [PW, PH] = SIZES.PORTAL, [SW, SH] = SIZES.SHELTER;
     g.PW = PW; g.PH = PH; g.SW = SW; g.SH = SH;
 
+    /* The camp is a rectangle, not a square, and the gate is not always halfway
+       along the border -- both differ from map to map, so both are options.
+       `mapTiles` is the single square dimension older plans carry; it seeds
+       each side, so those plans open exactly as they were saved. */
+    g.tile = o.tile;
+    g.mapW = Math.max(12, Math.round(o.mapW != null ? o.mapW : (o.mapTiles != null ? o.mapTiles : 40)));
+    g.mapH = Math.max(12, Math.round(o.mapH != null ? o.mapH : (o.mapTiles != null ? o.mapTiles : 40)));
+    g.rivalDepth = Math.max(1, Math.round(o.rivalDepth != null ? o.rivalDepth : 6));
+    g.orient = o.orient;
+
+    g.GATE_W = Math.max(PASS_W, Math.round(o.gateW != null ? o.gateW : CONNECTOR_W));
+    // Short of this the portal band and its keep-clear strip have nowhere to sit.
+    g.GATE_H = Math.max(PASS_H + 2 * (PH + KEEP_CLEAR_H),
+                        Math.round(o.gateH != null ? o.gateH : CONNECTOR_H));
+    // null means "keep it centred", so resizing the map carries the gate along.
+    g.GATE_X = o.gateX == null
+      ? Math.floor((g.mapW - g.GATE_W) / 2)
+      : Math.min(g.mapW - g.GATE_W, Math.max(0, Math.round(o.gateX)));
+
+    g.CONN_X0 = g.GATE_X;
+    g.CONN_Y0 = g.mapH;
+    g.PASS_X0 = g.CONN_X0 + Math.floor((g.GATE_W - PASS_W) / 2);
+    g.PASS_Y0 = g.CONN_Y0 + Math.floor((g.GATE_H - PASS_H) / 2);
+    g.RIVAL_Y0 = g.CONN_Y0 + g.GATE_H;
+    g.APRON_H = g.PASS_Y0 - g.CONN_Y0;
+    g.PORTAL_ROW = g.CONN_Y0;
+    g.AXIS_X = g.CONN_X0 + g.GATE_W / 2;
+    // The pair at the gate stays centred on it however wide the gate is.
+    g.GATE_P_X0 = g.CONN_X0 + Math.floor((g.GATE_W - (2 * PW + PORTAL_GAP)) / 2);
+
+    g.version = resolve(o).version;
     const spec = versionSpec(g.version);
     const grid = shelterGrid(o);
     g.shelterRows = grid.rows;
@@ -159,34 +203,48 @@ const ns = {};
     g.BLOCK_Y1 = g.CONN_Y0 - (spec.liftBlock ? PH : 0);
     g.BLOCK_H = g.shelterRows * SH || 6;
     g.BLOCK_Y0 = g.BLOCK_Y1 - g.BLOCK_H;
+    g.BLOCK_W = g.shelterCols * SW;
 
-    const ideal = g.AXIS_X - (g.shelterCols * SW) / 2;
+    const ideal = g.AXIS_X - g.BLOCK_W / 2;
     g.BLOCK_X0 = Math.floor(ideal) + (o.shelterBias === "right" ? 1 : 0);
-    g.BLOCK_X1 = g.BLOCK_X0 + g.shelterCols * SW;
-    g.offset = (g.BLOCK_X0 + (g.shelterCols * SW) / 2) - g.AXIS_X;
+    g.BLOCK_X1 = g.BLOCK_X0 + g.BLOCK_W;
+    g.offset = (g.BLOCK_X0 + g.BLOCK_W / 2) - g.AXIS_X;
+
+    /* Shelters tile in 3s and portals in 2s, so a block an odd number of tiles
+       across or deep cannot be ringed exactly. Rounding the rect the rings grow
+       from out to an even size makes every ring tile perfectly; the leftover
+       tile becomes a one-tile channel on the rear and lean side, rather than the
+       overrun that used to collide with the ring's own corner and silently drop
+       whole portals -- which is what made the formation look cracked. */
+    g.PAD_X = g.BLOCK_W % PW ? PW - (g.BLOCK_W % PW) : 0;
+    g.PAD_Y = g.BLOCK_H % PH ? PH - (g.BLOCK_H % PH) : 0;
+    g.FRAME_X0 = g.BLOCK_X0 - (o.shelterBias === "right" ? g.PAD_X : 0);
+    g.FRAME_X1 = g.FRAME_X0 + g.BLOCK_W + g.PAD_X;
+    g.FRAME_Y1 = g.BLOCK_Y1;
+    g.FRAME_Y0 = g.BLOCK_Y0 - g.PAD_Y;
 
     g.layers = o.portalLayers;
-    g.RING_TOP = g.BLOCK_Y0 - g.layers * PH;
-    g.FORM_X0 = g.BLOCK_X0 - g.layers * PW;
-    g.FORM_X1 = g.BLOCK_X1 + g.layers * PW;
+    g.RING_TOP = g.FRAME_Y0 - g.layers * PH;
+    g.FORM_X0 = g.FRAME_X0 - g.layers * PW;
+    g.FORM_X1 = g.FRAME_X1 + g.layers * PW;
 
-    g.OURS = [0, 0, g.map, g.map];
-    g.CONN = [g.CONN_X0, g.CONN_Y0, CONNECTOR_W, CONNECTOR_H];
-    g.RIVAL = [0, g.RIVAL_Y0, g.map, g.rivalDepth];
-    g.APRON = [g.CONN_X0, g.CONN_Y0, CONNECTOR_W, g.APRON_H];
-    g.PORTAL_BAND = [g.CONN_X0, g.PORTAL_ROW, CONNECTOR_W, PH];
-    g.KEEP_CLEAR = [g.CONN_X0, g.PORTAL_ROW + PH, CONNECTOR_W, KEEP_CLEAR_H];
-    g.GAP_RECT = [g.CONN_X0 + PW, g.PORTAL_ROW, PORTAL_GAP, PH];
+    g.OURS = [0, 0, g.mapW, g.mapH];
+    g.CONN = [g.CONN_X0, g.CONN_Y0, g.GATE_W, g.GATE_H];
+    g.RIVAL = [0, g.RIVAL_Y0, g.mapW, g.rivalDepth];
+    g.APRON = [g.CONN_X0, g.CONN_Y0, g.GATE_W, g.APRON_H];
+    g.PORTAL_BAND = [g.GATE_P_X0, g.PORTAL_ROW, 2 * PW + PORTAL_GAP, PH];
+    g.KEEP_CLEAR = [g.CONN_X0, g.PORTAL_ROW + PH, g.GATE_W, Math.max(0, g.APRON_H - PH)];
+    g.GAP_RECT = [g.GATE_P_X0 + PW, g.PORTAL_ROW, PORTAL_GAP, PH];
 
     const rear = g.shelterRows ? ["SHELTER", "shelters"] : ["PORTAL", "portals"];
     g.ZONES = [
-      [[0, 0, g.map, g.RING_TOP], rear[0], rear[1]],
+      [[0, 0, g.mapW, g.RING_TOP], rear[0], rear[1]],
       [[0, g.RING_TOP, g.FORM_X0, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"],
-      [[g.FORM_X1, g.RING_TOP, g.map - g.FORM_X1, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"]
+      [[g.FORM_X1, g.RING_TOP, g.mapW - g.FORM_X1, g.CONN_Y0 - g.RING_TOP], "PORTAL", "portals"]
     ];
 
-    g.W_TILES = g.map;
-    g.H_TILES = g.map + CONNECTOR_H + g.rivalDepth;
+    g.W_TILES = g.mapW;
+    g.H_TILES = g.mapH + g.GATE_H + g.rivalDepth;
     const flat = g.orient === "bottom" || g.orient === "top";
     g.WORLD_W = flat ? g.W_TILES : g.H_TILES;
     g.WORLD_H = flat ? g.H_TILES : g.W_TILES;
@@ -223,6 +281,14 @@ const ns = {};
     const g = this.g;
     return inRect(x, y, g.OURS) || inRect(x, y, g.CONN) || inRect(x, y, g.RIVAL);
   };
+  Board.prototype.fits = function (kind, x, y) {
+    const [w, h] = SIZES[kind];
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      if (!this.onMap(x + i, y + j)) return false;
+      if (this.cells.has((x + i) + "," + (y + j))) return false;
+    }
+    return true;
+  };
   Board.prototype.place = function (kind, x, y, label, fill, member) {
     const [w, h] = SIZES[kind], tiles = [];
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push([x + i, y + j]);
@@ -245,23 +311,26 @@ const ns = {};
   }
   const cmpTuple = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i]; return 0; };
 
+  /* Every slot a portal may take, gate pair first, then outward ring by ring.
+     The frame rect has even sides by construction, so a ring runs from its left
+     column across to its right column and lands exactly on it -- corners fall
+     out of the same loop, nothing overruns, nothing is dropped for overlapping.
+     Only the pair at the gate stands apart, held one tile open for the corridor. */
   function portalSlots(g) {
-    const layers = [[[g.CONN_X0, g.PORTAL_ROW], [g.CONN_X0 + g.PW + PORTAL_GAP, g.PORTAL_ROW]]];
+    const layers = [[[g.GATE_P_X0, g.PORTAL_ROW], [g.GATE_P_X0 + g.PW + PORTAL_GAP, g.PORTAL_ROW]]];
     if (!g.shelterRows) {
       const core = [];
-      for (let y = g.BLOCK_Y0; y < g.BLOCK_Y1; y += g.PH)
-        for (let x = g.BLOCK_X0; x < g.BLOCK_X1; x += g.PW) core.push([x, y]);
+      for (let y = g.FRAME_Y0; y < g.FRAME_Y1; y += g.PH)
+        for (let x = g.FRAME_X0; x < g.FRAME_X1; x += g.PW) core.push([x, y]);
       layers.push(core);
     }
-    let x0 = g.BLOCK_X0, x1 = g.BLOCK_X1, y0 = g.BLOCK_Y0, y1 = g.BLOCK_Y1;
+    let x0 = g.FRAME_X0, x1 = g.FRAME_X1, y0 = g.FRAME_Y0, y1 = g.FRAME_Y1;
     for (let n = 0; n < g.layers; n++) {
       const left = x0 - g.PW, right = x1, top = y0 - g.PH, bottom = y1, ring = [];
       for (let y = y0; y < y1; y += g.PH) { ring.push([left, y]); ring.push([right, y]); }
-      for (let x = x0; x < x1; x += g.PW) ring.push([x, top]);
-      ring.push([left, top], [right, top]);
+      for (let x = left; x <= right; x += g.PW) ring.push([x, top]);
       if (bottom + g.PH <= g.CONN_Y0) {          // room before our border: close the ring
-        for (let x = x0; x < x1; x += g.PW) ring.push([x, bottom]);
-        ring.push([left, bottom], [right, bottom]);
+        for (let x = left; x <= right; x += g.PW) ring.push([x, bottom]);
         y1 = bottom + g.PH;
       }
       layers.push(ring);
@@ -270,8 +339,10 @@ const ns = {};
     return layers;
   }
 
-  /* One member per shelter, highest in the lineup nearest the pass. S1 is the closest
-     slot and takes lineup[0]. Fixed at SHELTER_ROWS x SHELTER_ROW_N = 8, or none in v3. */
+  /* One member per shelter, highest in the line-up nearest the pass: S1 is the
+     closest slot and takes lineup[0]. A grid deeper than the camp runs off the
+     map; those slots are dropped before numbering, so the numbers stay
+     contiguous and nobody loses their place to a slot that was never drawn. */
   function placeShelters(board, lineup) {
     const g = board.g;
     if (!g.shelterRows) return 0;
@@ -279,15 +350,16 @@ const ns = {};
     for (let r = 0; r < g.shelterRows; r++)
       for (let i = 0; i < g.shelterCols; i++) slots.push([g.BLOCK_X0 + i * g.SW, g.BLOCK_Y0 + r * g.SH]);
     slots.sort((a, b) => cmpTuple(passDist(g, a[0], a[1], g.SW, g.SH), passDist(g, b[0], b[1], g.SW, g.SH)));
-    slots.forEach((c, i) => board.place("SHELTER", c[0], c[1], "S" + (i + 1), null, lineup[i] || null));
-    return slots.length;
+    const usable = slots.filter((c) => board.fits("SHELTER", c[0], c[1]));
+    usable.forEach((c, i) => board.place("SHELTER", c[0], c[1], "S" + (i + 1), null, lineup[i] || null));
+    return usable.length;
   }
 
   /* Portals, with the `owners` slots nearest the pass given an owner. A separate pass over
      the same lineup the shelters use, so the top members hold both. The rest are free. */
   function placePortals(board, lineup, owners) {
     const g = board.g, layers = portalSlots(g);
-    const cand = [].concat.apply([], layers);
+    const cand = [].concat.apply([], layers).filter((c) => board.fits("PORTAL", c[0], c[1]));
     cand.sort((a, b) => cmpTuple(passDist(g, a[0], a[1], g.PW, g.PH), passDist(g, b[0], b[1], g.PW, g.PH)));
     const rank = new Map();
     cand.slice(0, Math.max(0, owners)).forEach((c, i) => rank.set(c[0] + "," + c[1], i));
@@ -412,9 +484,11 @@ const ns = {};
   }
 
   function drawApronNotes(ctx, g) {
-    const b = box(g, g.KEEP_CLEAR), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-    ctext(ctx, cx, cy - 9, "keep clear", 13, "rgb(118,102,68)");
-    ctext(ctx, cx, cy + 9, g.KEEP_CLEAR[2] + "×" + g.KEEP_CLEAR[3], 13, "rgb(118,102,68)");
+    if (g.KEEP_CLEAR[3] > 0) {
+      const b = box(g, g.KEEP_CLEAR), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+      ctext(ctx, cx, cy - 9, "keep clear", 13, "rgb(118,102,68)");
+      ctext(ctx, cx, cy + 9, g.KEEP_CLEAR[2] + "×" + g.KEEP_CLEAR[3], 13, "rgb(118,102,68)");
+    }
 
     const tone = "rgb(160,150,130)", bx = g.APRON[0] + g.APRON[2] + 0.45;
     ctx.strokeStyle = tone; ctx.lineWidth = 1;
@@ -425,7 +499,7 @@ const ns = {};
 
     // Text always runs horizontally in world space, so under a 90-degree turn a label's
     // WIDTH sweeps along logical y. Anchoring mid-connector keeps that sweep in the void.
-    const l = wpt(g, bx + 2.9, g.CONN_Y0 + CONNECTOR_H / 2 - 1.5);
+    const l = wpt(g, bx + 2.9, g.CONN_Y0 + g.GATE_H / 2 - 1.5);
     ctext(ctx, l[0], l[1] - 10, "apron " + g.APRON[2] + "×" + g.APRON[3], 13, "rgb(140,128,105)");
     ctext(ctx, l[0], l[1] + 10, "portal band " + g.PORTAL_BAND[2] + "×" + g.PORTAL_BAND[3] +
           "  =  " + g.PW + " + " + PORTAL_GAP + " + " + g.PW, 13, "rgb(140,128,105)");
@@ -486,7 +560,7 @@ const ns = {};
     ltext(ctx, x, ly, "kept clear", 14, INK);
 
     const note = "1 tile = " + g.tile + "px  ·  pass at " + g.orient + "  ·  connector " +
-      CONNECTOR_W + "×" + CONNECTOR_H + "  ·  apron " + g.APRON[2] + "×" + g.APRON[3] +
+      g.GATE_W + "×" + g.GATE_H + "  ·  apron " + g.APRON[2] + "×" + g.APRON[3] +
       "  ·  " + plan.stats.owned + " prioritised  ·  no overlapping structures";
     ctx.textAlign = "right";
     ltext(ctx, 0, 0, "", 13, INK);
@@ -496,7 +570,9 @@ const ns = {};
   }
 
   function render(canvas, plan, roster, ts) {
-    const g = plan.g, dpr = 2;
+    // Retina where it fits; a large camp would otherwise ask for a canvas the
+    // browser refuses to allocate, and draw nothing at all.
+    const g = plan.g, dpr = Math.min(2, 8192 / g.W, 8192 / g.H);
     canvas.width = g.W * dpr; canvas.height = g.H * dpr;
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -526,7 +602,7 @@ const ns = {};
 
   global.PassWar = {
     SIZES, FILLS, FREE_PORTAL, SHELTER_ROW_N, SHELTER_ROWS_DEFAULT,
-    VERSIONS, versionSpec, shelterCountFor, shelterGrid,
+    VERSIONS, versionSpec, shelterCountFor, shelterGrid, normalizeOpts,
     parseCSV, parseMembers, shortCP, geometry, buildPlan, render, passDist, wrect
   };
 })(ns);

@@ -30,7 +30,14 @@ export const DEFAULT_OPTS = {
   shelterBias: 'left',
   showZones: true,
   tile: 30,
-  mapTiles: 40,
+  // The board itself. Camps differ from map to map and the gate is not always
+  // halfway along the border, so both are the officer's to set. A null gateX
+  // means "keep it centred", so resizing the camp carries the gate with it.
+  mapW: 40,
+  mapH: 40,
+  gateX: null,
+  gateW: 5,
+  gateH: 12,
   rivalDepth: 6,
 }
 
