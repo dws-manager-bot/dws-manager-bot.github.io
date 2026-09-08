@@ -108,6 +108,23 @@ curl -s https://dws-api.xronocore.qzz.io/openapi.json | jq '.components.schemas.
 A frontend change that depends on a backend change will 422 in the window
 between the two deploys. Ship the backend first, or say so plainly.
 
+## When the network blocks GitHub
+
+Some networks the user is on (a KT Corp guest network, for one) block port 22
+and the GitHub API. Pushing over the default remote times out with
+`kex_exchange_identification`, and `gh` returns a 403 about enterprise tokens.
+The `github-personal` SSH alias exists for this — same key, `ssh.github.com`
+on port 443:
+
+```bash
+git push  git@github-personal:dws-manager-bot/dws-manager-bot.github.io.git main
+git fetch git@github-personal:dws-manager-bot/dws-manager-bot.github.io.git main
+```
+
+`gh run watch` will not work there. Confirm the deploy by fetching the live
+bundle instead — `curl -s https://dws-manager-bot.github.io/` and grep the
+hashed asset for the strings you added.
+
 ## Verifying frontend work
 
 `npm run build` catches syntax, not layout. Headless Chrome clamps its viewport
