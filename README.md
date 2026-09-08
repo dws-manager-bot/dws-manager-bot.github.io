@@ -1,8 +1,9 @@
 # DWS Alliance Manager
 
 A Discord bot and web backoffice for running a **Dark War Survival** alliance:
-scheduled announcements, a recurring event calendar with signups, and a member
-roster — all configurable from a browser instead of by editing code.
+scheduled announcements, a recurring event calendar with signups, and a Pass
+Occupation War map planner — all configurable from a browser instead of by
+editing code.
 
 ```
 GitHub Pages  ──  dws-manager-bot.github.io                static backoffice (HTTPS)
@@ -32,7 +33,7 @@ problem disappears. No port forwarding, no Let's Encrypt renewals.
 The bundle holds **no secrets**. The bot token, database password and OAuth
 client secret exist only in the Kubernetes secret. Login runs server-side:
 Discord redirects to the API, the API verifies the caller actually holds an
-officer role in the guild, and only then issues a JWT.
+admin role in the guild, and only then issues a JWT.
 
 ## Repository layout
 
@@ -43,11 +44,16 @@ backend/          FastAPI + discord.py + APScheduler (one process)
     models.py       SQLAlchemy models
     scheduler.py    rebuilds APScheduler jobs from the database
     recurrence.py   rotation / weekday maths (pure, unit tested)
+    cron.py         crontab -> APScheduler day-of-week translation
+    occurrences.py  applies per-date moves and skips to a rule
+    servertime.py   game server time (Etc/GMT+2)
     security.py     Discord OAuth2 + JWT
     api/routers/    REST endpoints
     discord_bot/    the client and its slash-command cogs
   migrations/     Alembic
 frontend/         Vite + React backoffice → GitHub Pages
+  src/lib/tz.js     the only wall-clock <-> instant conversion in the app
+  src/passwar/      Pass War map engine (canvas) and its data layer
 deploy/           Kubernetes manifests
 ```
 
@@ -152,27 +158,36 @@ Pushing to `main` builds and publishes it. The API's `CORS_ORIGINS` must include
 Sign in with a Discord account holding a role listed in `ADMIN_ROLES` (default
 `R5,R4`); the guild owner always qualifies.
 
-- **Announcements** — schedule recurring posts. Four schedule types: cron,
-  every-N-minutes, one-time, or *N minutes before an event*. "Send test"
-  delivers immediately without touching the schedule.
+- **Set up** — a three-step wizard: define an event, attach an announcement to
+  it, review and create both. The fastest path from nothing to a working post.
+- **Announcements** — schedule recurring posts. Five schedule types: cron,
+  every-N-days, every-N-minutes, one-time, or *N minutes before an event*. The
+  builder writes the expression and previews the dates it actually produces, so
+  a schedule is never taken on trust. "Send test" delivers immediately without
+  touching the schedule. A channel picker inserts Discord's `<#id>` link syntax
+  into the message body.
 - **Events** — define recurring game events on fixed weekdays, an N-day
-  rotation, or explicit dates. "Preview schedule" shows the next occurrences
-  before saving, which is worth using for rotations.
-- **Roster** — import members from Discord and record in-game name, rank, power.
+  rotation, or explicit dates. "Manage dates" moves or skips a single occurrence
+  without touching the rule, and a reason given there is appended to the post.
+- **History** — who created or last changed each announcement and event.
+- **Pass War map** — plan the Pass Occupation War formation: shelter grid,
+  portal count, gate position, camp size, and a drag-ordered line-up that
+  decides who holds the slots nearest the pass. Readable by any guild member;
+  only admins can save a draft or publish the official plan. Exports a PNG.
+
+Every time entered anywhere in the backoffice is a wall-clock time read against
+a timezone you pick on the same form — `Etc/GMT+2` is game server time.
 
 ### Slash commands
 
 | Command | Who | Purpose |
 | --- | --- | --- |
-| `/roster register` | anyone | Link Discord account to in-game name |
-| `/roster list` | anyone | Show the roster |
-| `/roster remove` | officers | Deactivate a member |
 | `/events next` | anyone | Upcoming events, in each viewer's timezone |
 | `/events post <key>` | anyone | Post a signup sheet with buttons |
-| `/admin announcements` | officers | List schedules and next fire times |
-| `/admin test <id>` | officers | Send one announcement now |
-| `/admin reload` | officers | Rebuild the schedule from the database |
-| `/admin channels` | officers | List channel IDs the bot can post to |
+| `/admin announcements` | admins | List schedules and next fire times |
+| `/admin test <id>` | admins | Send one announcement now |
+| `/admin reload` | admins | Rebuild the schedule from the database |
+| `/admin channels` | admins | List channel IDs the bot can post to |
 
 Times are rendered with Discord's `<t:…>` markup, so every member sees them in
 their own timezone — worth knowing for an alliance spread across regions.
@@ -245,10 +260,10 @@ detect every change.
 
 - Secrets live only in the Kubernetes secret and your local `.env`. Both are
   gitignored; `deploy/secret.example.yaml` is the committed template.
-- The backoffice JWT lasts 12 hours and carries no privileges beyond the officer
+- The backoffice JWT lasts 12 hours and carries no privileges beyond the admin
   role check performed at login.
 - Admin status is re-read from live guild roles on every login, so removing
-  someone's officer role revokes their access at their next sign-in.
+  someone's admin role revokes their access at their next sign-in.
 - Postgres currently listens on `0.0.0.0:5432`. The `dws_manager` role is
   restricted by `pg_hba.conf` to the pod and LAN ranges and rejected elsewhere,
   but if that port is reachable from the internet through your router, consider
