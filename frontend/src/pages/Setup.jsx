@@ -4,6 +4,7 @@ import Banner from '../components/Banner.jsx'
 import DateTimeField from '../components/DateTimeField.jsx'
 import TimezoneField from '../components/TimezoneField.jsx'
 import { zonedToIso } from '../lib/tz.js'
+import { REPEATS } from '../lib/schedule.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import ChannelLink from '../components/ChannelLink.jsx'
 import { withServerTime } from '../lib/servertime.js'
@@ -227,11 +228,7 @@ export default function Setup({ onDone }) {
             <div className="wide">
               <span className="label">How often does it come round?</span>
               <div className="row wrap">
-                {[
-                  ['rotation', 'Every N days'],
-                  ['weekly', 'Set weekdays'],
-                  ['fixed', 'Specific dates'],
-                ].map(([value, label]) => (
+                {REPEATS.map(([value, label]) => (
                   <button
                     type="button" key={value}
                     className={ev.schedule_type === value ? 'chip on' : 'chip'}
@@ -310,7 +307,6 @@ export default function Setup({ onDone }) {
               />
             </label>
             <TimezoneField
-              label="In which clock?"
               value={ev.timezone}
               onChange={(v) => setEv((s) => ({ ...s, timezone: v }))}
             />

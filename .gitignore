@@ -18,6 +18,7 @@ deploy/secret.yaml
 # Node / frontend
 node_modules/
 frontend/dist/
+frontend/probe-dist/
 frontend/.vite/
 
 # Editors / OS

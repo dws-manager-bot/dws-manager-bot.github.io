@@ -10,7 +10,7 @@
  * is unmounted while closed, so a list of many rows costs one row each.
  */
 export default function ListRow({
-  id, enabled = true, title, where, warn, when, whenNote, open, onToggle, children,
+  id, enabled = true, title, where, warn, when, whenTone, whenNote, open, onToggle, children,
 }) {
   return (
     <div className={`lrow${open ? ' open' : ''}${enabled ? '' : ' off'}`}>
@@ -26,7 +26,7 @@ export default function ListRow({
         <span className="lrow-meta">
           {where && <span className="lrow-where">{where}</span>}
           {warn && <span className="lrow-warn">{warn}</span>}
-          <span className="lrow-when">
+          <span className={whenTone ? `lrow-when ${whenTone}` : 'lrow-when'}>
             {when}
             {whenNote && <span className="muted"> · {whenNote}</span>}
           </span>

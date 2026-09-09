@@ -127,10 +127,23 @@ hashed asset for the strings you added.
 
 ## Verifying frontend work
 
-`npm run build` catches syntax, not layout. Headless Chrome clamps its viewport
-to 500px, so screenshot **through fixed-width iframes** to see real breakpoints.
-The pages need auth, so a static harness with the built CSS and the real class
-names is usually the fastest honest check. Verify the live bundle after
+`npm run build` catches syntax, not layout, and not a component that throws on
+its first render. `frontend/probe/` swaps the API module for a fixture and
+renders one page without a login:
+
+```bash
+cd frontend
+npx vite build --config probe/vite.config.js
+python3 -m http.server 8899 --directory probe-dist
+# ?p=announcements|events|setup   ?act=edit|copy&row=N
+```
+
+`--dump-dom` on that URL is the cheapest real check there is — it caught a
+crash a green build had just reported as fine. Use it for the states that are
+awkward to arrange for real: an empty list, a failed send, a switched-off row.
+
+Headless Chrome clamps its viewport to 500px, so screenshot **through
+fixed-width iframes** to see real breakpoints. Verify the live bundle after
 deploying by grepping it for the strings you added.
 
 Design system is pou-rocks: zinc surfaces, gold accent, mobile-first. Check at
