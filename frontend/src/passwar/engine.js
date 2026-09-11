@@ -70,8 +70,27 @@ const ns = {};
        is left alone, which keeps six a settable value. */
     if (out.portalCount == null && out.rivalDepth === 6) out.rivalDepth = 2;
     if (out.portalCount == null) out.portalCount = 100;
+    /* The board is described from the pass outward now. A plan saved with a
+       width and a gate position describes the same board; convert it once,
+       rather than carrying two ways of saying the same thing.
+
+       The old keys win where they are present, because this object is the
+       screen's defaults with a saved plan merged over them: the new keys will
+       be there either way, and only the old ones prove which board was saved. */
+    const legacyBoard = out.mapW != null || out.gateX != null || out.mapTiles != null;
+    if (legacyBoard || out.leftOfPass == null || out.rightOfPass == null) {
+      const probe = { ...out, tile: out.tile || 30, orient: out.orient || "bottom" };
+      // Drop the defaults, or geometry would read them in preference to the
+      // saved width and gate position this is here to convert.
+      if (legacyBoard) { delete probe.leftOfPass; delete probe.rightOfPass; }
+      const g = geometry(probe);
+      out.leftOfPass = g.leftOfPass;
+      out.rightOfPass = g.rightOfPass;
+      out.mapH = g.mapH;
+    }
     delete out.portalLayers;   // the ring depth follows from the portal target now
     delete out.mapTiles;       // one square dimension, since split into width and depth
+    delete out.mapW; delete out.gateX;    // replaced by the two sides of the pass
     delete out.gateW; delete out.gateH;   // the gate's size is the game's, not ours
     return out;
   }
@@ -175,13 +194,7 @@ const ns = {};
     const [PW, PH] = SIZES.PORTAL, [SW, SH] = SIZES.SHELTER;
     g.PW = PW; g.PH = PH; g.SW = SW; g.SH = SH;
 
-    /* The camp is a rectangle, not a square, and the gate is not always halfway
-       along the border -- both differ from map to map, so both are options.
-       `mapTiles` is the single square dimension older plans carry; it seeds
-       each side, so those plans open exactly as they were saved. */
     g.tile = o.tile;
-    g.mapW = Math.max(12, Math.round(o.mapW != null ? o.mapW : (o.mapTiles != null ? o.mapTiles : 40)));
-    g.mapH = Math.max(12, Math.round(o.mapH != null ? o.mapH : (o.mapTiles != null ? o.mapTiles : 40)));
     g.rivalDepth = Math.max(1, Math.round(o.rivalDepth != null ? o.rivalDepth : 2));
     g.orient = o.orient;
 
@@ -189,12 +202,31 @@ const ns = {};
     // big it is does not.
     g.GATE_W = CONNECTOR_W;
     g.GATE_H = CONNECTOR_H;
-    // null means "keep it centered", so resizing the map carries the gate along.
-    g.GATE_X = o.gateX == null
-      ? Math.floor((g.mapW - g.GATE_W) / 2)
-      : Math.min(g.mapW - g.GATE_W, Math.max(0, Math.round(o.gateX)));
 
-    g.CONN_X0 = g.GATE_X;
+    /* The board is measured outward from the pass, because that is what anyone
+       planning is looking at: so much of our ground to its left, so much to its
+       right, so much depth behind the border. The camp's width falls out of
+       those three rather than being set first and the gate then placed inside
+       it -- which meant changing the width moved the pass, and moving the pass
+       changed how much ground was on each side of it.
+
+       Plans saved the old way carry `mapW` with `gateX`, or the single square
+       `mapTiles` before that. Both resolve to the same board. */
+    const oldWidth = Math.max(12, Math.round(
+      o.mapW != null ? o.mapW : (o.mapTiles != null ? o.mapTiles : 40)));
+    const oldLeft = o.gateX != null
+      ? Math.min(oldWidth - g.GATE_W, Math.max(0, Math.round(o.gateX)))
+      : Math.floor((oldWidth - g.GATE_W) / 2);
+
+    g.leftOfPass = Math.max(0, Math.round(
+      o.leftOfPass != null ? o.leftOfPass : oldLeft));
+    g.rightOfPass = Math.max(0, Math.round(
+      o.rightOfPass != null ? o.rightOfPass : oldWidth - oldLeft - g.GATE_W));
+    g.mapH = Math.max(6, Math.round(
+      o.mapH != null ? o.mapH : (o.mapTiles != null ? o.mapTiles : 40)));
+
+    g.mapW = g.leftOfPass + g.GATE_W + g.rightOfPass;
+    g.CONN_X0 = g.leftOfPass;
     g.CONN_Y0 = g.mapH;
     g.PASS_X0 = g.CONN_X0 + Math.floor((g.GATE_W - PASS_W) / 2);
     g.PASS_Y0 = g.CONN_Y0 + Math.floor((g.GATE_H - PASS_H) / 2);
@@ -571,19 +603,51 @@ const ns = {};
   }
 
   function drawChrome(ctx, g, plan, roster, ts) {
+    const boardRight = MARGIN + g.WORLD_W * g.tile;
+
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillStyle = INK; ctx.font = fontStr(30);
-    ctx.fillText("PoU  ·  Pass Occupation War Map  ·  v" + g.version, MARGIN, MARGIN - 16);
-    ctx.fillStyle = "rgb(140,140,140)"; ctx.font = fontStr(14);
-    ctx.fillText(ts, MARGIN, MARGIN + 11);
+    ctx.fillStyle = INK;
+    const title = "PoU  ·  Pass Occupation War Map  ·  v" + g.version;
+    // Down to a size the board can hold, rather than off the edge of it.
+    let titleSize = 30;
+    ctx.font = fontStr(titleSize);
+    while (titleSize > 15 && ctx.measureText(title).width > boardRight - MARGIN) {
+      titleSize -= 1;
+      ctx.font = fontStr(titleSize);
+    }
+    ctx.fillText(title, MARGIN, MARGIN - 16);
+    const titleEnd = MARGIN + ctx.measureText(title).width;
 
     let right = plan.stats.portals + " portals  ·  pass " + PASS_W + "×" + PASS_H;
     if (roster.length) {
       const sum = roster.reduce((a, m) => a + m.bgb, 0);
       right = roster.length + " members  ·  Σ BGB " + shortCP(sum) + "  ·  " + right;
     }
-    ctx.font = fontStr(18); ctx.fillStyle = "rgb(90,90,90)"; ctx.textAlign = "right";
-    ctx.fillText(right, MARGIN + g.WORLD_W * g.tile, MARGIN - 10);
+
+    /* A narrow board leaves the stats nowhere to sit: shrink them to fit beside
+       the title, and drop them below it when even that will not do. Setting the
+       width from the two sides of the pass makes a narrow board easy to ask
+       for, so this is no longer an edge case. */
+    let size = 18;
+    ctx.font = fontStr(size);
+    const room = boardRight - titleEnd - 24;
+    while (size > 11 && ctx.measureText(right).width > room) {
+      size -= 1;
+      ctx.font = fontStr(size);
+    }
+    ctx.fillStyle = "rgb(90,90,90)";
+    if (ctx.measureText(right).width <= room) {
+      ctx.textAlign = "right";
+      ctx.fillText(right, boardRight, MARGIN - 10);
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgb(140,140,140)"; ctx.font = fontStr(14);
+      ctx.fillText(ts, MARGIN, MARGIN + 11);
+    } else {
+      ctx.font = fontStr(13);
+      ctx.fillText(right, MARGIN, MARGIN + 11);
+      ctx.fillStyle = "rgb(140,140,140)"; ctx.font = fontStr(12);
+      ctx.fillText(ts, MARGIN, MARGIN + 27);
+    }
 
     const ly = MARGIN + TITLE_H + g.WORLD_H * g.tile + 34;
     let x = MARGIN;

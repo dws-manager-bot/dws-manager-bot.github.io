@@ -199,8 +199,6 @@ export default function PassWar({ user }) {
   const channels = plan?.g.CHANNELS ?? []
   const evenRows = opts.shelterRows + (opts.shelterRows % 2)
   const evenCols = opts.shelterCols + (opts.shelterCols % 2)
-  const maxGateX = Math.max(0, opts.mapW - PassWarEngine.GATE_W)
-  const gateX = opts.gateX == null ? Math.floor(maxGateX / 2) : Math.min(maxGateX, opts.gateX)
 
   /* --------------------------------------------------------------- mutating */
 
@@ -545,41 +543,48 @@ export default function PassWar({ user }) {
           </div>
 
           <div className="card">
-            <div className="card-head"><strong>Map &amp; gate</strong></div>
+            <div className="card-head">
+              <strong>Map</strong>
+              {plan && (
+                <span className="muted small">
+                  {`camp ${plan.g.mapW}\u00d7${plan.g.mapH} · pass at ${plan.g.PASS_X0}`}
+                </span>
+              )}
+            </div>
             <p className="card-body">
-              The board underneath the formation. Camps differ from map to map, and the
-              gate is not always halfway along the border — set these to match the one
-              you are fighting on. The gate itself is a fixed {PassWarEngine.GATE_W}×{PassWarEngine.GATE_H}.
+              Measured outward from the pass, which is the only fixed thing on the board:
+              so much of our ground to its left, so much to its right, so much depth
+              behind the border. The camp's width is whatever those add up to.
             </p>
             <div className="grid">
               <label>
-                Camp width
-                <input type="number" inputMode="numeric" min="12" max="120" value={opts.mapW}
-                       onChange={(e) => setOpt('mapW', clamp(e.target.value, 12, 120))} />
-                <small className="muted">Tiles across our territory.</small>
+                Left of the pass
+                <input type="number" inputMode="numeric" min="0" max="120"
+                       value={opts.leftOfPass}
+                       onChange={(e) => setOpt('leftOfPass', clamp(e.target.value, 0, 120))} />
+                <small className="muted">Tiles between our left edge and the pass.</small>
               </label>
 
               <label>
-                Camp depth
-                <input type="number" inputMode="numeric" min="12" max="120" value={opts.mapH}
-                       onChange={(e) => setOpt('mapH', clamp(e.target.value, 12, 120))} />
-                <small className="muted">Rear wall to the border.</small>
-              </label>
-
-              <label className="wide">
-                <span className="pw-slider-label">
-                  Gate along the border
-                  <b>tile {gateX}</b>
-                  <span className="muted">
-                    {opts.gateX == null ? 'centered, and stays centered' : `of ${maxGateX}`}
-                  </span>
-                </span>
-                <input type="range" min="0" max={maxGateX} step="1" value={gateX}
-                       onChange={(e) => setOpt('gateX', +e.target.value)} />
+                Right of the pass
+                <input type="number" inputMode="numeric" min="0" max="120"
+                       value={opts.rightOfPass}
+                       onChange={(e) => setOpt('rightOfPass', clamp(e.target.value, 0, 120))} />
+                <small className="muted">
+                  And between the pass and our right edge. The pass itself is
+                  {' '}{PassWarEngine.GATE_W} wide.
+                </small>
               </label>
 
               <label>
-                Rival camp depth
+                Behind the border
+                <input type="number" inputMode="numeric" min="6" max="120" value={opts.mapH}
+                       onChange={(e) => setOpt('mapH', clamp(e.target.value, 6, 120))} />
+                <small className="muted">How deep our camp runs back.</small>
+              </label>
+
+              <label>
+                Rival side
                 <input type="number" inputMode="numeric" min="1" max="60" value={opts.rivalDepth}
                        onChange={(e) => setOpt('rivalDepth', clamp(e.target.value, 1, 60))} />
                 <small className="muted">How much of theirs to draw.</small>
@@ -593,12 +598,15 @@ export default function PassWar({ user }) {
               </label>
 
               <div className="card-actions wide">
-                <button className="btn small" onClick={() => setOpt('gateX', null)}
-                        disabled={opts.gateX == null}>
-                  Center the gate
+                <button className="btn small"
+                        onClick={() => setOpt('rightOfPass', opts.leftOfPass)}
+                        disabled={opts.leftOfPass === opts.rightOfPass}>
+                  Match sides
                 </button>
                 <button className="btn small" onClick={() => edit(() => setOpts((o) => ({
-                  ...o, mapW: DEFAULT_OPTS.mapW, mapH: DEFAULT_OPTS.mapH, gateX: null,
+                  ...o,
+                  leftOfPass: DEFAULT_OPTS.leftOfPass, rightOfPass: DEFAULT_OPTS.rightOfPass,
+                  mapH: DEFAULT_OPTS.mapH,
                   rivalDepth: DEFAULT_OPTS.rivalDepth, tile: DEFAULT_OPTS.tile,
                 })))}>
                   Standard board

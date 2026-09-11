@@ -2,10 +2,11 @@ import { createRoot } from 'react-dom/client'
 import Announcements from '../src/pages/Announcements.jsx'
 import Events from '../src/pages/Events.jsx'
 import Setup from '../src/pages/Setup.jsx'
+import PassWar from '../src/pages/PassWar.jsx'
 import '../src/styles.css'
 
 const which = new URLSearchParams(location.search).get('p') || 'announcements'
-const Page = { announcements: Announcements, events: Events, setup: Setup }[which]
+const Page = { announcements: Announcements, events: Events, setup: Setup, passwar: PassWar }[which]
 const user = { discord_id: '1', username: 'Goba', is_admin: true }
 
 window.onerror = (m) => { document.title = 'ERROR: ' + m }

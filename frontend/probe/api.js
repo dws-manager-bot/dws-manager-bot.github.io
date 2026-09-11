@@ -57,7 +57,8 @@ export const api = {
   roles: () => ok([]),
   me: () => ok({ username: 'Goba', is_admin: true }),
   health: () => ok({ status: 'ok' }),
-  raw: () => ok([]),
+  // /lineups returns a list; /lineups/<slug> a single plan.
+  raw: (path) => ok(String(path).split('/').length > 2 ? {} : []),
 }
 export const getToken = () => 'x'
 export const clearToken = () => {}
