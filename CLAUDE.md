@@ -33,6 +33,13 @@ field to names, which both agree on. Never call `CronTrigger.from_crontab`.
 run locally migrates production. This has happened twice. Both times the change
 was additive and nullable, so nothing broke — do not rely on that a third time.
 
+**The test suite must run with no `.env`.** Importing
+`dwsbot.discord_bot.bot` constructs the client at module scope, which reads
+Settings. Your `.env` supplies those quietly; CI has none, so such a test passes
+locally and fails on push. `tests/conftest.py` sets placeholders for all of
+them — before adding a test that imports the bot, check it still passes with
+`mv .env .env.hidden && pytest; mv .env.hidden .env`.
+
 **`.gitignore` lists `deploy/secret.yaml` explicitly.** `*.secret.yaml` does not
 match a file named `secret.yaml`. Real credentials were one `git add -A` from
 being committed before that line existed.

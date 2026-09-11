@@ -23,16 +23,7 @@ MOVED_TO = datetime(2026, 9, 6, 0, 30, tzinfo=SEOUL)
 
 @pytest.fixture(scope="module")
 def AllianceBot():
-    """Importing the bot module builds a client, which needs credentials."""
-    import os
-
-    from dwsbot.config import get_settings
-
-    os.environ.setdefault("DISCORD_TOKEN", "test-token")
-    os.environ.setdefault("GUILD_ID", "1")
-    os.environ.setdefault("JWT_SECRET", "x" * 40)
-    get_settings.cache_clear()
-
+    """Importing the bot module builds a client; conftest supplies its credentials."""
     from dwsbot.discord_bot.bot import AllianceBot as cls
 
     return cls
