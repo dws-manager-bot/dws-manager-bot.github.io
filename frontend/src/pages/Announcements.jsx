@@ -7,6 +7,7 @@ import { utcToZoned, zonedToIso } from '../lib/tz.js'
 import { withServerTime } from '../lib/servertime.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import ChannelLink from '../components/ChannelLink.jsx'
+import TimeToken from '../components/TimeToken.jsx'
 import ListSection from '../components/ListSection.jsx'
 import EditorPanel from '../components/EditorPanel.jsx'
 import { copyName, groupRows } from '../lib/grouping.js'
@@ -179,6 +180,13 @@ export default function Announcements() {
     return { when: row.enabled ? 'not scheduled' : 'off' }
   }
 
+  /* What the form's preview resolves its times against: the event it is tied
+     to, when it is tied to one. Otherwise now, which is honest — an
+     announcement not announcing an event has no other moment to mean. */
+  const formWhen = form?.kind === 'event' && form.event_id
+    ? events.find((e) => String(e.id) === String(form.event_id))?.upcoming?.[0]
+    : null
+
   const editing = (row) => form && form.id === row.id
 
   const startEdit = (row) => setForm({
@@ -281,6 +289,11 @@ export default function Announcements() {
               <label className="wide">
                 <span className="label-row">
                   Message
+                  <TimeToken
+                    textareaRef={bodyRef}
+                    value={form.body}
+                    onChange={(v) => setForm((f) => ({ ...f, body: v }))}
+                  />
                   <ChannelLink
                     channels={channels}
                     textareaRef={bodyRef}
@@ -290,8 +303,10 @@ export default function Announcements() {
                 </span>
                 <textarea ref={bodyRef} rows="6" value={form.body} onChange={set('body')} required />
                 <small className="muted">
-                  Discord markdown works: **bold**, *italic*, `code`. A linked channel posts as a
-                  clickable #name.
+                  Discord markdown works: **bold**, *italic*, `code`. A linked channel posts
+                  as a clickable #name. An inserted time arrives in each reader's own clock —
+                  pair it with server time, as <code>{'{time} ({st})'}</code>, and it reads the
+                  same to everyone.
                 </small>
               </label>
 
@@ -315,7 +330,7 @@ export default function Announcements() {
 
             <div className="wiz-preview form-preview">
               <div className="preview-label muted small">How it will look in Discord</div>
-              <EmbedPreview announcement={form} channels={channels} />
+              <EmbedPreview announcement={form} channels={channels} when={formWhen} />
             </div>
     </>
   )
@@ -413,7 +428,13 @@ export default function Announcements() {
             <div className="banner error small"><div className="banner-body">{row.last_error}</div></div>
           )}
 
-          {preview === row.id && <EmbedPreview announcement={row} channels={channels} />}
+          {preview === row.id && (
+            <EmbedPreview
+              announcement={row}
+              channels={channels}
+              when={row.event_starts_at || row.next_run_at}
+            />
+          )}
           {rowActions(row)}
         </ListRow>
 

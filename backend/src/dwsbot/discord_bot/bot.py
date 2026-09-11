@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from datetime import UTC, datetime
 
 import discord
 from discord.ext import commands
 
 from ..config import get_settings
+from ..messagetime import render_times
 from ..models import Announcement
 from ..occurrences import Occurrence
 
@@ -76,10 +78,17 @@ class AllianceBot(commands.Bot):
         prefix = f"{ann.mention}\n" if ann.mention else ""
         moved = self._reschedule_lines(occurrence)
 
+        # The moment the message is about: the occurrence when it announces one,
+        # otherwise the moment it goes out. Resolved here rather than stored, so
+        # a weekly announcement names this week's time and not the first one.
+        when = occurrence.starts_at if occurrence else datetime.now(UTC)
+        body = render_times(ann.body, when)
+        heading = render_times(ann.title, when)
+
         if not ann.use_embed:
-            title = f"**{ann.title}**\n" if ann.title else ""
+            title = f"**{heading}**\n" if heading else ""
             tail = ("\n\n> " + "\n> ".join(moved)) if moved else ""
-            return f"{prefix}{title}{ann.body}{tail}", None
+            return f"{prefix}{title}{body}{tail}", None
 
         colour = discord.Colour.blurple()
         if ann.embed_color:
@@ -88,8 +97,8 @@ class AllianceBot(commands.Bot):
                 colour = discord.Colour(int(ann.embed_color.lstrip("#"), 16))
 
         embed = discord.Embed(
-            title=ann.title or ann.name,
-            description=ann.body,
+            title=heading or ann.name,
+            description=body,
             colour=colour,
         )
         if moved:

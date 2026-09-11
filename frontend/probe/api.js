@@ -7,7 +7,7 @@ const rows = [
     next_run_at: iso(240), last_fired_at: iso(-1200), fire_count: 14, created_by_name: 'Goba' },
   { id: 2, name: 'Pass War muster call', enabled: true, channel_id: '222', kind: 'rotation',
     interval_minutes: 20160, run_at: iso(60 * 30), timezone: 'Etc/GMT+2',
-    body: 'Pass War in 30 minutes. Check <#222> for the map.', use_embed: true,
+    body: 'Pass War starts {time} ({st}) — {relative}.\nMap and orders in <#222>.', use_embed: true,
     mention: '@everyone', lead_minutes: 0, event_id: null, next_run_at: iso(60 * 30),
     created_by_name: 'Goba', updated_by_name: 'Nyx' },
   { id: 3, name: 'SvS kickoff notice', enabled: true, channel_id: '111', kind: 'once',

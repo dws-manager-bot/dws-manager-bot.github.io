@@ -7,6 +7,7 @@ import { zonedToIso } from '../lib/tz.js'
 import { REPEATS } from '../lib/schedule.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
 import ChannelLink from '../components/ChannelLink.jsx'
+import TimeToken from '../components/TimeToken.jsx'
 import { withServerTime } from '../lib/servertime.js'
 
 /**
@@ -388,6 +389,11 @@ export default function Setup({ onDone }) {
               <label>
                 <span className="label-row">
                   Message
+                  <TimeToken
+                    textareaRef={bodyRef}
+                    value={ann.body}
+                    onChange={(v) => setAnn((a) => ({ ...a, body: v }))}
+                  />
                   <ChannelLink
                     channels={channels}
                     textareaRef={bodyRef}
@@ -402,8 +408,9 @@ export default function Setup({ onDone }) {
                   placeholder={`${ev.name} starts in ${ann.lead_minutes} minutes — rally up!`}
                 />
                 <small className="muted">
-                  **bold**, *italic*, `code` all work, and a linked channel posts as a
-                  clickable #name.
+                  **bold**, *italic*, `code` all work, a linked channel posts as a clickable
+                  #name, and an inserted time arrives in each reader's own clock — pair it
+                  with server time, as <code>{'{time} ({st})'}</code>.
                 </small>
               </label>
 
@@ -434,6 +441,7 @@ export default function Setup({ onDone }) {
               <EmbedPreview
                 announcement={{ ...ann, body: ann.body || `${ev.name} starts soon!` }}
                 channels={channels}
+                when={dates[0]}
               />
             </div>
           </div>
@@ -475,7 +483,7 @@ export default function Setup({ onDone }) {
 
           <div className="wiz-preview" style={{ marginTop: 16 }}>
             <div className="preview-label muted small">The post itself</div>
-            <EmbedPreview announcement={ann} channels={channels} />
+            <EmbedPreview announcement={ann} channels={channels} when={dates[0]} />
           </div>
 
           <div className="card-actions">

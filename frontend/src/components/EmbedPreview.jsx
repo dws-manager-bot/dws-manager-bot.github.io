@@ -9,10 +9,12 @@
  * description: bold, italic, inline code, and line breaks. Anything else is
  * shown literally, which is also what Discord does.
  *
- * Channel links are the exception worth resolving: <#123…> is a snowflake in
- * the box and a blue #channel over there, so leaving it raw here would make
+ * Channel links and times are the exceptions worth resolving: <#123…> is a
+ * snowflake in the box and a blue #channel over there, and {time} is a token in
+ * the box and each reader's own clock over there. Leaving either raw would make
  * the preview the one place the message looks wrong.
  */
+import { previewTimes } from '../lib/discordtime.js'
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;' }
 const escape = (s) => s.replace(/[&<>]/g, (c) => ESCAPES[c])
@@ -31,9 +33,15 @@ function renderMarkdown(text, channelName) {
 
 const MENTION_LABEL = { '@everyone': '@everyone', '@here': '@here' }
 
-export default function EmbedPreview({ announcement, sample, channels }) {
+export default function EmbedPreview({ announcement, sample, channels, when }) {
   const a = announcement
   const color = a.use_embed ? (a.embed_color || '#5865F2') : null
+
+  /* The moment the tokens resolve against. The bot uses the occurrence being
+     announced; here that is the next one where it is known, and now where it
+     is not — enough to show the shape of the sentence. */
+  const at = when || new Date().toISOString()
+  const times = (text) => previewTimes(text, at)
 
   // A channel the bot cannot post to is absent from the list but still links
   // fine in Discord, so name what is known and keep the shape of the rest.
@@ -43,7 +51,7 @@ export default function EmbedPreview({ announcement, sample, channels }) {
   const body = (
     <div
       className="dc-desc"
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(a.body || '', channelName) }}
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(times(a.body) || '', channelName) }}
     />
   )
 
@@ -62,7 +70,7 @@ export default function EmbedPreview({ announcement, sample, channels }) {
 
       {a.use_embed ? (
         <div className="dc-embed" style={{ borderLeftColor: color }}>
-          {a.title && <div className="dc-title">{a.title}</div>}
+          {a.title && <div className="dc-title">{times(a.title)}</div>}
           {body}
           {sample?.moved && (
             <div className="dc-field">
@@ -76,7 +84,7 @@ export default function EmbedPreview({ announcement, sample, channels }) {
         </div>
       ) : (
         <div className="dc-plain">
-          {a.title && <div className="dc-title-plain">{a.title}</div>}
+          {a.title && <div className="dc-title-plain">{times(a.title)}</div>}
           {body}
           {sample?.moved && (
             <blockquote className="dc-quote">

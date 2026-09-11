@@ -23,7 +23,7 @@ if (act) {
     const rows = [...document.querySelectorAll('.lrow-head')]
     rows[rowIndex]?.click()
     setTimeout(() => {
-      const label = act === 'copy' ? 'Copy' : 'Edit'
+      const label = { copy: 'Copy', preview: 'Preview' }[act] || 'Edit'
       const btn = [...document.querySelectorAll('.lrow .card-actions .btn')]
         .find((b) => b.textContent.trim() === label)
       btn?.click()
