@@ -6,11 +6,13 @@ BigInteger, never Integer.
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+import uuid
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -18,7 +20,10 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     func,
+    text,
+    true,
 )
 from sqlalchemy import (
     Enum as SAEnum,
@@ -74,6 +79,66 @@ class Member(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<Member {self.game_name or self.discord_name} R{self.rank}>"
+
+
+class Player(Base, TimestampMixin):
+    """One in-game account, followed across nickname changes.
+
+    The game exposes no stable id and players rename freely, so the id is ours: a
+    UUID issued when the account is first recorded. This is not `Member`, which
+    is a Discord account; a player need not be on Discord at all.
+
+    Defaults are server-side so a row inserted by hand in psql is complete.
+    """
+
+    __tablename__ = "players"
+
+    # Both defaults: the app knows the id before it flushes, and psql gets one too.
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    # The current nickname. Every name ever seen, this one included, is in player_names.
+    name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # DWS alliance ranks run R1 (newest) .. R5 (leader).
+    rank: Mapped[int | None] = mapped_column(Integer)
+    industry_level: Mapped[int | None] = mapped_column(Integer)
+    # BigInteger: the top total CP is already 1.6 billion, and int4 stops at 2.1.
+    bgb_cp: Mapped[int | None] = mapped_column(BigInteger)
+    total_cp: Mapped[int | None] = mapped_column(BigInteger)
+    # False once they leave the alliance. The row stays, so a return is the same player.
+    active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true(), nullable=False
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    names: Mapped[list[PlayerName]] = relationship(
+        back_populates="player", cascade="all, delete-orphan", order_by="PlayerName.first_seen"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Player {self.name} R{self.rank}>"
+
+
+class PlayerName(Base):
+    """A nickname a player has been seen under, and between which dates.
+
+    Not unique across players: a name one player drops, another can later take.
+    """
+
+    __tablename__ = "player_names"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # Dates of the first and latest data this name was read from.
+    first_seen: Mapped[date | None] = mapped_column(Date)
+    last_seen: Mapped[date | None] = mapped_column(Date)
+
+    player: Mapped[Player] = relationship(back_populates="names")
+
+    __table_args__ = (UniqueConstraint("player_id", "name", name="uq_player_name"),)
 
 
 class Announcement(Base, TimestampMixin):

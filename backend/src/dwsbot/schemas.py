@@ -1,8 +1,9 @@
 """Pydantic request/response models for the backoffice API."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Annotated
+import uuid
+from datetime import UTC, date, datetime
+from typing import Annotated, Literal
 
 from croniter import croniter
 from pydantic import (
@@ -10,6 +11,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PlainSerializer,
+    StringConstraints,
     field_validator,
     model_validator,
 )
@@ -243,6 +245,61 @@ class MemberUpdate(BaseModel):
     timezone: str | None = None
     active: bool | None = None
     notes: str | None = None
+
+
+# ------------------------------------------------------------------- players
+
+# Stripped, so a name pasted with a stray trailing space cannot become a second
+# spelling of the same person.
+PlayerName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
+class PlayerNameOut(ORMModel):
+    name: str
+    first_seen: date | None = None
+    last_seen: date | None = None
+
+
+class PlayerOut(ORMModel):
+    """No range checks here: a stored row is shown as it is, never rejected."""
+
+    id: uuid.UUID
+    name: str
+    rank: int | None = None
+    industry_level: int | None = None
+    bgb_cp: int | None = None
+    total_cp: int | None = None
+    active: bool
+    notes: str | None = None
+    updated_at: datetime
+    names: list[PlayerNameOut] = Field(default_factory=list)
+
+
+class PlayerCreate(BaseModel):
+    name: PlayerName
+    rank: int | None = Field(None, ge=1, le=5)
+    industry_level: int | None = Field(None, ge=1)
+    bgb_cp: int | None = Field(None, ge=0)
+    total_cp: int | None = Field(None, ge=0)
+    notes: str | None = Field(None, max_length=2000)
+
+
+class PlayerUpdate(BaseModel):
+    """A partial edit: only the fields sent change.
+
+    A new name has to say what it is. A rename keeps the old name in the
+    player's history; a correction replaces a name that was misread and never
+    really theirs.
+    """
+
+    name: PlayerName | None = None
+    name_change: Literal["rename", "correct"] | None = None
+    rank: int | None = Field(None, ge=1, le=5)
+    industry_level: int | None = Field(None, ge=1)
+    bgb_cp: int | None = Field(None, ge=0)
+    total_cp: int | None = Field(None, ge=0)
+    notes: str | None = Field(None, max_length=2000)
+    active: bool | None = None
 
 
 # ---------------------------------------------------------------------- meta
