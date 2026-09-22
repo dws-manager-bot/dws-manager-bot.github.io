@@ -27,6 +27,13 @@ const ACTIONS = {
   'member.sync': ['imported members from Discord', 'sync'],
   'member.update': ['edited a member', 'edit'],
   'lineup.save': ['saved a war line-up', 'edit'],
+  'player.create': ['added a member', 'add'],
+  'player.update': ['edited a member', 'edit'],
+  'player.rename': ['recorded a new nickname', 'edit'],
+  'player.correct': ['fixed the spelling of a name', 'edit'],
+  'player.left': ['marked a member as left', 'del'],
+  'player.returned': ['marked a member as returned', 'add'],
+  'player.delete': ['deleted a member', 'del'],
 }
 
 const describe = (action) => ACTIONS[action]?.[0] ?? action
@@ -36,6 +43,7 @@ const kindOf = (action) => ACTIONS[action]?.[1] ?? 'edit'
 function detailOf(row) {
   const d = row.detail
   if (!d) return null
+  if (d.from && d.name) return `${d.from} → ${d.name}`
   if (d.name) return d.name
   if (d.key) return d.key
   if (d.added !== undefined) return `${d.added} added`
@@ -66,6 +74,7 @@ export default function History() {
             ['', 'Everything'],
             ['announcement', 'Announcements'],
             ['event', 'Events'],
+            ['player', 'Members'],
           ].map(([value, label]) => (
             <button
               key={label}

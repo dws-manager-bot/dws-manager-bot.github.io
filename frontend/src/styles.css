@@ -615,6 +615,20 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .hkind.del  { color: var(--bad); border-color: rgba(248, 113, 113, 0.4); }
 .hkind.move { color: var(--accent); border-color: rgba(251, 191, 36, 0.4); }
 
+/* ---------- members ---------- */
+
+/* Search takes the line; on a phone the sort chips wrap beneath it. */
+.members-tools {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-bottom: 16px; min-width: 0;
+}
+.members-tools input { flex: 1 1 240px; min-width: 0; }
+.members-tools .row { flex: none; }
+
+.names { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.names li { display: flex; flex-wrap: wrap; gap: 0 8px; min-width: 0; }
+.names li > span:first-child { overflow-wrap: anywhere; }
+
 /* ---------- Discord embed preview ----------
    Deliberately Discord's colors, not the app's: this answers "how will it
    look over there", so matching the backoffice theme would defeat it. */

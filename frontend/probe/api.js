@@ -36,6 +36,23 @@ const channels = [
   { id: '111', name: 'general', category: 'Text' },
   { id: '222', name: 'war-room', category: 'Text' },
 ]
+// Invented names: this file is public. The shapes match GET /players.
+const seen = (name, first_seen, last_seen = first_seen) => ({ name, first_seen, last_seen })
+const players = [
+  { id: 'a1', name: 'Nyx', rank: 4, industry_level: 8, bgb_cp: 278997886, total_cp: 1618239833,
+    active: true, notes: null, updated_at: iso(-60), names: [seen('Nyx', '2026-08-21', '2026-09-09')] },
+  { id: 'a2', name: 'ǝVelaɐ', rank: null, industry_level: 7, bgb_cp: 54499085, total_cp: 748346000,
+    active: true, notes: 'Moved her main to this account around 3 Sep; her old one is velasam.',
+    updated_at: iso(-60),
+    names: [seen('Korrin', '2026-08-21'), seen('ǝVelaɐ', '2026-09-03', '2026-09-09')] },
+  { id: 'a3', name: 'Unbroken Storm', rank: 3, industry_level: 6, bgb_cp: 40828414, total_cp: 764037512,
+    active: true, notes: null, updated_at: iso(-60),
+    names: [seen('Calm Storm', '2026-08-21'), seen('Rising Storm', '2026-09-03'), seen('Unbroken Storm', '2026-09-09')] },
+  { id: 'a4', name: 'Hoshi', rank: null, industry_level: 4, bgb_cp: null, total_cp: 713555232,
+    active: true, notes: null, updated_at: iso(-60), names: [seen('Hoshi', '2026-09-09')] },
+  { id: 'a5', name: 'Stinky', rank: 2, industry_level: 4, bgb_cp: 18948867, total_cp: 463088597,
+    active: false, notes: null, updated_at: iso(-60), names: [seen('Stinky', '2026-08-21', '2026-09-03')] },
+]
 const ok = (v) => Promise.resolve(JSON.parse(JSON.stringify(v)))
 export const api = {
   listAnnouncements: () => ok(rows),
@@ -55,6 +72,10 @@ export const api = {
   clearOccurrence: () => ok([]),
   guidedSetup: () => ok({}),
   roles: () => ok([]),
+  listPlayers: () => ok(players),
+  createPlayer: (p) => ok({ ...p, id: 'new', active: true, updated_at: iso(0), names: [seen(p.name, '2026-09-23')] }),
+  updatePlayer: (id, p) => ok({ ...players.find((x) => x.id === id), ...p }),
+  deletePlayer: () => ok(null),
   me: () => ok({ username: 'Goba', is_admin: true }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.

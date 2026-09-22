@@ -130,4 +130,10 @@ export const api = {
   listHistory: (entity) =>
     request(`/history${entity ? `?entity=${entity}` : ''}`),
 
+  listPlayers: () => request('/players'),
+  createPlayer: (data) => request('/players', { method: 'POST', body: JSON.stringify(data) }),
+  // PATCH, not PUT: only the fields sent change, and a name change says what it is.
+  updatePlayer: (id, data) =>
+    request(`/players/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deletePlayer: (id) => request(`/players/${id}`, { method: 'DELETE' }),
 }
