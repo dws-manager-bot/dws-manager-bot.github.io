@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # registered on the application, and points at THIS api, not the SPA.
     oauth_redirect_uri: str = "https://dws-api.xronocore.qzz.io/auth/callback"
     # Where the API bounces the browser once a session is minted.
-    frontend_url: str = "https://dws-manager-bot.github.io"
+    frontend_url: str = "https://pou.actuallyplaying.com"
 
     # The Pass Occupation War map generator — a second static frontend on the
     # same API. Separate origin, so it needs its own CORS entry below.
@@ -44,10 +44,13 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(..., description="HMAC key for backoffice session tokens")
     jwt_ttl_hours: int = 12
 
-    # Origins allowed to call this API from a browser. GitHub Pages is the
+    # Origins allowed to call this API from a browser. The custom domain is the
     # production one; localhost entries make `npm run dev` work.
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
+            "https://pou.actuallyplaying.com",
+            # The Pages address. It redirects to the custom domain, so nothing
+            # calls from it today; kept so removing the domain fails soft.
             "https://dws-manager-bot.github.io",
             # CORS matches scheme+host only, so this covers /pou-pass-war and the
             # hive map alike — both are served from the same Pages origin.

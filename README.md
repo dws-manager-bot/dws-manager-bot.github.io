@@ -6,7 +6,7 @@ Occupation War map planner — all configurable from a browser instead of by
 editing code.
 
 ```
-GitHub Pages  ──  dws-manager-bot.github.io                static backoffice (HTTPS)
+GitHub Pages  ──  pou.actuallyplaying.com                  static backoffice (HTTPS)
       │           Discord OAuth2 login → short-lived JWT
       ▼
 https://dws-api.xronocore.qzz.io                            Cloudflare tunnel, edge TLS
@@ -146,8 +146,12 @@ The repo is named `dws-manager-bot.github.io` inside the org of the same
 name, which makes it an *organization site* served from the domain root.
 That is why Vite's `base` is `/` rather than a repo subpath.
 
+It is served on the custom domain `pou.actuallyplaying.com` (**Settings → Pages →
+Custom domain**), and `dws-manager-bot.github.io` redirects there.
+
 Pushing to `main` builds and publishes it. The API's `CORS_ORIGINS` must include
-`https://dws-manager-bot.github.io`, and `FRONTEND_URL` must be the full Pages URL.
+the address the site is actually served from — the custom domain — and
+`FRONTEND_URL` should be that address too.
 
 ---
 

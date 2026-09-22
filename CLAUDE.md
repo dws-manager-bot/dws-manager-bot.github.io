@@ -21,6 +21,14 @@ never coerce one.
 future" — true of new input, false of a row stored last week — turns every
 read of that row into a 500. There is a regression test for exactly this.
 
+**The API must list the address the site is served from.** The site lives on
+the custom domain `pou.actuallyplaying.com`, set under the repo's Settings →
+Pages, and `dws-manager-bot.github.io` redirects to it. A browser calls the API
+from wherever the page is, so an address missing from `CORS_ORIGINS` loads the
+page fine and fails every call. The site sat like that from about 21 Sep to
+23 Sep. Changing the Pages domain means changing `CORS_ORIGINS` and
+`FRONTEND_URL` in the `dws-manager-secrets` secret, then restarting.
+
 **Return 4xx for application errors, not 5xx.** Cloudflare replaces a 5xx body
 with its own error page and drops the CORS headers, so the real message never
 reaches the browser. A conflict the user can act on is a 409.
@@ -129,7 +137,7 @@ git fetch git@github-personal:dws-manager-bot/dws-manager-bot.github.io.git main
 ```
 
 `gh run watch` will not work there. Confirm the deploy by fetching the live
-bundle instead — `curl -s https://dws-manager-bot.github.io/` and grep the
+bundle instead — `curl -s https://pou.actuallyplaying.com/` and grep the
 hashed asset for the strings you added.
 
 ## Verifying frontend work
