@@ -157,6 +157,11 @@ class BgbEvent(Base, TimestampMixin):
     # When the result was read in. Null until then, which is what tells "nobody
     # fought" apart from "we have not looked yet".
     results_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Discord thread the cards were posted to, once they have been. Kept so
+    # the button can link to it and warn before making a second one -- a post to
+    # a channel the alliance reads is not something to do twice by accident.
+    thread_id: Mapped[int | None] = mapped_column(BigInteger)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     registrations: Mapped[list[BgbRegistration]] = relationship(
         back_populates="event", cascade="all, delete-orphan"

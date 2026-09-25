@@ -16,13 +16,16 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import delete, func, select
 
-from ...bgb import cards, sheet
+from ...bgb import cards, publish, sheet
+from ...config import get_settings
 from ...models import BgbEvent, BgbRegistration, Player
 from ...schemas import (
     BgbCpChangeOut,
     BgbEventOut,
     BgbLanguageOut,
     BgbOutcomeOut,
+    BgbPublishIn,
+    BgbPublishOut,
     BgbResultApplyIn,
     BgbResultPreviewOut,
     BgbResultRowIn,
@@ -81,7 +84,9 @@ async def list_events(session: DbSession, _: AdminUser):
     return [
         BgbEventOut(
             id=event.id, battle_date=event.battle_date, recorded_at=event.updated_at,
-            results_at=event.results_at,
+            results_at=event.results_at, published_at=event.published_at,
+            thread_url=(publish.thread_url(get_settings().guild_id, event.thread_id)
+                        if event.thread_id else None),
             starters=tally.get(event.id, {}).get(sheet.STARTER, {}),
             substitutes=tally.get(event.id, {}).get(sheet.SUBSTITUTE, {}),
         )
@@ -378,3 +383,53 @@ def _result_preview(plan: sheet.ResultPlan, rows: list, event: BgbEvent,
         rows=[BgbResultRowIn(**vars(r)) for r in rows], teams=teams,
         no_shows=[_outcome(o) for o in plan.no_shows],
         problems=plan.problems, recorded=recorded)
+
+
+@router.post("/events/{event_id}/publish", response_model=BgbPublishOut,
+             summary="Post this battle's cards to Discord, as a thread")
+async def publish_cards(
+    event_id: int, payload: BgbPublishIn, session: DbSession, user: AdminUser,
+):
+    """Create the thread and post every card, Team A and then Team B.
+
+    Synchronous on purpose: thirty cards take a few seconds to draw and a few
+    more to upload, and the admin would rather wait than press a button that
+    says nothing and find out later that Discord refused halfway.
+    """
+    from ...discord_bot.bot import bot
+
+    event = await _event(session, event_id)
+    registrations = await _registrations(session, event_id)
+    if not registrations:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nobody is registered for that battle")
+    if event.thread_id and not payload.again:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "These cards are already posted. Posting again makes a second thread, which the "
+            "alliance will see — confirm if that is what you want.")
+    if not bot.is_ready():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet — try again")
+
+    try:
+        thread_id, messages, images = await publish.publish(
+            bot, int(payload.channel_id), event, registrations)
+    except Exception as exc:
+        # 409 and not 502: Cloudflare replaces a 5xx body with its own error
+        # page and drops the CORS headers, so the real reason never arrives.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"Discord refused the post: {exc}") from exc
+
+    event.thread_id = thread_id
+    event.published_at = dt.datetime.now(dt.UTC)
+    url = publish.thread_url(get_settings().guild_id, thread_id)
+    await write_audit(session, user, "bgb.publish", "bgb_event", str(event.id), {
+        "name": f"BGB {event.battle_date}: posted {images} cards in {messages} messages",
+        "battle_date": event.battle_date.isoformat(),
+        "channel_id": str(payload.channel_id),
+        "thread_id": str(thread_id),
+        "thread_url": url,
+    })
+    await session.commit()
+    return BgbPublishOut(thread_id=thread_id, thread_url=url, messages=messages,
+                         images=images, published_at=event.published_at)

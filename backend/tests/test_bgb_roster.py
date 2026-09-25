@@ -671,3 +671,94 @@ async def test_a_result_refuses_once_the_roster_has_moved(client_factory):
             "fingerprint": preview["fingerprint"], "rows": preview["rows"]})
     assert r.status_code == 409
     assert "roster changed while you were looking" in r.json()["detail"]
+
+
+# --- posting the cards to Discord -------------------------------------------
+
+@pytest.mark.asyncio
+async def test_the_thread_is_named_the_way_the_alliance_asked(client_factory):
+    from dwsbot.bgb import publish
+
+    assert publish.thread_name(date(2026, 9, 27)) == \
+        "BGB 2026-09-27(Sun) Mini-Team Placement"
+    assert publish.thread_name(date(2026, 10, 3)).startswith("BGB 2026-10-03(Sat)")
+    assert len(publish.thread_name(date(2026, 9, 27))) <= 100   # Discord's limit
+
+
+@pytest.mark.asyncio
+async def test_the_cards_go_four_to_a_message_in_order(client_factory):
+    from dwsbot.bgb import cards, publish
+
+    batched = publish.batches()
+    assert [len(b) for b in batched] == [4, 4, 4, 3]            # fifteen languages
+    # Every language exactly once, in the order the site lists them.
+    assert [e["code"] for b in batched for e in b] == cards.CODES
+    # The caption names them in the order they were attached, their own name
+    # first so a member can find it by reading.
+    assert publish.caption(batched[0]).split("  ·  ")[:2] == ["English", "한국어 (Korean)"]
+
+
+@pytest.mark.asyncio
+async def test_publishing_records_the_thread_and_refuses_a_second_one(
+    client_factory, monkeypatch,
+):
+    import dwsbot.discord_bot.bot as botmod
+    from dwsbot.api.routers import bgb as bgb_router
+
+    posted = []
+
+    async def fake_publish(bot, channel_id, event, registrations):
+        posted.append((channel_id, event.battle_date, len(registrations)))
+        return 555000111222333444, 10, 30
+
+    monkeypatch.setattr(botmod.bot, "is_ready", lambda: True)
+    monkeypatch.setattr(bgb_router.publish, "publish", fake_publish)
+
+    event_id, _ = await recorded_battle(client_factory, 20, 10)
+    async with client_factory() as c:
+        r = await c.post(f"/bgb/events/{event_id}/publish", json={"channel_id": "1546368345"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["messages"] == 10 and body["images"] == 30
+        # A snowflake crosses JSON as a string, or the browser rounds it away.
+        assert body["thread_id"] == "555000111222333444"
+        assert body["thread_url"].endswith("/555000111222333444")
+        assert posted == [(1546368345, date(2026, 9, 26), 30)]
+
+        # A second post would make a second thread the alliance can see.
+        again = await c.post(f"/bgb/events/{event_id}/publish", json={"channel_id": "1546368345"})
+        assert again.status_code == 409
+        assert "already posted" in again.json()["detail"]
+        assert len(posted) == 1
+
+        ok = await c.post(f"/bgb/events/{event_id}/publish",
+                          json={"channel_id": "1546368345", "again": True})
+        assert ok.status_code == 200 and len(posted) == 2
+
+        listed = (await c.get("/bgb/events")).json()
+        assert listed[0]["published_at"] is not None
+        assert listed[0]["thread_url"].endswith("/555000111222333444")
+
+    async with client_factory.maker() as s:
+        entry = await s.scalar(select(AuditLog).where(AuditLog.action == "bgb.publish"))
+    assert entry.detail["thread_id"] == "555000111222333444"
+    assert "30 cards in 10 messages" in entry.detail["name"]
+
+
+@pytest.mark.asyncio
+async def test_publishing_says_so_when_discord_refuses(client_factory, monkeypatch):
+    import dwsbot.discord_bot.bot as botmod
+    from dwsbot.api.routers import bgb as bgb_router
+
+    async def boom(*a, **kw):
+        raise RuntimeError("Missing Permissions")
+
+    monkeypatch.setattr(botmod.bot, "is_ready", lambda: True)
+    monkeypatch.setattr(bgb_router.publish, "publish", boom)
+
+    event_id, _ = await recorded_battle(client_factory, 2, 0)
+    async with client_factory() as c:
+        r = await c.post(f"/bgb/events/{event_id}/publish", json={"channel_id": "1"})
+    # 409, not 502: Cloudflare would replace a 5xx body with its own page.
+    assert r.status_code == 409
+    assert "Missing Permissions" in r.json()["detail"]

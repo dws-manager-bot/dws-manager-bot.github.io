@@ -484,6 +484,8 @@ class BgbEventOut(BaseModel):
     substitutes: dict[str, int] = Field(default_factory=dict)
     recorded_at: datetime | None = None
     results_at: datetime | None = None   # null until the result has been read
+    published_at: datetime | None = None
+    thread_url: str | None = None        # the Discord thread the cards went to
 
 
 class BgbLanguageOut(BaseModel):
@@ -541,3 +543,18 @@ class BgbResultApplyIn(BaseModel):
     fingerprint: str
     file_name: str | None = Field(default=None, max_length=200)
     rows: list[BgbResultRowIn]
+
+
+class BgbPublishIn(BaseModel):
+    """Post a battle's cards to Discord. `again` is the second-thread guard."""
+
+    channel_id: Snowflake
+    again: bool = False
+
+
+class BgbPublishOut(BaseModel):
+    thread_id: Snowflake
+    thread_url: str
+    messages: int
+    images: int
+    published_at: datetime

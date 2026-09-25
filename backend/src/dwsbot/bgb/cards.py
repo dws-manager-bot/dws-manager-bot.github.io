@@ -19,7 +19,7 @@ from .sheet import STARTER
 # admin can still tell which button is which.
 ENGLISH_NAMES = {
     "en": "English", "ko": "Korean", "ja": "Japanese",
-    "zh": "Chinese (Traditional)", "zh_cn": "Chinese (Simplified)", "th": "Thai",
+    "zh": "Chinese, Traditional", "zh_cn": "Chinese, Simplified", "th": "Thai",
     "vi": "Vietnamese", "id": "Indonesian", "tr": "Turkish", "de": "German",
     "it": "Italian", "fr": "French", "es": "Spanish", "pt": "Portuguese",
     "ar": "Arabic",
