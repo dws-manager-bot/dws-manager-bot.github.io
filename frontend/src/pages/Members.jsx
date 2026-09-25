@@ -41,6 +41,7 @@ const parseCount = (text) => {
 const SORTS = [
   ['bgb', 'BGB CP'],
   ['total', 'Total CP'],
+  ['rank', 'Rank'],
   ['name', 'Name'],
 ]
 
@@ -131,12 +132,23 @@ export default function Members() {
         return old ? { p, was: old.name } : null
       })
       .filter(Boolean)
-    const key = {
-      bgb: (x) => -(x.p.bgb_cp ?? -1),
-      total: (x) => -(x.p.total_cp ?? -1),
-      name: () => 0,
+    /* Each sort is a list of keys, applied in turn. By rank that means R5 first
+       and the unranked last, and within a rank the strongest first, which is the
+       order the game's own member list is read in. */
+    const keys = {
+      bgb: (x) => [-(x.p.bgb_cp ?? -1)],
+      total: (x) => [-(x.p.total_cp ?? -1)],
+      rank: (x) => [-(x.p.rank ?? 0), -(x.p.bgb_cp ?? -1)],
+      name: () => [0],
     }[sort]
-    matched.sort((a, b) => key(a) - key(b) || a.p.name.localeCompare(b.p.name))
+    matched.sort((a, b) => {
+      const left = keys(a)
+      const right = keys(b)
+      for (let i = 0; i < left.length; i += 1) {
+        if (left[i] !== right[i]) return left[i] - right[i]
+      }
+      return a.p.name.localeCompare(b.p.name)
+    })
     return {
       current: matched.filter((x) => x.p.active),
       left: matched.filter((x) => !x.p.active),
