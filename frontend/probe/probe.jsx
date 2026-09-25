@@ -38,8 +38,26 @@ if (act) {
    other needs a file on the input before "Check file" comes alive. */
 if (which === 'bgb' && act) {
   setTimeout(() => {
-    if (act === 'cards') {
-      document.querySelector('.bgb-event')?.click()
+    if (act === 'cards' || act === 'result' || act === 'resultcheck') {
+      if (act !== 'cards') {
+        ;[...document.querySelectorAll('.chip')]
+          .find((b) => b.textContent.trim() === 'Result recorder')?.click()
+      }
+      setTimeout(() => {
+        document.querySelector('.bgb-event')?.click()
+        if (act !== 'resultcheck') return
+        setTimeout(() => {
+          const input = document.querySelector('.file-pick input')
+          const dt = new DataTransfer()
+          dt.items.add(new File(['x'], 'bgb-result.xlsx'))
+          input.files = dt.files
+          input.dispatchEvent(new Event('change', { bubbles: true }))
+          setTimeout(() => {
+            ;[...document.querySelectorAll('.btn')]
+              .find((b) => b.textContent.trim() === 'Check file')?.click()
+          }, 100)
+        }, 150)
+      }, 100)
     } else {
       const input = document.querySelector('.file-pick input')
       const dt = new DataTransfer()

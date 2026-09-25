@@ -191,6 +191,13 @@ export const api = {
     file(`/bgb/events/${id}/card.png?team=${team}&lang=${lang}`, `lineup_team${team}.png`),
   bgbCards: (id) => file(`/bgb/events/${id}/cards.zip`, 'bgb-cards.zip'),
 
+  /* The result, recorded against that battle's roster. */
+  bgbResultTemplate: (id) =>
+    file(`/bgb/events/${id}/results/template.xlsx`, 'pou-bgb-result.xlsx'),
+  previewBgbResult: (id, data) => upload(`/bgb/events/${id}/results/preview`, data, {}),
+  applyBgbResult: (id, data) =>
+    request(`/bgb/events/${id}/results/apply`, { method: 'POST', body: JSON.stringify(data) }),
+
   createPlayer: (data) => request('/players', { method: 'POST', body: JSON.stringify(data) }),
   // PATCH, not PUT: only the fields sent change, and a name change says what it is.
   updatePlayer: (id, data) =>

@@ -81,6 +81,33 @@ const teamA = {
 }
 const teamB = { ...teamA, team: 'B', starters: teamA.starters.slice(0, 4), substitutes: [] }
 
+/* A result read off the mail, in the shape the API returns: four fought, one was
+   listed with a zero, one is not in the ranking at all, and the substitutes
+   never came on. The two starters who did not fight are the no-shows. */
+const outcome = (s, i, score, listed) => ({
+  registration_id: 100 + i, name: s.name, team: 'A', role: s.role, bgb_cp: s.bgb_cp,
+  score, listed, participated: Boolean(score),
+  no_show: s.role === 'starter' && !score,
+})
+const outcomes = [
+  outcome(teamA.starters[0], 0, 2_000_000, true),
+  outcome(teamA.starters[1], 1, 1_412_000, true),
+  outcome(teamA.starters[2], 2, 993_700, true),
+  outcome(teamA.starters[3], 3, 651_600, true),
+  outcome(teamA.starters[4], 4, 0, true),            // listed, never fought
+  outcome(teamA.starters[5], 5, null, false),        // not in the ranking at all
+  ...teamA.substitutes.map((s, i) =>
+    outcome({ ...s, role: 'substitute' }, 10 + i, null, false)),
+]
+const resultTeamA = {
+  team: 'A', outcomes,
+  fought: outcomes.filter((o) => o.participated).length,
+  listed_zero: outcomes.filter((o) => o.listed && !o.participated).length,
+  absent: outcomes.filter((o) => !o.listed).length,
+  total_score: outcomes.reduce((n, o) => n + (o.score || 0), 0),
+}
+const noShows = outcomes.filter((o) => o.no_show)
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -131,10 +158,21 @@ export const api = {
     { code: 'ar', native: 'اللغة العربية', english: 'Arabic' },
   ]),
   bgbEvents: () => ok([
-    { id: 4, battle_date: '2026-09-26', starters: { A: 20, B: 20 }, substitutes: { A: 6, B: 10 } },
-    { id: 3, battle_date: '2026-09-12', starters: { A: 20, B: 18 }, substitutes: { A: 10, B: 4 } },
+    { id: 4, battle_date: '2026-09-27', starters: { A: 20, B: 20 }, substitutes: { A: 6, B: 10 } },
+    { id: 3, battle_date: '2026-09-13', starters: { A: 20, B: 18 }, substitutes: { A: 10, B: 4 },
+      results_at: '2026-09-13T14:00:00Z' },
   ]),
   bgbRoster: () => ok([teamA, teamB]),
+  bgbResultTemplate: () => asFile({ blob: new Blob(['sheet']), name: 'pou-bgb-result.xlsx' }),
+  previewBgbResult: () => ok({
+    event_id: 4, battle_date: '2026-09-27', fingerprint: 'r1', recorded: false,
+    rows: [{ line: 2, id: 100, score: 2000000 }],
+    teams: [resultTeamA], no_shows: noShows, problems: [],
+  }),
+  applyBgbResult: () => ok({
+    event_id: 4, battle_date: '2026-09-27', fingerprint: 'r1', recorded: true,
+    rows: [], teams: [resultTeamA], no_shows: noShows, problems: [],
+  }),
   bgbTemplate: () => asFile({ blob: new Blob(['sheet']), name: 'pou-bgb-roster.xlsx' }),
   previewBgbRoster: () => ok({
     battle_date: '2026-09-26', fingerprint: 'abc123', problems: [], replaces: 30, event_id: null,

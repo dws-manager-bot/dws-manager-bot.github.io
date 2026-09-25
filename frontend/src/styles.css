@@ -989,3 +989,16 @@ input[type="range"] {
 .bgb-event:hover { background: var(--card-hover); }
 .bgb-event.on { border-color: var(--accent); }
 .bgb-event-date { font-weight: 600; font-size: 14px; }
+
+/* The result: a ranking to read down, with the people who did not fight set
+   back rather than hidden — they are the reason for reading it. */
+.bgb-noshow .label { color: var(--bad); }
+.bgb-noshow .import-list { border-left: 2px solid rgba(248, 113, 113, 0.45); padding-left: 10px; }
+
+.bgb-scores li { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.bgb-scores li > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The score sits at the right margin, so the column reads as a ranking. */
+.bgb-scores li > span:last-child { margin-left: auto; white-space: nowrap; }
+.bgb-scores li.out { opacity: 0.6; }
+
+.bgb-event-date .tag { margin-left: 8px; font-weight: 500; }
