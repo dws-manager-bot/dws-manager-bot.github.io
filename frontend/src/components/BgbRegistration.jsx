@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { save } from '../lib/files.js'
-import { short, today } from '../lib/cp.js'
+import { short } from '../lib/cp.js'
 
 /**
  * Recording who the game says is registered for a battle.
@@ -14,6 +14,30 @@ import { short, today } from '../lib/cp.js'
  */
 
 const TEAM_LABEL = { A: 'Team A', B: 'Team B' }
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  + `-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * The Sunday the battle will be fought on.
+ *
+ * BGB runs on a Sunday, and the roster is marked in the days before it — the
+ * game locks registration on the Thursday and the screenshots come on the
+ * Friday — so the date to offer is the Sunday ahead, never today. Today counts
+ * when today is Sunday, for a roster recorded on the morning of the battle.
+ */
+function comingSunday() {
+  const d = new Date()
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7))
+  return iso(d)
+}
+
+/* A bare date read in UTC, so no browser zone can shift it across midnight and
+   name the day before. */
+const weekdayOf = (day) =>
+  new Intl.DateTimeFormat(undefined, { weekday: 'long', timeZone: 'UTC' })
+    .format(new Date(`${day}T00:00:00Z`))
 
 function Seats({ title, seats }) {
   if (!seats.length) return null
@@ -37,7 +61,7 @@ function Seats({ title, seats }) {
 
 export default function BgbRegistration({ onRecorded, onError }) {
   const [file, setFile] = useState(null)
-  const [battleDate, setBattleDate] = useState(today())
+  const [battleDate, setBattleDate] = useState(comingSunday())
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -114,6 +138,11 @@ export default function BgbRegistration({ onRecorded, onError }) {
             value={battleDate}
             onChange={(e) => { setBattleDate(e.target.value); reset() }}
           />
+          {/* Named, because a date field shows only numbers and the one thing
+              worth checking is that it is the Sunday the battle is fought on. */}
+          {DAY.test(battleDate) && (
+            <small className="muted">{weekdayOf(battleDate)}</small>
+          )}
         </label>
         <button className="btn primary" onClick={check} disabled={!file || busy}>
           {busy ? 'Reading…' : 'Check file'}
