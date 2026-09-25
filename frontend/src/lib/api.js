@@ -191,6 +191,10 @@ export const api = {
     file(`/bgb/events/${id}/card.png?team=${team}&lang=${lang}`, `lineup_team${team}.png`),
   bgbCards: (id) => file(`/bgb/events/${id}/cards.zip`, 'bgb-cards.zip'),
 
+  /* Thirty cards drawn and uploaded, so this one is slow by nature. */
+  publishBgbCards: (id, data) =>
+    request(`/bgb/events/${id}/publish`, { method: 'POST', body: JSON.stringify(data) }),
+
   /* The result, recorded against that battle's roster. */
   bgbResultTemplate: (id) =>
     file(`/bgb/events/${id}/results/template.xlsx`, 'pou-bgb-result.xlsx'),

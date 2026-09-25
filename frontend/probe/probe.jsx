@@ -38,13 +38,21 @@ if (act) {
    other needs a file on the input before "Check file" comes alive. */
 if (which === 'bgb' && act) {
   setTimeout(() => {
-    if (act === 'cards' || act === 'result' || act === 'resultcheck') {
-      if (act !== 'cards') {
+    if (act === 'cards' || act === 'publish' || act === 'result' || act === 'resultcheck') {
+      if (act === 'result' || act === 'resultcheck') {
         ;[...document.querySelectorAll('.chip')]
           .find((b) => b.textContent.trim() === 'Result recorder')?.click()
       }
       setTimeout(() => {
         document.querySelector('.bgb-event')?.click()
+        if (act === 'publish') {
+          setTimeout(() => {
+            const btn = [...document.querySelectorAll('.btn')]
+              .find((b) => b.textContent.trim() === 'Post the cards')
+            btn?.click()
+          }, 200)
+          return
+        }
         if (act !== 'resultcheck') return
         setTimeout(() => {
           const input = document.querySelector('.file-pick input')

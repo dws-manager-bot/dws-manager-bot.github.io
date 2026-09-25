@@ -35,6 +35,7 @@ const events = [
 const channels = [
   { id: '111', name: 'general', category: 'Text' },
   { id: '222', name: 'war-room', category: 'Text' },
+  { id: '333', name: 'bgb', category: 'Text' },
 ]
 // Invented names: this file is public. The shapes match GET /players.
 const seen = (name, first_seen, last_seen = first_seen) => ({ name, first_seen, last_seen })
@@ -144,8 +145,8 @@ export const api = {
     { code: 'en', native: 'English', english: 'English' },
     { code: 'ko', native: '한국어', english: 'Korean' },
     { code: 'ja', native: '日本語', english: 'Japanese' },
-    { code: 'zh', native: '繁體中文', english: 'Chinese (Traditional)' },
-    { code: 'zh_cn', native: '中文', english: 'Chinese (Simplified)' },
+    { code: 'zh', native: '繁體中文', english: 'Chinese, Traditional' },
+    { code: 'zh_cn', native: '中文', english: 'Chinese, Simplified' },
     { code: 'th', native: 'ไทย', english: 'Thai' },
     { code: 'vi', native: 'Tiếng Việt', english: 'Vietnamese' },
     { code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian' },

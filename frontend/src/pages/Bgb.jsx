@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import BgbCards from '../components/BgbCards.jsx'
+import BgbPublish from '../components/BgbPublish.jsx'
 import BgbRegistration from '../components/BgbRegistration.jsx'
 import BgbResult, { Outcomes, fromRoster } from '../components/BgbResult.jsx'
 
@@ -73,6 +74,16 @@ function RosterRecorder() {
         <>
           <h3 className="bgb-chosen">Cards for {fmtDay(chosen.battle_date)}</h3>
           <BgbCards event={chosen} teams={teams} onError={setError} />
+          <BgbPublish
+            event={chosen}
+            teams={teams}
+            onError={setError}
+            onPublished={(done) => {
+              setNote(`Posted ${done.images} cards in ${done.messages} messages.`)
+              setChosen((e) => ({ ...e, thread_url: done.thread_url }))
+              load()
+            }}
+          />
         </>
       )}
 
