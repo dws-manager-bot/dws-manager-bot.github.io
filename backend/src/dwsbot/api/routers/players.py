@@ -9,15 +9,26 @@ Admins only, like the rest of the backoffice.
 """
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from datetime import date, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from ... import roster_sheet
 from ...models import Player, PlayerName
-from ...schemas import PlayerCreate, PlayerOut, PlayerUpdate
+from ...schemas import (
+    ImportApplyIn,
+    ImportChangeOut,
+    ImportPreviewOut,
+    PlayerCreate,
+    PlayerOut,
+    PlayerUpdate,
+    SheetRowIn,
+)
 from ...servertime import SERVER_TZ
 from ..deps import AdminUser, DbSession, write_audit
 
@@ -153,3 +164,118 @@ async def delete_player(player_id: uuid.UUID, session: DbSession, user: AdminUse
     await write_audit(session, user, "player.delete", "player", player.id, {"name": player.name})
     await session.delete(player)
     await session.commit()
+
+
+# ------------------------------------------------- the roster as a spreadsheet
+
+@router.get("/template.xlsx", summary="The roster as a spreadsheet, ids included")
+async def roster_template(session: DbSession, _: AdminUser):
+    players = list(await session.scalars(select(Player).where(Player.active.is_(True))))
+    latest = await session.scalar(select(func.max(PlayerName.last_seen)))
+    book = roster_sheet.build_template(players, latest)
+    stamp = dt.date.today().isoformat()
+    return Response(
+        content=book,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="pou-roster-{stamp}.xlsx"'},
+    )
+
+
+MAX_UPLOAD = 4 * 1024 * 1024
+
+
+@router.post("/import/preview", response_model=ImportPreviewOut,
+             summary="What an uploaded sheet would change; writes nothing")
+async def preview_import(
+    session: DbSession,
+    _: AdminUser,
+    file: Annotated[UploadFile, File()],
+    as_of: Annotated[dt.date | None, Form()] = None,
+):
+    data = await file.read()
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That file is larger than 4 MB.")
+    rows, problems = roster_sheet.read_workbook(data)
+    players = list(await session.scalars(select(Player)))
+    plan = roster_sheet.plan_changes(rows, players, as_of or dt.date.today())
+    plan.problems = problems + plan.problems
+    return _preview(plan, rows, players)
+
+
+@router.post("/import/apply", response_model=ImportPreviewOut,
+             summary="Apply an upload the person has looked at and agreed to")
+async def apply_import(payload: ImportApplyIn, session: DbSession, user: AdminUser):
+    players = list(await session.scalars(select(Player).options(*_WITH_NAMES)))
+    if roster_sheet.fingerprint(players) != payload.fingerprint:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The roster changed while you were looking at this. Upload the file again.")
+    rows = [roster_sheet.SheetRow(**row.model_dump()) for row in payload.rows]
+    plan = roster_sheet.plan_changes(rows, players, payload.as_of, set(payload.keep))
+    if plan.problems:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, " ".join(plan.problems))
+
+    by_id = {str(p.id): p for p in players}
+    seen_today: list[tuple[Player, str]] = []
+
+    def apply_to(change, returning: bool = False) -> None:
+        player = by_id[change.player_id]
+        for field, (_, after) in change.fields.items():
+            setattr(player, field, after)
+        if change.was:                       # the name on the sheet is new to us
+            player.name = change.name
+            known = {n.name: n for n in player.names}
+            if change.name in known:         # a name they went by before
+                known[change.name].last_seen = max(known[change.name].last_seen or payload.as_of,
+                                                   payload.as_of)
+            else:
+                player.names.append(PlayerName(name=change.name, first_seen=payload.as_of,
+                                               last_seen=payload.as_of))
+        if returning:
+            player.active = True
+        seen_today.append((player, change.name))
+
+    for change in plan.updated + plan.renamed:
+        apply_to(change)
+    for change in plan.returning:
+        apply_to(change, returning=True)
+    for change in plan.added:
+        player = Player(name=change.name, **{f: after for f, (_, after) in change.fields.items()})
+        player.names.append(PlayerName(name=change.name, first_seen=payload.as_of,
+                                       last_seen=payload.as_of))
+        session.add(player)
+    for change in plan.left:
+        by_id[change.player_id].active = False
+    # Everyone on the sheet was seen on that day, whether or not anything changed.
+    on_sheet = {str(row.id) for row in rows if row.id}
+    for player in players:
+        if str(player.id) in on_sheet and player not in [p for p, _ in seen_today]:
+            seen_today.append((player, player.name))
+    for player, name in seen_today:
+        for entry in player.names:
+            if entry.name == name:
+                entry.last_seen = max(entry.last_seen or payload.as_of, payload.as_of)
+
+    summary = (f"Spreadsheet, {payload.as_of}: {len(plan.updated)} updated, "
+               f"{len(plan.renamed)} renamed, {len(plan.added)} added, {len(plan.left)} left")
+    await write_audit(session, user, "player.import", "player", None, {
+        "name": summary, "as_of": payload.as_of.isoformat(),
+        "uploaded_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        "file": payload.file_name,
+        "counts": {"updated": len(plan.updated), "renamed": len(plan.renamed),
+                   "added": len(plan.added), "left": len(plan.left),
+                   "returning": len(plan.returning), "unchanged": plan.unchanged},
+    })
+    await session.commit()
+    fresh = list(await session.scalars(select(Player)))
+    return _preview(plan, rows, fresh)
+
+
+def _preview(plan: roster_sheet.Plan, rows: list, players: list) -> ImportPreviewOut:
+    out = lambda changes: [ImportChangeOut(**vars(c)) for c in changes]  # noqa: E731
+    return ImportPreviewOut(
+        as_of=plan.as_of, fingerprint=roster_sheet.fingerprint(players),
+        rows=[SheetRowIn(**vars(r)) for r in rows],
+        updated=out(plan.updated), renamed=out(plan.renamed), added=out(plan.added),
+        left=out(plan.left), returning=out(plan.returning),
+        unchanged=plan.unchanged, problems=plan.problems)

@@ -284,6 +284,51 @@ class PlayerCreate(BaseModel):
     notes: str | None = Field(None, max_length=2000)
 
 
+class SheetRowIn(BaseModel):
+    """One row of an uploaded roster sheet, as the preview returned it."""
+
+    line: int = 0
+    id: uuid.UUID | None = None
+    name: PlayerName
+    rank: int | None = None
+    industry_level: int | None = None
+    bgb_cp: int | None = None
+    total_cp: int | None = None
+
+
+class ImportChangeOut(BaseModel):
+    player_id: str | None = None
+    name: str
+    was: str | None = None
+    fields: dict[str, tuple] = Field(default_factory=dict)
+    line: int = 0
+
+
+class ImportPreviewOut(BaseModel):
+    """What an upload would do, before anything is written."""
+
+    as_of: date
+    fingerprint: str
+    rows: list[SheetRowIn] = Field(default_factory=list)
+    updated: list[ImportChangeOut] = Field(default_factory=list)
+    renamed: list[ImportChangeOut] = Field(default_factory=list)
+    added: list[ImportChangeOut] = Field(default_factory=list)
+    left: list[ImportChangeOut] = Field(default_factory=list)
+    returning: list[ImportChangeOut] = Field(default_factory=list)
+    unchanged: int = 0
+    problems: list[str] = Field(default_factory=list)
+
+
+class ImportApplyIn(BaseModel):
+    """The confirmed upload: the rows the preview showed, and what to leave out."""
+
+    as_of: date
+    fingerprint: str
+    file_name: str | None = Field(default=None, max_length=200)
+    rows: list[SheetRowIn]
+    keep: list[str] = Field(default_factory=list)  # ids not to mark as having left
+
+
 class PlayerUpdate(BaseModel):
     """A partial edit: only the fields sent change.
 
