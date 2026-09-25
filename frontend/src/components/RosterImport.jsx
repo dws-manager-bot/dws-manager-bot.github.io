@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
+import { save } from '../lib/files.js'
 import { short, today } from '../lib/cp.js'
 
 /**
@@ -47,12 +48,7 @@ export default function RosterImport({ onApplied, onError }) {
     onError(null)
     try {
       const { blob, name } = await api.rosterTemplate()
-      const url = URL.createObjectURL(blob)
-      const link = Object.assign(document.createElement('a'), { href: url, download: name })
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      save(blob, name)
     } catch (err) {
       onError(err.message)
     }

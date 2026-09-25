@@ -934,3 +934,51 @@ input[type="range"] {
 @media (min-width: 1500px) {
   .pw-layout { grid-template-columns: minmax(0, 1.35fr) minmax(420px, 0.65fr); }
 }
+
+/* ---------- Black Gold Battlefield ----------
+   A registration to transcribe, then the briefing cards drawn from it. The
+   cards are 1900px wide and meant to be read on a phone, so they are shown
+   scaled to fit and open at full size in a new tab. */
+
+.subtabs { margin-bottom: 16px; }
+
+.bgb-team { display: grid; gap: 10px; min-width: 0; }
+.bgb-team h4 {
+  margin: 0; font-size: 14px; font-weight: 600; color: var(--accent);
+  letter-spacing: 0.01em;
+}
+.warn-line { margin: 0; font-size: 13px; color: var(--warn); overflow-wrap: anywhere; }
+
+.bgb-chosen { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
+
+.bgb-cards .bgb-teams { margin-bottom: 10px; }
+/* Fifteen languages wrap to several rows on a phone; they stay one block so
+   the eye reads them as one list rather than as rows of unrelated buttons. */
+.bgb-cards .bgb-langs { gap: 8px; margin-bottom: 14px; }
+.bgb-cards .bgb-langs .chip { min-height: 40px; padding: 7px 11px; }
+
+.bgb-card {
+  position: relative; min-height: 120px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; min-width: 0;
+}
+/* The anchor has to stretch, or the card is laid out at its own 1900px and
+   either overflows the phone or sits shrunk in the middle of the box. */
+.bgb-card a { display: block; }
+.bgb-card img { display: block; width: 100%; height: auto; }
+.bgb-card.loading img { opacity: 0.4; transition: opacity 0.15s ease-out; }
+.bgb-card > span {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+
+.bgb-cards .card-actions { margin-top: 14px; }
+
+.bgb-event {
+  display: grid; gap: 3px; text-align: left; width: 100%;
+  background: var(--card); border: 1px solid transparent; color: inherit;
+  border-radius: var(--radius); padding: 11px 13px; cursor: pointer;
+  font: inherit; min-height: 44px; min-width: 0;
+}
+.bgb-event:hover { background: var(--card-hover); }
+.bgb-event.on { border-color: var(--accent); }
+.bgb-event-date { font-weight: 600; font-size: 14px; }

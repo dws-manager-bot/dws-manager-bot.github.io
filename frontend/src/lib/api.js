@@ -89,6 +89,41 @@ async function request(path, options = {}) {
   return body
 }
 
+/**
+ * A file rather than JSON: a spreadsheet, a card, a zip.
+ *
+ * `request` parses every response as JSON, so these go around it — but they
+ * still need the bearer token, which is why they are fetched at all rather than
+ * linked to. The server names the file in Content-Disposition; `fallback` is
+ * only used if that header is missing.
+ */
+async function file(path, fallback) {
+  const token = getToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (res.status === 401) {
+    clearToken()
+    throw new ApiError(401, 'Session expired — sign in again')
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(res.status, body?.detail || `Could not fetch that file (${res.status})`)
+  }
+  const named = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')
+  return { blob: await res.blob(), name: named ? named[1] : fallback }
+}
+
+/** A multipart upload: the file, plus whatever fields go with it. */
+function upload(path, data, fields) {
+  const form = new FormData()
+  form.append('file', data)
+  for (const [key, value] of Object.entries(fields)) form.append(key, value)
+  // No Content-Type: the browser adds the multipart boundary itself, which it
+  // cannot do if we name the type ourselves.
+  return request(path, { method: 'POST', body: form, headers: { 'Content-Type': undefined } })
+}
+
 export const api = {
   /* The Pass War app talks to /lineups directly. Exposing the same helper
      the typed calls use means one implementation of token handling, which
@@ -138,23 +173,23 @@ export const api = {
 
   /* The roster spreadsheet. The template is a file rather than JSON, and the
      upload is a form, so both go around `request`, which speaks JSON only. */
-  rosterTemplate: async () => {
-    const res = await fetch(`${API_URL}/players/template.xlsx`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    })
-    if (!res.ok) throw new ApiError(res.status, 'Could not build the template')
-    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')
-    return { blob: await res.blob(), name: name ? name[1] : 'pou-roster.xlsx' }
-  },
-  previewRosterImport: (file, asOf) => {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('as_of', asOf)
-    // No Content-Type: the browser adds the multipart boundary itself.
-    return request('/players/import/preview', { method: 'POST', body: form, headers: { 'Content-Type': undefined } })
-  },
+  rosterTemplate: () => file('/players/template.xlsx', 'pou-roster.xlsx'),
+  previewRosterImport: (data, asOf) => upload('/players/import/preview', data, { as_of: asOf }),
   applyRosterImport: (data) =>
     request('/players/import/apply', { method: 'POST', body: JSON.stringify(data) }),
+
+  /* Black Gold Battlefield: the registration, and the cards drawn from it. */
+  bgbLanguages: () => request('/bgb/languages'),
+  bgbEvents: () => request('/bgb/events'),
+  bgbRoster: (id) => request(`/bgb/events/${id}`),
+  bgbTemplate: () => file('/bgb/template.xlsx', 'pou-bgb-roster.xlsx'),
+  previewBgbRoster: (data, battleDate) =>
+    upload('/bgb/roster/preview', data, { battle_date: battleDate }),
+  applyBgbRoster: (data) =>
+    request('/bgb/roster/apply', { method: 'POST', body: JSON.stringify(data) }),
+  bgbCard: (id, team, lang) =>
+    file(`/bgb/events/${id}/card.png?team=${team}&lang=${lang}`, `lineup_team${team}.png`),
+  bgbCards: (id) => file(`/bgb/events/${id}/cards.zip`, 'bgb-cards.zip'),
 
   createPlayer: (data) => request('/players', { method: 'POST', body: JSON.stringify(data) }),
   // PATCH, not PUT: only the fields sent change, and a name change says what it is.

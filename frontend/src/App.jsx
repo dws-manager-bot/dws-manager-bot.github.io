@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/api.js'
 import Announcements from './pages/Announcements.jsx'
+import Bgb from './pages/Bgb.jsx'
 import Events from './pages/Events.jsx'
 import History from './pages/History.jsx'
 import Members from './pages/Members.jsx'
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'announcements', label: 'Announcements', Component: Announcements },
   { id: 'events', label: 'Events', Component: Events },
   { id: 'members', label: 'Members', Component: Members },
+  { id: 'bgb', label: 'BGB', Component: Bgb },
   { id: 'history', label: 'History', Component: History },
   // Any guild member may open this; the officer-only tabs are hidden from them.
   { id: 'passwar', label: 'Pass War map', Component: PassWar, everyone: true },

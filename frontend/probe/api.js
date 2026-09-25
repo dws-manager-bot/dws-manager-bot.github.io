@@ -54,6 +54,31 @@ const players = [
     active: false, notes: null, updated_at: iso(-60), names: [seen('Stinky', '2026-08-21', '2026-09-03')] },
 ]
 const ok = (v) => Promise.resolve(JSON.parse(JSON.stringify(v)))
+/* A Blob does not survive the JSON round-trip above, so the endpoints that
+   return a file hand theirs straight back. */
+const asFile = (v) => Promise.resolve(v)
+/* A BGB registration and the cards drawn from it. The card is a real PNG at
+   the shape a briefing card has, so the panel lays out the way it will. */
+const PNG = Uint8Array.from(atob(
+  'iVBORw0KGgoAAAANSUhEUgAAAL4AAACfCAIAAADI5vRZAAABbUlEQVR42u3XzQmDMBiA' +
+  '4aaG0iG8eMkEDuYoGcwxOkQQBK8llWChFGyf5xZy+3jJT0hDf4H3XY0A6SAdziA+L+bs' +
+  '3UPLOD3206n2oHGyuLDw1kE6SIe/+WG9ut86M/qUsqxOHZAO0kE6SAfpgHSQDtJBOkgH' +
+  'pIN0kA7SQTogHaSDdJAOSAfpIB2kg3RAOkgH6SAdpAPSQTpIB+mAdJAO0kE6SAekg3SQ' +
+  'DtJBOiAdpIN0kA5IB+kgHaSDdEA6SAfpIB2kA9JBOkgH6YB0kA7SQTpIB6SDdJAOZxXb' +
+  '22VZzQinDtJBOkgH6YB0kA7SQTogHaSDdJAO0gHpIB2kg3SQDkgH6SAdpIN0QDpIB+kg' +
+  'HZAO0kE6SAfpgHSQDtJBOkgHpIN0kA7SAekgHaSDdJAOSAfpIB2kg3RAOkgH6SAdkA7S' +
+  'QTpIB+mAdJAO0kE6SAekg3SQDtIB6SAdvixW6zn3hsIRIQ1awYWFdJAOP2sDlSsPdAX+' +
+  'QYYAAAAASUVORK5CYII='), (c) => c.charCodeAt(0))
+const seat = (name, cp) => ({ player_id: name, name, team: 'A', role: 'starter', bgb_cp: cp })
+const teamA = {
+  team: 'A', warnings: [],
+  starters: [seat('Kagura Forger', 176699474), seat('Emeraldream', 173470331),
+             seat('・Celine・', 172309865), seat('Anya Forger', 111212361),
+             seat('\\Aaryan', 104369720), seat('ひなた¥', 34591756)],
+  substitutes: [seat('ProTein', 29633012), seat('meimei', 18267041)],
+}
+const teamB = { ...teamA, team: 'B', starters: teamA.starters.slice(0, 4), substitutes: [] }
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -73,7 +98,7 @@ export const api = {
   guidedSetup: () => ok({}),
   roles: () => ok([]),
   listPlayers: () => ok(players),
-  rosterTemplate: () => ok({ blob: new Blob(['template']), name: 'pou-roster.xlsx' }),
+  rosterTemplate: () => asFile({ blob: new Blob(['template']), name: 'pou-roster.xlsx' }),
   previewRosterImport: () => ok({
     as_of: '2026-09-25', fingerprint: 'abc123', unchanged: 88, problems: [],
     rows: [{ line: 2, id: 'a1', name: 'Nyx' }],
@@ -86,6 +111,41 @@ export const api = {
   }),
   applyRosterImport: (p) => ok({ ...p, as_of: '2026-09-25', unchanged: 88, problems: [],
     updated: [1, 2], renamed: [1], added: [1], left: [1], returning: [] }),
+  bgbLanguages: () => ok([
+    { code: 'en', native: 'English', english: 'English' },
+    { code: 'ko', native: '한국어', english: 'Korean' },
+    { code: 'ja', native: '日本語', english: 'Japanese' },
+    { code: 'zh', native: '繁體中文', english: 'Chinese (Traditional)' },
+    { code: 'zh_cn', native: '中文', english: 'Chinese (Simplified)' },
+    { code: 'th', native: 'ไทย', english: 'Thai' },
+    { code: 'vi', native: 'Tiếng Việt', english: 'Vietnamese' },
+    { code: 'id', native: 'Bahasa Indonesia', english: 'Indonesian' },
+    { code: 'tr', native: 'Türkçe', english: 'Turkish' },
+    { code: 'de', native: 'Deutsch', english: 'German' },
+    { code: 'it', native: 'Italiano', english: 'Italian' },
+    { code: 'fr', native: 'Français', english: 'French' },
+    { code: 'es', native: 'Español', english: 'Spanish' },
+    { code: 'pt', native: 'Português', english: 'Portuguese' },
+    { code: 'ar', native: 'اللغة العربية', english: 'Arabic' },
+  ]),
+  bgbEvents: () => ok([
+    { id: 4, battle_date: '2026-09-26', starters: { A: 20, B: 20 }, substitutes: { A: 6, B: 10 } },
+    { id: 3, battle_date: '2026-09-12', starters: { A: 20, B: 18 }, substitutes: { A: 10, B: 4 } },
+  ]),
+  bgbRoster: () => ok([teamA, teamB]),
+  bgbTemplate: () => asFile({ blob: new Blob(['sheet']), name: 'pou-bgb-roster.xlsx' }),
+  previewBgbRoster: () => ok({
+    battle_date: '2026-09-26', fingerprint: 'abc123', problems: [], replaces: 30, event_id: null,
+    rows: [{ team: 'A', line: 2, id: 'a1', name: 'Kagura Forger', role: 'starter' }],
+    teams: [teamA, teamB],
+    cp_changes: [{ player_id: 'a1', name: 'Kagura Forger', before: 174888788, after: 176699474 }],
+  }),
+  applyBgbRoster: () => ok({
+    battle_date: '2026-09-26', fingerprint: 'abc123', problems: [], replaces: 0, event_id: 4,
+    rows: [], teams: [teamA, teamB], cp_changes: [],
+  }),
+  bgbCard: () => asFile({ blob: new Blob([PNG], { type: 'image/png' }), name: 'lineup_teamA.png' }),
+  bgbCards: () => asFile({ blob: new Blob(['zip']), name: 'bgb-20260926-cards.zip' }),
   createPlayer: (p) => ok({ ...p, id: 'new', active: true, updated_at: iso(0), names: [seen(p.name, '2026-09-23')] }),
   updatePlayer: (id, p) => ok({ ...players.find((x) => x.id === id), ...p }),
   deletePlayer: () => ok(null),
