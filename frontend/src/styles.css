@@ -625,6 +625,18 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .members-tools input { flex: 1 1 240px; min-width: 0; }
 .members-tools .row { flex: none; }
 
+/* The roster spreadsheet panel: a row of controls that wraps on a phone, then
+   the changes the file would make. */
+.import .row { margin-top: 12px; }
+.import .as-of { flex: 0 0 auto; }
+.import .file-pick { flex: 1 1 220px; min-width: 0; }
+.import .file-pick input { padding: 9px 10px; }
+.import .banner ul { margin: 6px 0 0; padding-left: 18px; }
+.import-result { margin-top: 16px; display: grid; gap: 14px; }
+.import-group { display: grid; gap: 6px; min-width: 0; }
+.import-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 13.5px; }
+.import-list li { overflow-wrap: anywhere; }
+
 .names { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
 .names li { display: flex; flex-wrap: wrap; gap: 0 8px; min-width: 0; }
 .names li > span:first-child { overflow-wrap: anywhere; }

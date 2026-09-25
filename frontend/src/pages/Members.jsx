@@ -4,6 +4,8 @@ import Banner from '../components/Banner.jsx'
 import EditorPanel from '../components/EditorPanel.jsx'
 import ListRow from '../components/ListRow.jsx'
 import ListSection from '../components/ListSection.jsx'
+import RosterImport from '../components/RosterImport.jsx'
+import { full, short } from '../lib/cp.js'
 
 /**
  * Every game account the alliance tracks, followed across nickname changes.
@@ -13,12 +15,6 @@ import ListSection from '../components/ListSection.jsx'
  * a spelling fix replaces a name that was misread and was never really theirs.
  * Someone who leaves is marked, not deleted, so a return is the same player.
  */
-
-// The way the alliance says CP out loud: 54.5M, 1.6B.
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-const exact = new Intl.NumberFormat('en')
-const short = (v) => (v == null ? '—' : compact.format(v))
-const full = (v) => (v == null ? '—' : exact.format(v))
 
 /* Calendar dates, not moments: parsed and printed in UTC so no browser zone
    can move one across midnight. */
@@ -113,6 +109,8 @@ export default function Members() {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState({})
   const [showLeft, setShowLeft] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [note, setNote] = useState(null)
 
   useEffect(() => {
     api.listPlayers().then(setRows).catch((e) => setError(e.message))
@@ -326,10 +324,34 @@ export default function Members() {
     <div className="page">
       <div className="page-head">
         <h2>Members</h2>
-        <button className="btn primary" onClick={() => setForm({ ...EMPTY })}>Add member</button>
+        <div className="row">
+          <button className="btn" onClick={() => { setImporting(!importing); setNote(null) }}>
+            {importing ? 'Close import' : 'Import spreadsheet'}
+          </button>
+          <button className="btn primary" onClick={() => setForm({ ...EMPTY })}>Add member</button>
+        </div>
       </div>
 
       <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
+      <Banner tone="ok" onDismiss={() => setNote(null)}>{note}</Banner>
+
+      {importing && (
+        <RosterImport
+          onError={setError}
+          onApplied={(done) => {
+            const counts = [
+              [done.updated.length, 'updated'],
+              [done.renamed.length, 'renamed'],
+              [done.added.length, 'added'],
+              [done.left.length, 'marked as left'],
+              [done.returning.length, 'back'],
+            ].filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`)
+            setNote(`Imported, as of ${done.as_of}: ${counts.join(', ') || 'nothing to change'}.`)
+            setImporting(false)
+            api.listPlayers().then(setRows).catch((e) => setError(e.message))
+          }}
+        />
+      )}
 
       {form && !form.id && (
         <EditorPanel title="New member" onSubmit={save} onCancel={() => setForm(null)} busy={busy} saveLabel="Add">

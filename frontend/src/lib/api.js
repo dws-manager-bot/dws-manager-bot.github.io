@@ -51,11 +51,15 @@ async function request(path, options = {}) {
   const token = getToken()
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+    headers: Object.fromEntries(
+      Object.entries({
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+        // An upload sets this to undefined so the browser can supply the
+        // multipart boundary, which it cannot do if we name the type ourselves.
+      }).filter(([, value]) => value !== undefined),
+    ),
   })
 
   if (res.status === 401) {
@@ -131,6 +135,27 @@ export const api = {
     request(`/history${entity ? `?entity=${entity}` : ''}`),
 
   listPlayers: () => request('/players'),
+
+  /* The roster spreadsheet. The template is a file rather than JSON, and the
+     upload is a form, so both go around `request`, which speaks JSON only. */
+  rosterTemplate: async () => {
+    const res = await fetch(`${API_URL}/players/template.xlsx`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (!res.ok) throw new ApiError(res.status, 'Could not build the template')
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')
+    return { blob: await res.blob(), name: name ? name[1] : 'pou-roster.xlsx' }
+  },
+  previewRosterImport: (file, asOf) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('as_of', asOf)
+    // No Content-Type: the browser adds the multipart boundary itself.
+    return request('/players/import/preview', { method: 'POST', body: form, headers: { 'Content-Type': undefined } })
+  },
+  applyRosterImport: (data) =>
+    request('/players/import/apply', { method: 'POST', body: JSON.stringify(data) }),
+
   createPlayer: (data) => request('/players', { method: 'POST', body: JSON.stringify(data) }),
   // PATCH, not PUT: only the fields sent change, and a name change says what it is.
   updatePlayer: (id, data) =>

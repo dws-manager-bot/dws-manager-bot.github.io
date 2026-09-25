@@ -34,6 +34,7 @@ const ACTIONS = {
   'player.left': ['marked a member as left', 'del'],
   'player.returned': ['marked a member as returned', 'add'],
   'player.delete': ['deleted a member', 'del'],
+  'player.import': ['imported screenshots', 'sync'],
 }
 
 const describe = (action) => ACTIONS[action]?.[0] ?? action
