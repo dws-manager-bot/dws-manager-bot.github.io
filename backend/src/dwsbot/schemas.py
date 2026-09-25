@@ -425,12 +425,16 @@ class BgbSheetRowIn(BaseModel):
 
 
 class BgbSeatOut(BaseModel):
+    registration_id: int | None = None   # absent until the seat has been recorded
     player_id: str | None = None         # absent for a mercenary
     name: str
     team: Literal["A", "B"]
     role: Literal["starter", "substitute"]
     bgb_cp: int | None = None
     mercenary: bool = False
+    # Filled in once the result has been read. `participated` is null until then.
+    score: int | None = None
+    participated: bool | None = None
 
 
 class BgbCpChangeOut(BaseModel):
@@ -479,9 +483,61 @@ class BgbEventOut(BaseModel):
     starters: dict[str, int] = Field(default_factory=dict)
     substitutes: dict[str, int] = Field(default_factory=dict)
     recorded_at: datetime | None = None
+    results_at: datetime | None = None   # null until the result has been read
 
 
 class BgbLanguageOut(BaseModel):
     code: str
     native: str
     english: str
+
+
+class BgbResultRowIn(BaseModel):
+    """One seat's result, as the preview returned it."""
+
+    line: int = 0
+    id: int
+    score: int | None = Field(default=None, ge=0)
+    participated: bool | None = None     # null = take the score's word
+
+
+class BgbOutcomeOut(BaseModel):
+    registration_id: int
+    name: str
+    team: Literal["A", "B"]
+    role: Literal["starter", "substitute"]
+    bgb_cp: int | None = None
+    score: int | None = None
+    participated: bool
+    listed: bool                         # in the game's ranking at all
+    no_show: bool = False
+
+
+class BgbResultTeamOut(BaseModel):
+    team: Literal["A", "B"]
+    outcomes: list[BgbOutcomeOut] = Field(default_factory=list)
+    fought: int = 0
+    listed_zero: int = 0                 # in the ranking with nothing scored
+    absent: int = 0                      # not in the ranking at all
+    total_score: int = 0
+
+
+class BgbResultPreviewOut(BaseModel):
+    """What a result upload would record, before anything is written."""
+
+    event_id: int
+    battle_date: date
+    fingerprint: str
+    rows: list[BgbResultRowIn] = Field(default_factory=list)
+    teams: list[BgbResultTeamOut] = Field(default_factory=list)
+    no_shows: list[BgbOutcomeOut] = Field(default_factory=list)
+    problems: list[str] = Field(default_factory=list)
+    recorded: bool = False               # true once it has been applied
+
+
+class BgbResultApplyIn(BaseModel):
+    """The confirmed upload: the rows the preview showed."""
+
+    fingerprint: str
+    file_name: str | None = Field(default=None, max_length=200)
+    rows: list[BgbResultRowIn]

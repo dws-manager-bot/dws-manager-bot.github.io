@@ -22,6 +22,11 @@ from ...schemas import (
     BgbCpChangeOut,
     BgbEventOut,
     BgbLanguageOut,
+    BgbOutcomeOut,
+    BgbResultApplyIn,
+    BgbResultPreviewOut,
+    BgbResultRowIn,
+    BgbResultTeamOut,
     BgbRosterApplyIn,
     BgbRosterPreviewOut,
     BgbSeatOut,
@@ -76,6 +81,7 @@ async def list_events(session: DbSession, _: AdminUser):
     return [
         BgbEventOut(
             id=event.id, battle_date=event.battle_date, recorded_at=event.updated_at,
+            results_at=event.results_at,
             starters=tally.get(event.id, {}).get(sheet.STARTER, {}),
             substitutes=tally.get(event.id, {}).get(sheet.SUBSTITUTE, {}),
         )
@@ -234,9 +240,11 @@ async def event_roster(event_id: int, session: DbSession, _: AdminUser):
 
 def _seat(registration: BgbRegistration) -> BgbSeatOut:
     return BgbSeatOut(
+        registration_id=registration.id,
         player_id=str(registration.player_id) if registration.player_id else None,
         name=registration.name, team=registration.team, role=registration.role,
-        bgb_cp=registration.bgb_cp, mercenary=registration.player_id is None)
+        bgb_cp=registration.bgb_cp, mercenary=registration.player_id is None,
+        score=registration.score, participated=registration.participated)
 
 
 def _preview(plan: sheet.Plan, rows: list, players: list, battle_date: dt.date,
@@ -260,3 +268,113 @@ def _preview(plan: sheet.Plan, rows: list, players: list, battle_date: dt.date,
         cp_changes=[BgbCpChangeOut(**vars(c)) for c in plan.cp_changes],
         problems=plan.problems, replaces=replaces,
     )
+
+
+# --- the result -------------------------------------------------------------
+#
+# Recorded against the roster, because the game's result mail ranks both
+# alliances together and only our own seats matter. The sheet is therefore the
+# battle's own roster with a column to fill in, and cannot have rows added.
+
+@router.get("/events/{event_id}/results/template.xlsx",
+            summary="This battle's seats, with a column for what each scored")
+async def result_template(event_id: int, session: DbSession, _: AdminUser):
+    event = await _event(session, event_id)
+    registrations = await _registrations(session, event_id)
+    if not registrations:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nobody is registered for that battle")
+    stamp = event.battle_date.strftime("%Y%m%d")
+    return Response(
+        content=sheet.build_result_template(registrations, event.battle_date),
+        media_type=XLSX,
+        headers={"Content-Disposition": f'attachment; filename="pou-bgb-result-{stamp}.xlsx"'},
+    )
+
+
+@router.post("/events/{event_id}/results/preview", response_model=BgbResultPreviewOut,
+             summary="What an uploaded result would record; writes nothing")
+async def preview_result(
+    event_id: int,
+    session: DbSession,
+    _: AdminUser,
+    file: Annotated[UploadFile, File()],
+):
+    data = await file.read()
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That file is larger than 4 MB.")
+    event = await _event(session, event_id)
+    registrations = await _registrations(session, event_id)
+    rows, problems = sheet.read_result_workbook(data)
+    plan = sheet.plan_result(rows, registrations)
+    plan.problems = problems + plan.problems
+    return _result_preview(plan, rows, event, registrations)
+
+
+@router.post("/events/{event_id}/results/apply", response_model=BgbResultPreviewOut,
+             summary="Record a result the person has looked at and agreed to")
+async def apply_result(
+    event_id: int, payload: BgbResultApplyIn, session: DbSession, user: AdminUser,
+):
+    event = await _event(session, event_id)
+    registrations = await _registrations(session, event_id)
+    if sheet.result_fingerprint(registrations) != payload.fingerprint:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The roster changed while you were looking at this. Upload the file again.")
+    rows = [sheet.ResultRow(**row.model_dump()) for row in payload.rows]
+    plan = sheet.plan_result(rows, registrations)
+    if plan.problems:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, " ".join(plan.problems))
+
+    by_id = {r.id: r for r in registrations}
+    for outcome in plan.outcomes:
+        seat = by_id[outcome.registration_id]
+        seat.score = outcome.score
+        seat.participated = outcome.participated
+    event.results_at = dt.datetime.now(dt.UTC)
+
+    fought = sum(1 for o in plan.outcomes if o.participated)
+    summary = (f"BGB {event.battle_date}: {fought} of {len(plan.outcomes)} fought, "
+               f"{len(plan.no_shows)} starter no-show(s)")
+    await write_audit(session, user, "bgb.result", "bgb_event", str(event.id), {
+        "name": summary,
+        "battle_date": event.battle_date.isoformat(),
+        "uploaded_at": event.results_at.isoformat(timespec="seconds"),
+        "file": payload.file_name,
+        "counts": {t: {"fought": sum(1 for o in plan.of(t) if o.participated),
+                       "absent": sum(1 for o in plan.of(t) if not o.listed),
+                       "seats": len(plan.of(t))} for t in sheet.TEAMS},
+        "no_shows": [o.name for o in plan.no_shows],
+    })
+    await session.commit()
+    return _result_preview(plan, rows, event, registrations, recorded=True)
+
+
+def _outcome(o) -> BgbOutcomeOut:
+    return BgbOutcomeOut(
+        registration_id=o.registration_id, name=o.name, team=o.team, role=o.role,
+        bgb_cp=o.bgb_cp, score=o.score, participated=o.participated, listed=o.listed,
+        no_show=o.no_show)
+
+
+def _result_preview(plan: sheet.ResultPlan, rows: list, event: BgbEvent,
+                    registrations: list, recorded: bool = False) -> BgbResultPreviewOut:
+    teams = []
+    for team in sheet.TEAMS:
+        seats = plan.of(team)
+        if not seats:
+            continue
+        # Strongest first, so the sheet reads like the ranking it came from.
+        seats = sorted(seats, key=lambda o: (-(o.score or 0), o.name))
+        teams.append(BgbResultTeamOut(
+            team=team, outcomes=[_outcome(o) for o in seats],
+            fought=sum(1 for o in seats if o.participated),
+            listed_zero=sum(1 for o in seats if o.listed and not o.participated),
+            absent=sum(1 for o in seats if not o.listed),
+            total_score=sum(o.score or 0 for o in seats)))
+    return BgbResultPreviewOut(
+        event_id=event.id, battle_date=event.battle_date,
+        fingerprint=sheet.result_fingerprint(registrations),
+        rows=[BgbResultRowIn(**vars(r)) for r in rows], teams=teams,
+        no_shows=[_outcome(o) for o in plan.no_shows],
+        problems=plan.problems, recorded=recorded)

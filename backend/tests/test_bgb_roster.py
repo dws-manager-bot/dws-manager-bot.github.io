@@ -460,3 +460,214 @@ async def test_a_mercenary_takes_a_seat_on_the_card(client_factory):
         event_id = applied.json()["event_id"]
         r = await c.get(f"/bgb/events/{event_id}/card.png?team=A&lang=ja")
     assert r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+# --- the result -------------------------------------------------------------
+#
+# Read off the battle-result mail, which ranks both alliances together. Only our
+# own seats matter, so the sheet is the roster itself and rows cannot be added.
+
+def result_sheet_of(per_team: dict[str, list[dict]]) -> bytes:
+    book = Workbook()
+    book.remove(book.active)
+    for team in sheet.TEAMS:
+        page = book.create_sheet(sheet.SHEETS[team])
+        page.append([heading for heading, _ in sheet.RESULT_COLUMNS])
+        for row in per_team.get(team, []):
+            page.append([row.get(attribute) for _, attribute in sheet.RESULT_COLUMNS])
+    out = io.BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+async def recorded_battle(client_factory, starters=20, substitutes=10):
+    """A battle with a roster already in, returning (event_id, seats)."""
+    people = await seed(client_factory.maker)
+    async with client_factory() as c:
+        _, applied = await record(c, {"A": marks(people, starters, substitutes)})
+        event_id = applied.json()["event_id"]
+        teams = (await c.get(f"/bgb/events/{event_id}")).json()
+    seats = teams[0]["starters"] + teams[0]["substitutes"]
+    return event_id, seats
+
+
+async def upload_result(client, event_id: int, rows: list[dict]):
+    return await client.post(
+        f"/bgb/events/{event_id}/results/preview",
+        files={"file": ("r.xlsx", result_sheet_of({"A": rows}), "x")})
+
+
+def scores(seats, **by_name) -> list[dict]:
+    """Every seat, scored. A name absent from `by_name` was not in the ranking."""
+    return [{"id": s["registration_id"], "name": s["name"], "team": s["team"],
+             "role": s["role"], "score": by_name.get(s["name"].replace(" ", "_"))}
+            for s in seats]
+
+
+@pytest.mark.asyncio
+async def test_the_result_template_is_the_battle_s_own_roster(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 20, 10)
+    async with client_factory() as c:
+        r = await c.get(f"/bgb/events/{event_id}/results/template.xlsx")
+    assert r.status_code == 200
+    book = load_workbook(io.BytesIO(r.content))
+    assert book.sheetnames == ["Team A", "Team B", sheet.HELP_SHEET]
+    page = book["Team A"]
+    assert [c.value for c in page[1]] == [h for h, _ in sheet.RESULT_COLUMNS]
+    assert page.max_row == len(seats) + 1          # every seat, and nobody else
+    # Starters first, then substitutes: the order the roster is read in.
+    assert [page.cell(row=r, column=4).value for r in (2, page.max_row)] == \
+        ["starter", "substitute"]
+    # Score and Participated are the two handed over empty.
+    assert [page.cell(row=r, column=6).value for r in range(2, page.max_row + 1)] == \
+        [None] * len(seats)
+    assert "20260926" in r.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_a_score_is_read_the_way_the_game_prints_it(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 3, 0)
+    rows = [{"id": seats[0]["registration_id"], "score": "2M"},
+            {"id": seats[1]["registration_id"], "score": "993.7K"},
+            {"id": seats[2]["registration_id"], "score": "1,300,000"}]
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    assert r.json()["problems"] == []
+    got = {o["name"]: o["score"] for o in r.json()["teams"][0]["outcomes"]}
+    assert sorted(got.values(), reverse=True) == [2_000_000, 1_300_000, 993_700]
+
+
+@pytest.mark.asyncio
+async def test_blank_and_zero_are_the_two_ways_of_not_fighting(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 3, 0)
+    rows = [{"id": seats[0]["registration_id"], "score": "1.4M"},
+            {"id": seats[1]["registration_id"], "score": 0},      # listed, never fought
+            {"id": seats[2]["registration_id"]}]                  # not in the ranking
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    body = r.json()
+    assert body["problems"] == []
+    team = body["teams"][0]
+    assert (team["fought"], team["listed_zero"], team["absent"]) == (1, 1, 1)
+    by_name = {o["name"]: o for o in team["outcomes"]}
+    zero = by_name[seats[1]["name"]]
+    gone = by_name[seats[2]["name"]]
+    assert zero["listed"] is True and zero["participated"] is False and zero["score"] == 0
+    assert gone["listed"] is False and gone["participated"] is False and gone["score"] is None
+    # All three are starters, so the two who did not fight are the follow-up.
+    assert {o["name"] for o in body["no_shows"]} == {seats[1]["name"], seats[2]["name"]}
+
+
+@pytest.mark.asyncio
+async def test_only_a_starter_counts_as_a_no_show(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 1, 1)
+    rows = [{"id": s["registration_id"], "score": 0} for s in seats]
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    body = r.json()
+    assert [o["role"] for o in body["no_shows"]] == ["starter"]
+
+
+@pytest.mark.asyncio
+async def test_a_blank_mark_takes_the_score_s_word(client_factory):
+    """Otherwise every row left unticked would contradict the number beside it."""
+    event_id, seats = await recorded_battle(client_factory, 2, 0)
+    rows = [{"id": seats[0]["registration_id"], "score": "1M"},
+            {"id": seats[1]["registration_id"], "score": 0}]
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    body = r.json()
+    assert body["problems"] == []
+    assert [o["participated"] for o in body["teams"][0]["outcomes"]] == [True, False]
+
+
+@pytest.mark.asyncio
+async def test_a_mark_that_contradicts_the_score_is_reported(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 2, 0)
+    async with client_factory() as c:
+        rows = [{"id": seats[0]["registration_id"], "score": "1M", "participated": "X"},
+                {"id": seats[1]["registration_id"], "score": 0}]
+        r = await upload_result(c, event_id, rows)
+        assert "is marked as not having fought" in " ".join(r.json()["problems"])
+
+        rows = [{"id": seats[0]["registration_id"], "score": 0, "participated": "O"},
+                {"id": seats[1]["registration_id"], "score": 0}]
+        r = await upload_result(c, event_id, rows)
+        assert "but scored zero" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_a_partial_file_is_refused(client_factory):
+    """A result covers the whole roster; a short file would silently zero the rest."""
+    event_id, seats = await recorded_battle(client_factory, 4, 0)
+    rows = [{"id": seats[0]["registration_id"], "score": "1M"}]
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    assert "3 of the battle's 4 seats are not in the file" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_result_records_nothing(client_factory):
+    event_id, _ = await recorded_battle(client_factory, 2, 0)
+    async with client_factory() as c:
+        r = await c.post(f"/bgb/events/{event_id}/results/preview",
+                         files={"file": ("r.xlsx", b"not a spreadsheet", "x")})
+    assert "could not be opened" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_rows_cannot_be_added_to_a_result(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 2, 0)
+    rows = [{"id": s["registration_id"], "score": 0} for s in seats] + \
+           [{"name": "Somebody Else", "score": "1M"}]
+    async with client_factory() as c:
+        r = await upload_result(c, event_id, rows)
+    assert "no registration id" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_applying_a_result_writes_the_scores_and_stamps_the_battle(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 3, 0)
+    rows = [{"id": seats[0]["registration_id"], "score": "2M"},
+            {"id": seats[1]["registration_id"], "score": 0},
+            {"id": seats[2]["registration_id"]}]
+    async with client_factory() as c:
+        preview = (await upload_result(c, event_id, rows)).json()
+        applied = await c.post(f"/bgb/events/{event_id}/results/apply", json={
+            "fingerprint": preview["fingerprint"], "file_name": "r.xlsx",
+            "rows": preview["rows"]})
+        assert applied.status_code == 200, applied.text
+        assert applied.json()["recorded"] is True
+        listed = (await c.get("/bgb/events")).json()
+        seats_now = (await c.get(f"/bgb/events/{event_id}")).json()[0]["starters"]
+
+    assert listed[0]["results_at"] is not None
+    by_name = {s["name"]: s for s in seats_now}
+    assert by_name[seats[0]["name"]]["score"] == 2_000_000
+    assert by_name[seats[0]["name"]]["participated"] is True
+    assert by_name[seats[1]["name"]]["score"] == 0
+    assert by_name[seats[1]["name"]]["participated"] is False
+    # Absent from the ranking: no score, but we have looked.
+    assert by_name[seats[2]["name"]]["score"] is None
+    assert by_name[seats[2]["name"]]["participated"] is False
+
+    async with client_factory.maker() as s:
+        entry = await s.scalar(select(AuditLog).where(AuditLog.action == "bgb.result"))
+    assert entry.detail["counts"]["A"] == {"fought": 1, "absent": 1, "seats": 3}
+    assert len(entry.detail["no_shows"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_result_refuses_once_the_roster_has_moved(client_factory):
+    event_id, seats = await recorded_battle(client_factory, 2, 0)
+    rows = [{"id": s["registration_id"], "score": 0} for s in seats]
+    async with client_factory() as c:
+        preview = (await upload_result(c, event_id, rows)).json()
+        async with client_factory.maker() as s:   # the roster is re-recorded meanwhile
+            seat = await s.get(BgbRegistration, seats[0]["registration_id"])
+            seat.name = "Renamed"
+            await s.commit()
+        r = await c.post(f"/bgb/events/{event_id}/results/apply", json={
+            "fingerprint": preview["fingerprint"], "rows": preview["rows"]})
+    assert r.status_code == 409
+    assert "roster changed while you were looking" in r.json()["detail"]

@@ -154,6 +154,9 @@ class BgbEvent(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     battle_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
     note: Mapped[str | None] = mapped_column(Text)
+    # When the result was read in. Null until then, which is what tells "nobody
+    # fought" apart from "we have not looked yet".
+    results_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     registrations: Mapped[list[BgbRegistration]] = relationship(
         back_populates="event", cascade="all, delete-orphan"
@@ -192,6 +195,17 @@ class BgbRegistration(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     bgb_cp: Mapped[int | None] = mapped_column(BigInteger)
+
+    # Filled in after the battle, from the result mail's ranking.
+    #
+    # Three states, and the difference between them is the point: null score
+    # with `participated` set means they were not in the ranking at all, and so
+    # were dropped from the line-up before the whistle; a score of zero means
+    # the game listed them and they never fought. `participated` is null until
+    # the result is read, and is the admin's own reading where they disagree
+    # with the number -- which is why it is stored rather than derived.
+    score: Mapped[int | None] = mapped_column(BigInteger)
+    participated: Mapped[bool | None] = mapped_column(Boolean)
 
     event: Mapped[BgbEvent] = relationship(back_populates="registrations")
     player: Mapped[Player | None] = relationship()
