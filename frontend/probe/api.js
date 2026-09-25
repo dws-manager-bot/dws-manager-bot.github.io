@@ -70,11 +70,13 @@ const PNG = Uint8Array.from(atob(
   'QTpIB+mAdJAO0kE6SAekg3SQDtIB6SAdvixW6zn3hsIRIQ1awYWFdJAOP2sDlSsPdAX+' +
   'QYYAAAAASUVORK5CYII='), (c) => c.charCodeAt(0))
 const seat = (name, cp) => ({ player_id: name, name, team: 'A', role: 'starter', bgb_cp: cp })
+const merc = (name, cp) => ({ player_id: null, name, team: 'A', role: 'starter', bgb_cp: cp, mercenary: true })
 const teamA = {
   team: 'A', warnings: [],
   starters: [seat('Kagura Forger', 176699474), seat('Emeraldream', 173470331),
              seat('・Celine・', 172309865), seat('Anya Forger', 111212361),
-             seat('\\Aaryan', 104369720), seat('ひなた¥', 34591756)],
+             seat('\\Aaryan', 104369720), merc('人間です', 64884228),
+             merc('ウルフなう', 45472553), seat('ひなた¥', 34591756)],
   substitutes: [seat('ProTein', 29633012), seat('meimei', 18267041)],
 }
 const teamB = { ...teamA, team: 'B', starters: teamA.starters.slice(0, 4), substitutes: [] }

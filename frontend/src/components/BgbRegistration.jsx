@@ -17,13 +17,17 @@ const TEAM_LABEL = { A: 'Team A', B: 'Team B' }
 
 function Seats({ title, seats }) {
   if (!seats.length) return null
+  const hired = seats.filter((s) => s.mercenary).length
   return (
     <div className="import-group">
-      <span className="label">{title} ({seats.length})</span>
+      <span className="label">
+        {title} ({seats.length}){hired > 0 && `, ${hired} hired`}
+      </span>
       <ul className="import-list">
         {seats.map((s) => (
-          <li key={s.player_id}>
+          <li key={s.player_id ?? `hired:${s.name}`}>
             <b>{s.name}</b> <span className="muted">{short(s.bgb_cp)}</span>
+            {s.mercenary && <span className="tag">mercenary</span>}
           </li>
         ))}
       </ul>
@@ -89,7 +93,9 @@ export default function BgbRegistration({ onRecorded, onError }) {
       <h3>Record a registration</h3>
       <p className="muted small">
         Download the sheet, mark O against the starters and substitutes on each team, and upload
-        it back. Only the marked are recorded. Nothing is written until you confirm.
+        it back. Only the marked are recorded. Nothing is written until you confirm. A mercenary
+        from another alliance gets a new row with no player id, marked O under Mercenary — they
+        take a seat for this battle without joining the Members tab.
       </p>
 
       <div className="row wrap">

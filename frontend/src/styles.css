@@ -949,6 +949,13 @@ input[type="range"] {
 }
 .warn-line { margin: 0; font-size: 13px; color: var(--warn); overflow-wrap: anywhere; }
 
+/* A mercenary is a footnote beside a name, not a badge competing with it, so
+   this is the quiet form of .tag. */
+.import-list .tag {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  font-weight: 500; margin-left: 6px;
+}
+
 .bgb-chosen { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 
 .bgb-cards .bgb-teams { margin-bottom: 10px; }
