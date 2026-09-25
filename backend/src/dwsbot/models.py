@@ -141,6 +141,63 @@ class PlayerName(Base):
     __table_args__ = (UniqueConstraint("player_id", "name", name="uq_player_name"),)
 
 
+class BgbEvent(Base, TimestampMixin):
+    """One Black Gold Battlefield, identified by the day it is fought.
+
+    Registration closes on the Thursday and the roster screenshots arrive on the
+    Friday, but the date we file everything under is the battle's own — the same
+    `<YYYYMMDD>` the folders on the admin's Mac use.
+    """
+
+    __tablename__ = "bgb_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    battle_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
+    note: Mapped[str | None] = mapped_column(Text)
+
+    registrations: Mapped[list[BgbRegistration]] = relationship(
+        back_populates="event", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<BgbEvent {self.battle_date}>"
+
+
+class BgbRegistration(Base, TimestampMixin):
+    """A player's seat on one team for one battle. Only the registered are rows.
+
+    `name` and `bgb_cp` are copies taken when the roster was recorded, not
+    lookups. The lineup card for a battle has to keep showing the CP the seats
+    were drafted on, and the name the member was going by that week, however
+    much either has moved since.
+    """
+
+    __tablename__ = "bgb_registrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("bgb_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The game runs two teams, each with its own roster of 20 + 10.
+    team: Mapped[str] = mapped_column(String(1), nullable=False)
+    # "starter" or "substitute" -- the game's own two words for the columns.
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    bgb_cp: Mapped[int | None] = mapped_column(BigInteger)
+
+    event: Mapped[BgbEvent] = relationship(back_populates="registrations")
+    player: Mapped[Player] = relationship()
+
+    # Nobody registers twice for the same battle, on either team.
+    __table_args__ = (UniqueConstraint("event_id", "player_id", name="uq_bgb_seat"),)
+
+    def __repr__(self) -> str:
+        return f"<BgbRegistration {self.name} {self.team}/{self.role}>"
+
+
 class Announcement(Base, TimestampMixin):
     """A recurring message the bot posts to a channel on a schedule.
 

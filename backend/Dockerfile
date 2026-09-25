@@ -6,6 +6,17 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Fonts for the BGB briefing cards, which are drawn in fifteen languages. The
+# slim image ships none at all, and the choices here are not interchangeable:
+#   dejavu      Latin, and the only packaged face that both covers Arabic and
+#               carries Latin, which a card needs for the player names.
+#   noto-cjk    Korean, Japanese and both Chinese, in one collection.
+#   tlwg-loma   Thai. Noto's Thai face holds Thai and nothing else -- not one
+#               Latin letter -- so it cannot draw a card on its own.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        fonts-dejavu-core fonts-noto-cjk fonts-tlwg-loma-ttf \
+    && rm -rf /var/lib/apt/lists/*
+
 # Dependencies first so a code-only change reuses this layer.
 COPY pyproject.toml ./
 COPY src ./src

@@ -19,6 +19,13 @@ dependencies = [
     "croniter>=3.0.0",
     # The roster import: reads the uploaded workbook, writes the template.
     "openpyxl>=3.1.0",
+    # Draws the BGB briefing cards. The wheels carry Raqm, which is what shapes
+    # and reorders the Arabic one.
+    "Pillow>=10.4.0",
+    # Required, not optional: the card picks a font per string by reading each
+    # face's cmap, and without this it guesses, which draws names like
+    # "ČĔNGİZ ĤÃŃ" as empty boxes.
+    "fonttools>=4.50.0",
     # FastAPI needs this to accept an uploaded file at all.
     "python-multipart>=0.0.9",
 ]
@@ -57,3 +64,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["C408"]   # dict(...) keeps the test fixtures readable
+# Vendored, near-verbatim, from pou-management/bgb/bgb_lineup.py. Reformatting
+# it here would make the two copies diff against each other for no gain, and
+# the point of keeping it recognisable is that a change upstream can be carried
+# across by eye. Style is the upstream file's business.
+"src/dwsbot/bgb/lineup.py" = ["E501", "C408", "B905", "TRY300", "SIM210", "I001", "F811"]

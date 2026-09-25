@@ -408,3 +408,78 @@ class HealthOut(BaseModel):
     discord: bool
     scheduled_jobs: int
     bot_user: str | None = None
+
+
+# --- Black Gold Battlefield -------------------------------------------------
+
+class BgbSheetRowIn(BaseModel):
+    """One row of an uploaded registration sheet, as the preview returned it."""
+
+    team: Literal["A", "B"]
+    line: int = 0
+    id: uuid.UUID
+    name: str = Field(default="", max_length=100)
+    bgb_cp: int | None = Field(default=None, ge=0)
+    role: Literal["starter", "substitute"] | None = None
+
+
+class BgbSeatOut(BaseModel):
+    player_id: str
+    name: str
+    team: Literal["A", "B"]
+    role: Literal["starter", "substitute"]
+    bgb_cp: int | None = None
+
+
+class BgbCpChangeOut(BaseModel):
+    player_id: str
+    name: str
+    before: int | None = None
+    after: int
+
+
+class BgbTeamOut(BaseModel):
+    """One team's recorded roster, strongest first."""
+
+    team: Literal["A", "B"]
+    starters: list[BgbSeatOut] = Field(default_factory=list)
+    substitutes: list[BgbSeatOut] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class BgbRosterPreviewOut(BaseModel):
+    """What an upload would record, before anything is written."""
+
+    battle_date: date
+    fingerprint: str
+    rows: list[BgbSheetRowIn] = Field(default_factory=list)
+    teams: list[BgbTeamOut] = Field(default_factory=list)
+    cp_changes: list[BgbCpChangeOut] = Field(default_factory=list)
+    problems: list[str] = Field(default_factory=list)
+    replaces: int = 0          # seats already recorded for this date, to be replaced
+    event_id: int | None = None   # set once it has been recorded, never on a preview
+
+
+class BgbRosterApplyIn(BaseModel):
+    """The confirmed upload: the rows the preview showed."""
+
+    battle_date: date
+    fingerprint: str
+    file_name: str | None = Field(default=None, max_length=200)
+    rows: list[BgbSheetRowIn]
+
+
+class BgbEventOut(BaseModel):
+    """A battle whose roster has been recorded."""
+
+    id: int
+    battle_date: date
+    starters: dict[str, int] = Field(default_factory=dict)
+    substitutes: dict[str, int] = Field(default_factory=dict)
+    recorded_at: datetime | None = None
+
+
+class BgbLanguageOut(BaseModel):
+    code: str
+    native: str
+    english: str
