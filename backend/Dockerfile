@@ -31,9 +31,12 @@ WORKDIR /app
 #   noto-cjk    Korean, Japanese and both Chinese, in one collection.
 #   tlwg-loma   Thai. Noto's Thai face holds Thai and nothing else -- not one
 #               Latin letter -- so it cannot draw a card on its own.
-# libraqm0 is the runtime half of the Pillow built above.
+# The libraries after the fonts are the runtime half of the Pillow built above.
+# A wheel carries its own copies; one built from source links the system's, so
+# they have to be here or importing PIL fails outright.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        fonts-dejavu-core fonts-noto-cjk fonts-tlwg-loma-ttf libraqm0 \
+        fonts-dejavu-core fonts-noto-cjk fonts-tlwg-loma-ttf \
+        libraqm0 libfreetype6 libjpeg62-turbo zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 # Dependencies first so a code-only change reuses this layer.
