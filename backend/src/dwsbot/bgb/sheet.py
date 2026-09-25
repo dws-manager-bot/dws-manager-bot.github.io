@@ -34,6 +34,7 @@ MAX_STARTERS = 20
 MAX_SUBSTITUTES = 10
 
 STARTER, SUBSTITUTE = "starter", "substitute"
+MERCENARY = "mercenary"
 
 COLUMNS: list[tuple[str, str]] = [
     ("Player id", "id"),
@@ -41,9 +42,11 @@ COLUMNS: list[tuple[str, str]] = [
     ("BGB CP", "bgb_cp"),
     ("Starter (O/X)", STARTER),
     ("Substitute (O/X)", SUBSTITUTE),
+    ("Mercenary (O/X)", MERCENARY),
 ]
+MARKS = (STARTER, SUBSTITUTE, MERCENARY)
 WIDTHS = {"Player id": 38, "Name": 24, "BGB CP": 16,
-          "Starter (O/X)": 14, "Substitute (O/X)": 17}
+          "Starter (O/X)": 14, "Substitute (O/X)": 17, "Mercenary (O/X)": 16}
 
 # Typed by hand in a hurry, so read generously — but only where the meaning is
 # beyond doubt. Anything else is reported rather than guessed at.
@@ -67,8 +70,16 @@ HELP = [
     "is missing from these sheets has to be added on the Members tab first, since",
     "a registration is recorded against a player the site already knows.",
     "",
+    "Mercenaries from another alliance are the exception. Add a row at the bottom,",
+    "leave Player id empty, type their name and BGB CP, mark O under Mercenary, and",
+    "mark Starter or Substitute as usual. They count towards the team's limits and",
+    "take a seat on the card like anyone else. They are recorded against this",
+    "battle only — they never join the Members tab, because the member import reads",
+    "an absent row as somebody who left, and they were never here to leave.",
+    "",
     "BGB CP is what the site holds today. Correcting a number here updates the",
     "member's BGB CP as well, so the lineup cards are drafted on the real figures.",
+    "A mercenary's CP is only ever used for this battle.",
 ]
 
 
@@ -78,21 +89,23 @@ class SheetRow:
 
     team: str
     line: int
-    id: uuid.UUID
+    id: uuid.UUID | None               # None only for a mercenary, who is nobody's
     name: str
     bgb_cp: int | None = None
     role: str | None = None            # starter | substitute | None (not registered)
+    mercenary: bool = False
 
 
 @dataclass
 class Seat:
-    """A player registered for a battle."""
+    """Somebody registered for a battle: a member, or a mercenary hired for it."""
 
-    player_id: str
+    player_id: str | None              # None for a mercenary
     name: str
     team: str
     role: str
     bgb_cp: int | None = None
+    mercenary: bool = False
 
 
 @dataclass
@@ -137,8 +150,8 @@ def build_template(players: list, as_of: date | None = None) -> bytes:
             sheet.column_dimensions[get_column_letter(column)].width = WIDTHS[heading]
         for line, player in enumerate(ordered, 2):
             for column, (_, attribute) in enumerate(COLUMNS, 1):
-                if attribute in (STARTER, SUBSTITUTE):
-                    # The two columns to fill in, tinted so they are obvious.
+                if attribute in MARKS:
+                    # The columns to fill in, tinted so they are obvious.
                     cell = sheet.cell(row=line, column=column)
                     cell.fill = mark
                     cell.alignment = Alignment(horizontal="center")
@@ -148,6 +161,13 @@ def build_template(players: list, as_of: date | None = None) -> bytes:
                 if attribute == "id":
                     # Not protection, just a hint: this column is the site's, not yours.
                     cell.font = Font(color="808080")
+        # A mercenary has no row of their own until one is typed, so the sheet
+        # says where to type it rather than leaving the space unexplained.
+        note = sheet.cell(row=len(ordered) + 3, column=1,
+                          value="Mercenaries from another alliance: add rows here. "
+                                "Leave Player id empty, fill in Name and BGB CP, and mark "
+                                "O under Mercenary as well as Starter or Substitute.")
+        note.font = Font(color="808080", italic=True)
         sheet.freeze_panes = "A2"
         sheet.auto_filter.ref = (
             f"A1:{get_column_letter(len(COLUMNS))}{max(1, len(ordered) + 1)}"
@@ -225,6 +245,7 @@ def read_workbook(data: bytes) -> tuple[list[SheetRow], list[str]]:
             continue
 
         seen: dict[uuid.UUID, int] = {}
+        hired: dict[str, int] = {}
         for line, values in enumerate(rows[1:], 2):
             def cell(attribute: str, values=values, where=where):
                 index = where[attribute]
@@ -234,15 +255,61 @@ def read_workbook(data: bytes) -> tuple[list[SheetRow], list[str]]:
                 continue
             raw_id = str(cell("id") or "").strip()
             name = str(cell("name") or "").strip()
+            starter = _mark(cell(STARTER), "Starter", team, line, problems)
+            substitute = _mark(cell(SUBSTITUTE), "Substitute", team, line, problems)
+            mercenary = _mark(cell(MERCENARY), "Mercenary", team, line, problems)
+            try:
+                player_id = uuid.UUID(raw_id) if raw_id else None
+            except ValueError:
+                player_id = None
+            # Nothing marked and no id to match anyone by: not a registration at
+            # all. The note at the foot of the sheet reads like this, and so does
+            # anything jotted in the margin.
+            if player_id is None and not (starter or substitute or mercenary):
+                continue
+            if starter and substitute:
+                problems.append(f"{SHEETS[team]} row {line}: “{name}” is marked as both a "
+                                "starter and a substitute.")
+                continue
+            role = STARTER if starter else SUBSTITUTE if substitute else None
+            bgb_cp = _number(cell("bgb_cp"), team, line, problems)
+
+            if mercenary:
+                # Hired for this battle from another alliance. They have no member
+                # record, so everything the card needs has to be on the row.
+                if raw_id:
+                    problems.append(f"{SHEETS[team]} row {line}: “{name}” has a player id, so "
+                                    "they are a member. Clear the Mercenary column, or clear "
+                                    "the id if this is somebody else.")
+                    continue
+                if not name:
+                    problems.append(f"{SHEETS[team]} row {line}: a mercenary needs a name.")
+                    continue
+                if bgb_cp is None:
+                    problems.append(f"{SHEETS[team]} row {line}: “{name}” needs a BGB CP. "
+                                    "It is what decides which seat they take.")
+                    continue
+                if role is None:
+                    problems.append(f"{SHEETS[team]} row {line}: “{name}” is marked as a "
+                                    "mercenary but as neither a starter nor a substitute.")
+                    continue
+                if name in hired:
+                    problems.append(f"{SHEETS[team]} row {line}: “{name}” is also hired on "
+                                    f"row {hired[name]}.")
+                    continue
+                hired[name] = line
+                out.append(SheetRow(team=team, line=line, id=None, name=name, role=role,
+                                    bgb_cp=bgb_cp, mercenary=True))
+                continue
+
             if not raw_id:
                 problems.append(
                     f"{SHEETS[team]} row {line}: no player id"
                     + (f" for “{name}”" if name else "")
-                    + ". Add them on the Members tab first, then download the template again.")
+                    + ". Add them on the Members tab first and download the template again, "
+                      "or mark O under Mercenary if they are from another alliance.")
                 continue
-            try:
-                player_id = uuid.UUID(raw_id)
-            except ValueError:
+            if player_id is None:
                 problems.append(f"{SHEETS[team]} row {line}: “{raw_id}” is not a player id.")
                 continue
             if player_id in seen:
@@ -250,17 +317,8 @@ def read_workbook(data: bytes) -> tuple[list[SheetRow], list[str]]:
                                 f"row {seen[player_id]}.")
                 continue
             seen[player_id] = line
-
-            starter = _mark(cell(STARTER), "Starter", team, line, problems)
-            substitute = _mark(cell(SUBSTITUTE), "Substitute", team, line, problems)
-            if starter and substitute:
-                problems.append(f"{SHEETS[team]} row {line}: “{name}” is marked as both a "
-                                "starter and a substitute.")
-                continue
-            role = STARTER if starter else SUBSTITUTE if substitute else None
             out.append(SheetRow(
-                team=team, line=line, id=player_id, name=name, role=role,
-                bgb_cp=_number(cell("bgb_cp"), team, line, problems),
+                team=team, line=line, id=player_id, name=name, role=role, bgb_cp=bgb_cp,
             ))
     return out, problems
 
@@ -281,8 +339,20 @@ def plan_roster(rows: list[SheetRow], players: list) -> Plan:
                              "no roster to record.")
         return plan
 
+    current = {p.name for p in players if p.active}
     cp_seen: dict[str, CpChange] = {}
     for row in rows:
+        if row.mercenary:
+            # Nobody's member, so there is no record to check them against and
+            # nothing of theirs to update -- except that they must not be one of
+            # ours under a hand-typed name, which would put them on twice.
+            if row.name in current:
+                plan.problems.append(f"{SHEETS[row.team]} row {row.line}: “{row.name}” is "
+                                     "already a member. Mark their own row instead.")
+                continue
+            plan.seats.append(Seat(player_id=None, name=row.name, team=row.team,
+                                   role=row.role, bgb_cp=row.bgb_cp, mercenary=True))
+            continue
         player = by_id.get(str(row.id))
         if player is None:
             if row.role:
@@ -306,12 +376,15 @@ def plan_roster(rows: list[SheetRow], players: list) -> Plan:
             bgb_cp=row.bgb_cp if row.bgb_cp is not None else player.bgb_cp))
     plan.cp_changes = list(cp_seen.values())
 
-    both = {}
+    both: dict[str, str] = {}
     for seat in plan.seats:
-        if seat.player_id in both and both[seat.player_id] != seat.team:
-            plan.problems.append(f"“{seat.name}” is registered on both teams. A member plays "
-                                 "for one side.")
-        both[seat.player_id] = seat.team
+        # A mercenary has no id, so they are told apart by name -- which is all
+        # we know them by, and why two of them may not share one.
+        who = seat.player_id or f"hired:{seat.name}"
+        if who in both and both[who] != seat.team:
+            plan.problems.append(f"“{seat.name}” is registered on both teams. Nobody plays "
+                                 "for both sides.")
+        both[who] = seat.team
 
     for team in TEAMS:
         for role, cap, word in ((STARTER, MAX_STARTERS, "starters"),

@@ -417,18 +417,20 @@ class BgbSheetRowIn(BaseModel):
 
     team: Literal["A", "B"]
     line: int = 0
-    id: uuid.UUID
+    id: uuid.UUID | None = None          # absent only for a mercenary
     name: str = Field(default="", max_length=100)
     bgb_cp: int | None = Field(default=None, ge=0)
     role: Literal["starter", "substitute"] | None = None
+    mercenary: bool = False
 
 
 class BgbSeatOut(BaseModel):
-    player_id: str
+    player_id: str | None = None         # absent for a mercenary
     name: str
     team: Literal["A", "B"]
     role: Literal["starter", "substitute"]
     bgb_cp: int | None = None
+    mercenary: bool = False
 
 
 class BgbCpChangeOut(BaseModel):

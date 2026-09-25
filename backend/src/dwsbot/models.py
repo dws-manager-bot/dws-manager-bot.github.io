@@ -164,12 +164,17 @@ class BgbEvent(Base, TimestampMixin):
 
 
 class BgbRegistration(Base, TimestampMixin):
-    """A player's seat on one team for one battle. Only the registered are rows.
+    """A seat on one team for one battle. Only the registered are rows.
 
     `name` and `bgb_cp` are copies taken when the roster was recorded, not
     lookups. The lineup card for a battle has to keep showing the CP the seats
     were drafted on, and the name the member was going by that week, however
     much either has moved since.
+
+    A null `player_id` is a mercenary: hired from another alliance for this one
+    battle. They deliberately have no row in `players` — the member import reads
+    an absent row as somebody who left, and a mercenary was never here to leave —
+    so the copies above are all we ever know of them.
     """
 
     __tablename__ = "bgb_registrations"
@@ -178,8 +183,8 @@ class BgbRegistration(Base, TimestampMixin):
     event_id: Mapped[int] = mapped_column(
         ForeignKey("bgb_events.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    player_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    player_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), index=True
     )
     # The game runs two teams, each with its own roster of 20 + 10.
     team: Mapped[str] = mapped_column(String(1), nullable=False)
@@ -189,9 +194,11 @@ class BgbRegistration(Base, TimestampMixin):
     bgb_cp: Mapped[int | None] = mapped_column(BigInteger)
 
     event: Mapped[BgbEvent] = relationship(back_populates="registrations")
-    player: Mapped[Player] = relationship()
+    player: Mapped[Player | None] = relationship()
 
-    # Nobody registers twice for the same battle, on either team.
+    # A member registers once for a battle, on one team. Mercenaries slip past
+    # this, since two nulls do not collide; they are kept apart by name when the
+    # sheet is read, which is the only thing telling them apart anyway.
     __table_args__ = (UniqueConstraint("event_id", "player_id", name="uq_bgb_seat"),)
 
     def __repr__(self) -> str:

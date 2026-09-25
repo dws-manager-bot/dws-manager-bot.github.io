@@ -146,15 +146,19 @@ async def apply_roster(payload: BgbRosterApplyIn, session: DbSession, user: Admi
 
     for seat in plan.seats:
         session.add(BgbRegistration(
-            event_id=event.id, player_id=uuid.UUID(seat.player_id), team=seat.team,
-            role=seat.role, name=seat.name, bgb_cp=seat.bgb_cp))
+            event_id=event.id, team=seat.team, role=seat.role, name=seat.name,
+            bgb_cp=seat.bgb_cp,
+            # A mercenary is nobody's player, so the seat points at no row.
+            player_id=uuid.UUID(seat.player_id) if seat.player_id else None))
 
     by_id = {str(p.id): p for p in players}
     for change in plan.cp_changes:
         by_id[change.player_id].bgb_cp = change.after
 
     counts = {t: {"starters": len(plan.of(t, sheet.STARTER)),
-                  "substitutes": len(plan.of(t, sheet.SUBSTITUTE))} for t in sheet.TEAMS}
+                  "substitutes": len(plan.of(t, sheet.SUBSTITUTE)),
+                  "mercenaries": sum(1 for s in plan.seats if s.team == t and s.mercenary)}
+              for t in sheet.TEAMS}
     summary = "BGB {}: {}".format(payload.battle_date, ", ".join(
         f"Team {t} {counts[t]['starters']}+{counts[t]['substitutes']}" for t in sheet.TEAMS))
     await write_audit(session, user, "bgb.roster", "bgb_event", str(event.id), {
@@ -229,9 +233,10 @@ async def event_roster(event_id: int, session: DbSession, _: AdminUser):
 
 
 def _seat(registration: BgbRegistration) -> BgbSeatOut:
-    return BgbSeatOut(player_id=str(registration.player_id), name=registration.name,
-                      team=registration.team, role=registration.role,
-                      bgb_cp=registration.bgb_cp)
+    return BgbSeatOut(
+        player_id=str(registration.player_id) if registration.player_id else None,
+        name=registration.name, team=registration.team, role=registration.role,
+        bgb_cp=registration.bgb_cp, mercenary=registration.player_id is None)
 
 
 def _preview(plan: sheet.Plan, rows: list, players: list, battle_date: dt.date,

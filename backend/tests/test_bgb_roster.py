@@ -15,7 +15,7 @@ import pytest_asyncio
 from fastapi import FastAPI, HTTPException, status
 from httpx import ASGITransport, AsyncClient
 from openpyxl import Workbook, load_workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -108,6 +108,13 @@ def marks(people, starters: int, substitutes: int = 0, start: int = 0) -> list[d
     return rows
 
 
+def hired(name: str, cp: int, role: str = sheet.STARTER) -> dict:
+    """A mercenary's row: a name, a CP, no id, and the Mercenary column marked."""
+    return {"id": None, "name": name, "bgb_cp": cp, sheet.MERCENARY: "O",
+            sheet.STARTER: "O" if role == sheet.STARTER else "X",
+            sheet.SUBSTITUTE: "O" if role == sheet.SUBSTITUTE else "X"}
+
+
 async def upload(client, data: bytes, battle_date: date = BATTLE):
     return await client.post("/bgb/roster/preview",
                              files={"file": ("bgb.xlsx", data, "application/vnd.ms-excel")},
@@ -142,11 +149,15 @@ async def test_the_template_has_a_sheet_per_team_and_two_empty_columns(client_fa
     for team in ("Team A", "Team B"):
         page = book[team]
         assert [c.value for c in page[1]] == [h for h, _ in sheet.COLUMNS]
+        last = len(people) + 1
         # Every member is on both sheets, because either side may claim them.
-        assert page.max_row == len(people) + 1
-        # The two mark columns are handed over empty.
-        assert [page.cell(row=r, column=4).value for r in range(2, page.max_row + 1)] == [None] * 3
-        assert [page.cell(row=r, column=5).value for r in range(2, page.max_row + 1)] == [None] * 3
+        assert page.cell(row=last, column=2).value is not None
+        # The three mark columns are handed over empty.
+        for column in (4, 5, 6):
+            assert [page.cell(row=r, column=column).value
+                    for r in range(2, last + 1)] == [None] * 3
+        # ... and below them, where to type a mercenary in.
+        assert "Mercenaries" in str(page.cell(row=last + 2, column=1).value)
     # Strongest first, so the sheet reads in the order the game's popup does.
     assert book["Team A"].cell(row=2, column=2).value == people[0][0]
 
@@ -277,8 +288,9 @@ async def test_the_recording_is_audited(client_factory):
     async with client_factory.maker() as s:
         entry = await s.scalar(select(AuditLog))
     assert entry.action == "bgb.roster"
-    assert entry.detail["counts"] == {"A": {"starters": 20, "substitutes": 10},
-                                      "B": {"starters": 2, "substitutes": 0}}
+    assert entry.detail["counts"] == {
+        "A": {"starters": 20, "substitutes": 10, "mercenaries": 0},
+        "B": {"starters": 2, "substitutes": 0, "mercenaries": 0}}
     assert entry.detail["battle_date"] == BATTLE.isoformat()
     assert entry.detail["file"] == "bgb.xlsx"
 
@@ -332,3 +344,119 @@ async def test_a_recorded_roster_reads_back_strongest_first(client_factory):
     assert len(teams[0]["starters"]) == 20 and len(teams[0]["substitutes"]) == 10
     cps = [s["bgb_cp"] for s in teams[0]["starters"]]
     assert cps == sorted(cps, reverse=True)
+
+
+# --- mercenaries ------------------------------------------------------------
+#
+# Another alliance's players are hired for a battle now and then. They take a
+# real seat, so they belong on the card -- but never in `players`, because the
+# member import reads an absent row as somebody who left, and they were never
+# here to leave.
+
+@pytest.mark.asyncio
+async def test_a_mercenary_is_recorded_without_a_player(client_factory):
+    people = await seed(client_factory.maker)
+    rows = marks(people, 18, 10) + [hired("人間です", 64_884_228),
+                                    hired("ウルフなう", 45_472_553)]
+    async with client_factory() as c:
+        body, applied = await record(c, {"A": rows})
+    assert body["problems"] == []
+    assert applied.status_code == 200, applied.text
+    team = body["teams"][0]
+    assert len(team["starters"]) == 20 and len(team["substitutes"]) == 10
+    # No substitute was promoted to fill a seat, which is what happens when the
+    # mercenaries are missing instead.
+    assert team["warnings"] == []
+    guests = [s for s in team["starters"] if s["mercenary"]]
+    assert [s["name"] for s in guests] == ["人間です", "ウルフなう"]
+    assert all(s["player_id"] is None for s in guests)
+
+    async with client_factory.maker() as s:
+        rows_in_db = list(await s.scalars(select(BgbRegistration)))
+        hired_rows = [r for r in rows_in_db if r.player_id is None]
+        assert len(rows_in_db) == 30 and len(hired_rows) == 2
+        assert {r.name for r in hired_rows} == {"人間です", "ウルフなう"}
+        assert sorted(r.bgb_cp for r in hired_rows) == [45_472_553, 64_884_228]
+        # And they are nobody's member.
+        assert await s.scalar(select(func.count()).select_from(Player)) == len(people)
+
+
+@pytest.mark.asyncio
+async def test_a_mercenary_counts_towards_the_team_s_limits(client_factory):
+    people = await seed(client_factory.maker)
+    async with client_factory() as c:
+        r = await upload(c, sheet_of({"A": marks(people, 20) + [hired("Ronin", 50_000_000)]}))
+    assert "21 starters" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_a_mercenary_needs_a_name_a_cp_and_a_seat(client_factory):
+    await seed(client_factory.maker, 2)
+    async with client_factory() as c:
+        r = await upload(c, sheet_of({"A": [{"name": "Ronin", sheet.MERCENARY: "O",
+                                             sheet.STARTER: "O"}]}))
+        assert "needs a BGB CP" in " ".join(r.json()["problems"])
+
+        r = await upload(c, sheet_of({"A": [{"bgb_cp": 5, sheet.MERCENARY: "O",
+                                             sheet.STARTER: "O"}]}))
+        assert "needs a name" in " ".join(r.json()["problems"])
+
+        # Marked as hired but given no seat: they would vanish silently.
+        r = await upload(c, sheet_of({"A": [{"name": "Ronin", "bgb_cp": 5,
+                                             sheet.MERCENARY: "O"}]}))
+        assert "neither a starter nor a substitute" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_a_member_cannot_be_marked_as_a_mercenary(client_factory):
+    people = await seed(client_factory.maker, 2)
+    name, player_id = people[0]
+    async with client_factory() as c:
+        # With their id still on the row.
+        r = await upload(c, sheet_of({"A": [{"id": player_id, "name": name, "bgb_cp": 5,
+                                             sheet.MERCENARY: "O", sheet.STARTER: "O"}]}))
+        assert "they are a member" in " ".join(r.json()["problems"])
+        # Or hand-typed as a new row under a name we already know.
+        r = await upload(c, sheet_of({"A": [hired(name, 5_000_000)]}))
+        assert "already a member" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_two_mercenaries_may_not_share_a_name(client_factory):
+    await seed(client_factory.maker, 2)
+    async with client_factory() as c:
+        r = await upload(c, sheet_of({"A": [hired("Ronin", 5_000_000),
+                                            hired("Ronin", 4_000_000)]}))
+    assert "also hired on" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_nobody_plays_for_both_teams_mercenary_included(client_factory):
+    people = await seed(client_factory.maker)
+    async with client_factory() as c:
+        r = await upload(c, sheet_of({"A": marks(people, 2) + [hired("Ronin", 5_000_000)],
+                                      "B": marks(people, 2, 0, start=20)
+                                           + [hired("Ronin", 5_000_000)]}))
+    assert "both sides" in " ".join(r.json()["problems"])
+
+
+@pytest.mark.asyncio
+async def test_a_line_of_free_text_is_not_a_registration(client_factory):
+    """The template's own note sits under the members, and is not a row."""
+    people = await seed(client_factory.maker, 3)
+    note = {"id": "Mercenaries: add rows here, leaving Player id empty."}
+    async with client_factory() as c:
+        r = await upload(c, sheet_of({"A": marks(people, 2) + [note]}))
+    assert r.json()["problems"] == []
+    assert len(r.json()["teams"][0]["starters"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_mercenary_takes_a_seat_on_the_card(client_factory):
+    people = await seed(client_factory.maker)
+    rows = marks(people, 19, 10) + [hired("人間です", 999_000_000)]
+    async with client_factory() as c:
+        _, applied = await record(c, {"A": rows})
+        event_id = applied.json()["event_id"]
+        r = await c.get(f"/bgb/events/{event_id}/card.png?team=A&lang=ja")
+    assert r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n"
