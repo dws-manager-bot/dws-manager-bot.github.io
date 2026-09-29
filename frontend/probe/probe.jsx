@@ -183,6 +183,12 @@ if (which === 'warplan' && act) {
         setTimeout(() => { for (let i = 0; i < 3; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click() }, 500)
         setTimeout(() => { document.body.dataset.after = sizes() }, 900)
       }
+      if (act === 'stronghold') {
+        const find = document.querySelector('.wp-find input')
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+        set.call(find, '873 606'); find.dispatchEvent(new Event('input', { bubbles: true }))
+        setTimeout(() => find.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })), 150)
+      }
       if (act === 'tapzone') {
         // Tap open ground inside a territory, well away from its marker.
         const map = document.querySelector('.wp-map')

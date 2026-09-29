@@ -150,6 +150,9 @@ const hold = (city_id, alliance_id) => ({ city_id, alliance_id, updated_by_name:
 const warBoard = [
   hold(145, 1), hold(148, 1), hold(157, 2), hold(153, 2), hold(222, 1),
   hold(136, 3), hold(131, 3), hold(126, 4), hold(219, 3), hold(123, 4), hold(318, 1), hold(483, 1),
+  // Pyramid 148 is Iron Wolves', but the Stronghold beside it is Ember Court's:
+  // its area should show Ember Court's color over Iron Wolves' ground.
+  hold(322, 4),
 ]
 // The board's edits, oldest first, adding up to warBoard above.
 const warHistory = [

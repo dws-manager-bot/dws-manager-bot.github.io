@@ -30,25 +30,29 @@ const mix = (c, a, base = SAND) => [
  * is visibly a plan and never mistaken for the board.
  */
 export function zoneStyles(map, board, holders, colorOf) {
-  const styles = new Array(map.zoneOwner.length).fill(null)
-  map.zoneOwner.forEach((cityId, z) => {
-    if (!cityId) return
+  const style = (cityId) => {
+    if (!cityId) return null
     const now = holders.get(cityId)
     const was = board.get(cityId)
     const color = now != null ? colorOf(now) : null
     const before = was != null ? colorOf(was) : null
-    if (!color && !before) return
-    styles[z] = {
-      fill: color ? rgb(color) : null,
-      was: before ? rgb(before) : null,
-      planned: now !== was,
-    }
-  })
-  return styles
+    if (!color && !before) return null
+    return { fill: color ? rgb(color) : null, was: before ? rgb(before) : null, planned: now !== was }
+  }
+  const zones = Array.from(map.zoneOwner, style)
+  // A held Stronghold colors its own area over whatever territory it lies in:
+  // in the game, its area stops following the Pyramid's owner once taken.
+  const areas = map.sareaCity.map(style)
+  return { zones, areas }
 }
 
+/** No territory colored at all: the "Territory colors" layer switched off. */
+export const noStyles = (map) => ({
+  zones: new Array(map.zoneOwner.length).fill(null), areas: new Array(map.sareaCity.length).fill(null),
+})
+
 export function paintBase(map, styles) {
-  const { N, walls, wallEdge, zone, edge } = map
+  const { N, walls, wallEdge, zone, edge, sarea, sareaEdge } = map
   const img = new ImageData(N, N)
   const d = img.data
   const put = (o, c) => { d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255 }
@@ -58,11 +62,13 @@ export function paintBase(map, styles) {
       const i = y * N + x
       const o = (row + x) * 4
       if (walls[i]) { put(o, wallEdge[i] ? WALL_EDGE : WALL); continue }
-      const s = styles[zone[i]]
+      const held = sarea[i] ? styles.areas[sarea[i]] : null
+      const s = held || styles.zones[zone[i]]
+      const rim = edge[i] || (held && sareaEdge[i])
       let c = s ? s.fill : null
       if (s && s.planned && ((x + y) & 7) < 4) c = s.was
       if (!c) put(o, edge[i] ? EDGE : SAND)
-      else put(o, mix(c, edge[i] ? 0.8 : 0.36))
+      else put(o, mix(c, rim ? 0.8 : 0.36))
     }
   }
   return img
