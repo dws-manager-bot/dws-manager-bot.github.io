@@ -6,6 +6,7 @@ import Events from './pages/Events.jsx'
 import History from './pages/History.jsx'
 import Members from './pages/Members.jsx'
 import PassWar from './pages/PassWar.jsx'
+import Season from './pages/Season.jsx'
 import Setup from './pages/Setup.jsx'
 
 const TABS = [
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'events', label: 'Events', Component: Events },
   { id: 'members', label: 'Members', Component: Members },
   { id: 'bgb', label: 'BGB', Component: Bgb },
+  { id: 'season', label: 'Season', Component: Season },
   { id: 'history', label: 'History', Component: History },
   // Any guild member may open this; the officer-only tabs are hidden from them.
   { id: 'passwar', label: 'Pass War map', Component: PassWar, everyone: true },

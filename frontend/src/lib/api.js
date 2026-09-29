@@ -171,6 +171,9 @@ export const api = {
 
   listPlayers: () => request('/players'),
 
+  /* The season standing, ranked and ready to tier. */
+  season: (kind) => request(`/season${kind ? `?kind=${kind}` : ''}`),
+
   /* The roster spreadsheet. The template is a file rather than JSON, and the
      upload is a form, so both go around `request`, which speaks JSON only. */
   rosterTemplate: () => file('/players/template.xlsx', 'pou-roster.xlsx'),

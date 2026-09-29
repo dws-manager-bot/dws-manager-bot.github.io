@@ -109,6 +109,32 @@ const resultTeamA = {
 }
 const noShows = outcomes.filter((o) => o.no_show)
 
+/* A season standing shaped like the real one: everybody turns out, so the
+   merit tiebreak is what actually orders them. */
+const SEASON_DAYS = ['2026-09-05', '2026-09-13', '2026-09-19', '2026-09-26']
+const seasonMember = (name, rank, attended, merit, meritDays, seats, fought, missed, cp) => ({
+  player_id: name, name, rank, bgb_cp: cp,
+  attended, of: 4,
+  days: SEASON_DAYS.map((d, i) => ({
+    event_id: i + 1, held_on: d, present: i < attended,
+    recorded: true, merits: i === 3 || merit == null ? null : Math.round(merit * 1_500_000),
+  })),
+  merit_standing: merit, merit_days: meritDays,
+  bgb_seats: seats, bgb_fought: fought, bgb_no_shows: missed,
+})
+const seasonMembers = [
+  seasonMember('Dubai88', 5, 4, 0.98, 3, 4, 4, 0, 292270935),
+  seasonMember('Emeraldream', 4, 4, 0.96, 3, 4, 3, 1, 173470331),
+  seasonMember('・Celine・', 4, 4, 0.95, 3, 3, 3, 0, 172309865),
+  seasonMember('Kagura Forger', 4, 4, 0.71, 3, 4, 4, 0, 176699474),
+  seasonMember('Mics Mad Eye', 2, 4, 0.09, 3, 0, 0, 0, 26494184),
+  seasonMember('JADE', 2, 4, 0.07, 3, 0, 0, 0, 19850000),
+  seasonMember('Unranked One', 1, 4, null, 0, 0, 0, 0, 12400000),
+  seasonMember('Starlight Rosé', 3, 3, 0.62, 2, 2, 2, 0, 40557958),
+  seasonMember('night catt', 2, 2, 0.10, 2, 1, 0, 1, 21057814),
+  seasonMember('Swindlerella', 1, 0, null, 0, 0, 0, 0, 9400000),
+]
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -128,6 +154,14 @@ export const api = {
   guidedSetup: () => ok({}),
   roles: () => ok([]),
   listPlayers: () => ok(players),
+  season: () => ok({
+    kind: 'strife_pass',
+    events: SEASON_DAYS.map((d, i) => ({
+      id: i + 1, held_on: d, title: `Declare war on Lv.${i === 3 ? 6 : 4} Strife Pass (East)`,
+      present: [86, 88, 86, 83][i], recorded: [101, 91, 89, 95][i], has_merits: i < 3,
+    })),
+    members: seasonMembers,
+  }),
   rosterTemplate: () => asFile({ blob: new Blob(['template']), name: 'pou-roster.xlsx' }),
   previewRosterImport: () => ok({
     as_of: '2026-09-25', fingerprint: 'abc123', unchanged: 88, problems: [],

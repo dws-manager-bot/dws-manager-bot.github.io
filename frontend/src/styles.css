@@ -1002,3 +1002,40 @@ input[type="range"] {
 .bgb-scores li.out { opacity: 0.6; }
 
 .bgb-event-date .tag { margin-left: 8px; font-weight: 500; }
+
+/* ---------- the season standing ----------
+   A ranked list that has to stay readable on a phone, so each member is one
+   row of small blocks rather than a table that would scroll sideways. */
+
+.season-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; counter-reset: place; }
+.season-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name days" "meta meta";
+  gap: 2px 10px; align-items: center;
+  padding: 7px 10px; border-radius: var(--radius-sm); background: var(--bg);
+  font-size: 13.5px; min-width: 0;
+}
+.season-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-days { grid-area: days; display: flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); }
+/* One pip per conquest: filled if they were there. */
+.season-days i { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.season-days i.on { background: var(--ok); }
+.season-merit, .season-bgb, .season-cp { grid-area: meta; }
+.season-list li > .season-merit { justify-self: start; color: var(--accent); font-weight: 600; }
+.season-list li > .season-bgb { justify-self: center; font-size: 12px; }
+.season-list li > .season-cp { justify-self: end; font-size: 12px; }
+.season-bgb .bad { color: var(--bad); }
+
+@media (min-width: 720px) {
+  /* Room enough for one line each: name, pips, standing, BGB, CP. Each cell has
+     to be named again here — leaving them all on "meta" stacks three columns
+     into one and overprints them. */
+  .season-list li {
+    grid-template-columns: minmax(0, 1fr) auto 3.5rem 8rem 5rem;
+    grid-template-areas: "name days merit bgb cp";
+  }
+  .season-list li > .season-merit { grid-area: merit; justify-self: end; }
+  .season-list li > .season-bgb { grid-area: bgb; justify-self: end; }
+  .season-list li > .season-cp { grid-area: cp; justify-self: end; }
+}
