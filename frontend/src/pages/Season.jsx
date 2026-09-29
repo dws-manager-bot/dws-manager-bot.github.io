@@ -1,33 +1,48 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import { save } from '../lib/files.js'
 import { short } from '../lib/cp.js'
 
 /**
- * The season's standing, for handing out rewards that cannot be handed out
- * evenly.
+ * The season reward board.
  *
- * Attendance sets the order, because it is the thing a member can be held to.
- * Merits break the ties, and there are a great many ties — turning up to
- * everything is the norm, not the distinction. A merit is earned by being there
- * at the first wave with the passes ready, so it reads as preparation.
+ * The game hands rewards out in four fixed bands and the sizes are its, not
+ * ours: one leader, eight backbone, thirty key players, and everybody else a
+ * contributor. Only the first three are placed — the fourth is whoever is left,
+ * so dragging someone out of a band is how they become a contributor.
  *
- * The tier lines are drawn here rather than computed. What the rewards are, and
- * how many of each, is the game's business and changes every season.
+ * The standing on the right is a suggestion, not a verdict. It orders candidates
+ * by conquests attended and breaks ties on merit standing, but which of two
+ * equally present members deserves more is a judgement the page cannot make,
+ * which is the whole reason the bands are filled by hand.
  *
- * BGB is not on this page. Only a fifth of the alliance gets a seat, so it
- * cannot be counted alongside an event everyone can join, and it has enough of
- * its own — seats, roles, scores, missed starts — to deserve its own standing
- * rather than one borrowed column here.
+ * Dragging is not the only way in. A touch screen has no HTML5 drag, and this
+ * is read on a phone, so a member can be picked with a tap and the bands become
+ * buttons — the same two steps, without the pointer.
  */
+
+const TIERS = [
+  ['leader', 'Alliance Leader', 'the R5, and only the R5'],
+  ['backbone', 'Backbone', 'the eight the alliance rests on'],
+  ['key', 'Key Players', 'the thirty who carry the events'],
+  ['contributor', 'Contributors', 'everybody else'],
+]
+
+const SORTS = [
+  ['standing', 'Standing'],
+  ['rank', 'Rank'],
+  ['attended', 'Attendance'],
+  ['bgb_cp', 'BGB CP'],
+  ['total_cp', 'Total CP'],
+]
 
 const fmtDay = (d) =>
   new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' })
     .format(new Date(`${d}T00:00:00Z`))
 
-/* A standing is a place in a field, so it reads as a percentage of it. */
-const standing = (v) => (v == null ? '—' : `${Math.round(v * 100)}`)
+/* A standing is a place in a field, so it reads as a number out of a hundred. */
+const standing = (v) => (v == null ? '—' : String(Math.round(v * 100)))
 
 const csv = (rows) =>
   rows.map((r) => r.map((c) => {
@@ -37,147 +52,248 @@ const csv = (rows) =>
 
 export default function Season() {
   const [data, setData] = useState(null)
+  const [caps, setCaps] = useState({})
+  const [placed, setPlaced] = useState({})      // player id -> tier
+  const [saved, setSaved] = useState({})        // what the server last confirmed
+  const [sort, setSort] = useState('standing')
+  const [held, setHeld] = useState(null)        // the member picked up, or tapped
+  const [over, setOver] = useState(null)        // the band a drag is hovering
   const [error, setError] = useState(null)
-  const [cuts, setCuts] = useState([4, 3, 2])   // a tier begins at each day count
+  const [note, setNote] = useState(null)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    api.season().then(setData).catch((e) => setError(e.message))
+    Promise.all([api.season(), api.seasonAwards()])
+      .then(([standing, awards]) => {
+        setData(standing)
+        setCaps(awards.caps)
+        setPlaced(awards.awards)
+        setSaved(awards.awards)
+      })
+      .catch((e) => setError(e.message))
   }, [])
 
-  /* Each tier takes everyone at or above its cut who no higher tier has taken;
-     whoever is left over falls into the rest. Members arrive already ordered. */
-  const tiers = useMemo(() => {
-    if (!data) return []
-    const out = [...new Set(cuts)].sort((a, b) => b - a).map((cut) => ({ cut, members: [] }))
-    const rest = []
-    for (const m of data.members) {
-      const tier = out.find((t) => m.attended >= t.cut)
-      ;(tier ? tier.members : rest).push(m)
+  const byTier = useMemo(() => {
+    const out = { leader: [], backbone: [], key: [], contributor: [] }
+    if (!data) return out
+    for (const m of data.members) out[placed[m.player_id] ?? 'contributor'].push(m)
+    return out
+  }, [data, placed])
+
+  const candidates = useMemo(() => {
+    const rest = byTier.contributor
+    const key = {
+      standing: (m) => [-m.attended, -(m.merit_standing ?? -1)],
+      rank: (m) => [-(m.rank ?? 0), -m.attended],
+      attended: (m) => [-m.attended, -(m.merit_standing ?? -1)],
+      bgb_cp: (m) => [-(m.bgb_cp ?? -1)],
+      total_cp: (m) => [-(m.total_cp ?? -1)],
+    }[sort]
+    return [...rest].sort((a, b) => {
+      const l = key(a)
+      const r = key(b)
+      for (let i = 0; i < l.length; i += 1) if (l[i] !== r[i]) return l[i] - r[i]
+      return a.name.localeCompare(b.name)
+    })
+  }, [byTier, sort])
+
+  const dirty = useMemo(() => {
+    const a = Object.entries(placed).filter(([, t]) => t !== 'contributor')
+    const b = Object.entries(saved)
+    return a.length !== b.length || a.some(([id, t]) => saved[id] !== t)
+  }, [placed, saved])
+
+  const place = useCallback((memberId, tier) => {
+    setNote(null)
+    setPlaced((p) => {
+      const next = { ...p }
+      if (tier === 'contributor') delete next[memberId]
+      else next[memberId] = tier
+      return next
+    })
+    setHeld(null)
+  }, [])
+
+  const full = (tier) =>
+    tier !== 'contributor' && byTier[tier].length >= (caps[tier] ?? Infinity)
+
+  /* R5 is the leader by the game's own rule, so offer it rather than make them
+     hunt for it in a list of ninety-five. */
+  function autoLeader() {
+    const r5 = data.members.find((m) => m.rank === 5)
+    if (!r5) { setError('Nobody is recorded as R5 on the Members tab.'); return }
+    place(r5.player_id, 'leader')
+  }
+
+  function fillFromStanding() {
+    const leader = data.members.find((m) => m.rank === 5)
+    const next = {}
+    if (leader) next[leader.player_id] = 'leader'
+    const rest = data.members.filter((m) => m.player_id !== leader?.player_id)
+    rest.slice(0, caps.backbone).forEach((m) => { next[m.player_id] = 'backbone' })
+    rest.slice(caps.backbone, caps.backbone + caps.key)
+      .forEach((m) => { next[m.player_id] = 'key' })
+    setPlaced(next)
+    setNote('Filled from the standing. Drag anyone who belongs elsewhere.')
+  }
+
+  async function saveBoard() {
+    setError(null)
+    setBusy(true)
+    try {
+      const awards = Object.entries(placed)
+        .filter(([, tier]) => tier !== 'contributor')
+        .map(([player_id, tier]) => ({ player_id, tier }))
+      const done = await api.setSeasonAwards({ season: '5', awards })
+      setSaved(done.awards)
+      setPlaced(done.awards)
+      setNote('Board saved.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
     }
-    return [...out, { cut: null, members: rest }]
-  }, [data, cuts])
+  }
 
   function exportCsv() {
     const head = ['Tier', 'Member', 'Rank', 'Days attended', 'Of', 'Merit standing',
-      'Merit days', 'CP']
+      'Merit days', 'BGB CP', 'Total CP']
     const rows = [head]
-    tiers.forEach((t, i) => {
-      for (const m of t.members) {
-        rows.push([t.cut == null ? 'Rest' : `Tier ${i + 1}`, m.name, m.rank ?? '',
-          m.attended, m.of, standing(m.merit_standing), m.merit_days, m.bgb_cp ?? ''])
+    for (const [id, label] of TIERS) {
+      for (const m of byTier[id]) {
+        rows.push([label, m.name, m.rank ?? '', m.attended, m.of,
+          standing(m.merit_standing), m.merit_days, m.bgb_cp ?? '', m.total_cp ?? ''])
       }
-    })
+    }
     save(new Blob([csv(rows)], { type: 'text/csv;charset=utf-8' }),
-      `pou-season-${new Date().toISOString().slice(0, 10)}.csv`)
+      `pou-season-rewards-${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
-  if (error) return <div className="page"><Banner tone="error">{error}</Banner></div>
+  if (error && !data) return <div className="page"><Banner tone="error">{error}</Banner></div>
   if (!data) return <div className="page"><p className="muted">Loading…</p></div>
 
   const events = data.events
 
+  const Member = ({ m, from }) => (
+    <li
+      className={held?.player_id === m.player_id ? 'picked' : ''}
+      draggable
+      onDragStart={(e) => { setHeld(m); e.dataTransfer.effectAllowed = 'move' }}
+      onDragEnd={() => { setHeld(null); setOver(null) }}
+      onClick={() => setHeld(held?.player_id === m.player_id ? null : m)}
+      title={from === 'contributor' ? 'Tap or drag into a band' : 'Tap or drag to move'}
+    >
+      <span className="season-name">
+        <b>{m.name}</b>{m.rank && <span className="muted"> R{m.rank}</span>}
+      </span>
+      <span className="season-days">
+        {m.days.map((d) => (
+          <i key={d.event_id} className={d.present ? 'on' : 'off'}
+             title={`${fmtDay(d.held_on)}: ${d.present ? 'there' : 'away'}`} />
+        ))}
+        {m.attended}/{m.of}
+      </span>
+      <span className="season-merit">{standing(m.merit_standing)}</span>
+      <span className="season-cp muted">{short(sort === 'total_cp' ? m.total_cp : m.bgb_cp)}</span>
+    </li>
+  )
+
   return (
     <div className="page">
       <div className="page-head">
-        <h2>Season</h2>
-        <button className="btn" onClick={exportCsv} disabled={!data.members.length}>
-          Export for hand-out
-        </button>
+        <h2>Season rewards</h2>
+        <div className="row">
+          <button className="btn" onClick={fillFromStanding} disabled={busy}>
+            Fill from the standing
+          </button>
+          <button className="btn" onClick={exportCsv}>Export</button>
+          <button className="btn primary" onClick={saveBoard} disabled={busy || !dirty}>
+            {busy ? 'Saving…' : dirty ? 'Save the board' : 'Saved'}
+          </button>
+        </div>
       </div>
 
+      <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
+      <Banner tone="ok" onDismiss={() => setNote(null)}>{note}</Banner>
+
       <p className="muted small">
-        Ordered by how many of the {events.length} conquests each member turned out for. Where
-        that ties — and it ties a great deal — the tiebreak is their average merit standing,
-        counted only across the {events.filter((e) => e.has_merits).length} days a ranking was
-        captured.
+        Four bands, and the sizes are the game's. Only the first three are filled — everybody
+        left over is a contributor. Candidates are ordered by how many of the {events.length}{' '}
+        conquests they attended, ties broken on merit standing, but the placing is yours.
+        {held && <b> Holding {held.name} — choose a band.</b>}
       </p>
 
-      <section className="panel">
-        <h3>The conquests counted</h3>
-        <div className="card-meta">
-          {events.map((e) => (
-            <span key={e.id} className={e.has_merits ? '' : 'muted'}>
-              {fmtDay(e.held_on)} — {e.present}/{e.recorded} present
-              {!e.has_merits && ', no merit ranking'}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <h3>Where the tiers fall</h3>
-        <p className="muted small">
-          A tier takes everyone who turned out for at least that many. Everybody below the
-          last line falls into the rest.
-        </p>
-        <div className="row wrap">
-          {cuts.map((cut, i) => (
-            <label className="as-of" key={i}>
-              Tier {i + 1} from
-              <select
-                value={cut}
-                onChange={(e) => setCuts((c) =>
-                  c.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+      <div className="season-board">
+        <div className="season-bands">
+          {TIERS.map(([id, label, blurb]) => {
+            const members = byTier[id]
+            const cap = caps[id]
+            return (
+              <section
+                key={id}
+                className={`panel band${over === id ? ' over' : ''}${full(id) ? ' full' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setOver(id) }}
+                onDragLeave={() => setOver((o) => (o === id ? null : o))}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setOver(null)
+                  if (held && !(full(id) && placed[held.player_id] !== id)) place(held.player_id, id)
+                }}
               >
-                {Array.from({ length: events.length }, (_, n) => events.length - n).map((n) => (
-                  <option key={n} value={n}>{n} of {events.length}</option>
-                ))}
-              </select>
-            </label>
-          ))}
-          <button
-            className="btn"
-            onClick={() => setCuts((c) => [...c, Math.max(1, Math.min(...c) - 1)])}
-            disabled={cuts.length >= events.length}
-          >
-            Add a tier
-          </button>
-          {cuts.length > 1 && (
-            <button className="btn" onClick={() => setCuts((c) => c.slice(0, -1))}>
-              One fewer
-            </button>
-          )}
+                <h3>
+                  {label}
+                  <span className="muted small">
+                    {'  '}{members.length}{cap ? ` / ${cap}` : ''} · {blurb}
+                  </span>
+                  {id === 'leader' && !members.length && (
+                    <button className="btn small" onClick={autoLeader}>Use the R5</button>
+                  )}
+                  {held && id !== placed[held.player_id] && !(full(id) && id !== 'contributor') && (
+                    <button className="btn small primary" onClick={() => place(held.player_id, id)}>
+                      Put {held.name} here
+                    </button>
+                  )}
+                </h3>
+                {id === 'contributor' ? (
+                  <p className="muted small">
+                    {members.length} members, everyone not placed above. They need no dragging;
+                    drop somebody here to take them out of a band.
+                  </p>
+                ) : members.length === 0 ? (
+                  <p className="muted small">Empty. Drag a candidate in, or tap one and press
+                    the button.</p>
+                ) : (
+                  <ol className="season-list">
+                    {members.map((m) => <Member key={m.player_id} m={m} from={id} />)}
+                  </ol>
+                )}
+              </section>
+            )
+          })}
         </div>
-      </section>
 
-      {tiers.map((tier, i) => (
-        <section className="panel" key={i}>
+        <section className="panel season-pool">
           <h3>
-            {tier.cut == null ? 'The rest' : `Tier ${i + 1}`}
-            <span className="muted small">
-              {'  '}{tier.members.length} member{tier.members.length === 1 ? '' : 's'}
-              {tier.cut != null && ` · turned out ${tier.cut} of ${events.length} or more`}
-            </span>
+            Candidates
+            <span className="muted small">{'  '}{candidates.length} unplaced</span>
           </h3>
-          {!tier.members.length && <p className="muted">Nobody.</p>}
-          {tier.members.length > 0 && (
-            <ol className="season-list">
-              {tier.members.map((m) => (
-                <li key={m.player_id}>
-                  <span className="season-name">
-                    <b>{m.name}</b>
-                    {m.rank && <span className="muted"> R{m.rank}</span>}
-                  </span>
-                  <span className="season-days" title="conquests attended">
-                    {m.days.map((d) => (
-                      <i key={d.event_id} className={d.present ? 'on' : 'off'}
-                         title={`${fmtDay(d.held_on)}: ${d.present ? 'there' : 'away'}`} />
-                    ))}
-                    {m.attended}/{m.of}
-                  </span>
-                  <span className="season-merit" title={
-                    m.merit_days
-                      ? `average standing over ${m.merit_days} ranked day${m.merit_days === 1 ? '' : 's'}`
-                      : 'never in a captured ranking'}>
-                    {standing(m.merit_standing)}
-                  </span>
-                  <span className="season-cp muted">{short(m.bgb_cp)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
+          <div className="row wrap">
+            {SORTS.map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={sort === value ? 'chip on' : 'chip'}
+                onClick={() => setSort(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <ol className="season-list">
+            {candidates.map((m) => <Member key={m.player_id} m={m} from="contributor" />)}
+          </ol>
         </section>
-      ))}
+      </div>
     </div>
   )
 }

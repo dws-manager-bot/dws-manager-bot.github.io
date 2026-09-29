@@ -83,6 +83,7 @@ if (which === 'bgb' && act) {
   }, 300)
 }
 
+
 /* The War planner opens on the official plan, read only. `act=mine` switches
    to the author's own draft; `act=city` also selects the eastern Strife Pass. */
 if (which === 'warplan' && act) {
@@ -148,4 +149,20 @@ if (which === 'warplan' && act) {
       setTimeout(() => { document.title = 'done:' + act }, act === 'city' ? 500 : 3000)
     }, 400)
   }, 900)
+}
+
+
+/* The season board's tap path — the one a phone has, since it has no drag.
+   Pick the first candidate, then press the button that appears on a band. */
+if (which === 'season' && act === 'place') {
+  setTimeout(() => {
+    const pool = document.querySelector('.season-pool .season-list li')
+    pool?.click()
+    setTimeout(() => {
+      const btn = [...document.querySelectorAll('.band .btn')]
+        .find((b) => b.textContent.startsWith('Put '))
+      btn?.click()
+      setTimeout(() => { document.title = 'done:place' }, 200)
+    }, 200)
+  }, 400)
 }
