@@ -151,6 +151,13 @@ const warBoard = [
   hold(145, 1), hold(148, 1), hold(157, 2), hold(153, 2), hold(222, 1),
   hold(136, 3), hold(131, 3), hold(126, 4), hold(219, 3), hold(123, 4), hold(318, 1), hold(483, 1),
 ]
+// The board's edits, oldest first, adding up to warBoard above.
+const warHistory = [
+  { at: iso(-60 * 24 * 9), by: 'Goba', changes: [{ city: 145, from: null, to: 1 }, { city: 136, from: null, to: 3 }] },
+  { at: iso(-60 * 24 * 7), by: 'Nyx', changes: [{ city: 148, from: null, to: 1 }, { city: 131, from: null, to: 3 }, { city: 126, from: null, to: 4 }] },
+  { at: iso(-60 * 24 * 5), by: 'Goba', changes: [{ city: 157, from: null, to: 2 }, { city: 153, from: null, to: 2 }, { city: 219, from: null, to: 3 }] },
+  { at: iso(-60 * 24 * 2), by: 'Goba', changes: [{ city: 222, from: null, to: 1 }, { city: 123, from: null, to: 4 }, { city: 318, from: null, to: 1 }, { city: 483, from: null, to: 1 }] },
+]
 const warDoc = (withDrawings) => ({ scenarios: [
   { id: 'a', name: 'Plan A', changes: { 219: 1, 136: 1 }, items: withDrawings ? [
     { id: 'i1', type: 'arrow', a: [846, 470], b: [873, 497], color: '#2563eb', alliance: 1, width: 1.6 },
@@ -173,6 +180,7 @@ const warRaw = (path, opts = {}) => {
   const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : null
   if (path === '/war/alliances') return body ? { ...body, id: 9, season: 5 } : warAlliances
   if (path === '/war/board') return warBoard
+  if (path === '/war/board/history') return warHistory
   if (path === '/war/days') return body ? { id: 2, season: 5, ...body, plans: 0, official: false }
     : [{ id: 1, season: 5, day: '2026-10-03', title: 'Strife Pass', plans: 2, official: true }]
   if (path === '/war/days/1/plans') return Object.values(warPlans).map(({ doc, ...rest }) => rest)

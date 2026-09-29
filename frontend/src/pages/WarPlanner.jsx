@@ -5,13 +5,15 @@ import { save as saveFile } from '../lib/files.js'
 import { SERVER_TZ } from '../lib/servertime.js'
 import WarMap from '../warplan/WarMap.jsx'
 import PostPanel from '../warplan/PostPanel.jsx'
+import HistoryCard from '../warplan/HistoryCard.jsx'
+import { checkScenario, declarers, legalTargets } from '../warplan/targets.js'
 import { loadMap, search } from '../warplan/mapdata.js'
 import { holdersWith, standings } from '../warplan/standing.js'
 import { newId, shifted } from '../warplan/items.jsx'
 import { OpError, applyOp, inverseOf, replay } from '../warplan/ops.js'
 import { Live } from '../warplan/live.js'
 import {
-  AlliancesCard, CityPanel, ItemPanel, Legend, StandingsCard, Toolbar, campName,
+  AlliancesCard, CityPanel, ItemPanel, Legend, StandingsCard, TargetsCard, Toolbar, campName,
 } from '../warplan/panels.jsx'
 import '../warplan/warplan.css'
 
@@ -116,6 +118,9 @@ export default function WarPlanner({ user }) {
   const [hide, setHide] = useState(() => readJson('wp.hide') || {})
   const [extend, setExtend] = useState(null)
   const [posting, setPosting] = useState(false)
+  const [targetFor, setTargetFor] = useState(() => readJson('wp.targetFor'))
+  const [basis, setBasis] = useState('board')
+  const [showTargets, setShowTargets] = useState(true)
 
   const [liveStatus, setLiveStatus] = useState('connecting')
   const [room, setRoom] = useState(null)           // { plan, editable, seq, saved } once the room has answered
@@ -157,6 +162,21 @@ export default function WarPlanner({ user }) {
   const changed = Object.keys(scenario.changes).some((id) => (scenario.changes[id] ?? null) !== (board.get(Number(id)) ?? null))
 
   const now = useMemo(() => (map ? standings(map, board, alliances) : []), [map, board, alliances])
+
+  // Targets for one alliance, judged on the board or on the open scenario.
+  const allianceIds = useMemo(() => new Map(alliances.map((a) => [a.id, a])), [alliances])
+  const targetAlliance = allianceIds.has(targetFor) ? targetFor : alliances[0]?.id ?? null
+  const onScenario = basis === 'scenario' && changed
+  const targetResult = useMemo(() => {
+    if (!map || targetAlliance == null) return null
+    const h = onScenario ? holders : board
+    return { ...legalTargets(map, h, alliances, targetAlliance), holders: h }
+  }, [map, onScenario, holders, board, alliances, targetAlliance])
+  const targetRings = useMemo(() => (showTargets && targetResult
+    ? new Map(targetResult.targets.map((t) => [t.city.id, t.saturday ? 'sat' : 'any'])) : null),
+  [showTargets, targetResult])
+  const warnings = useMemo(() => (map && changed ? checkScenario(map, board, alliances, scenario) : []),
+    [map, changed, board, alliances, scenario])
   const planned = useMemo(() => (map ? standings(map, holders, alliances) : []), [map, holders, alliances])
 
   const fail = useCallback((err) => setError(err?.message || (err ? String(err) : null)), [])
@@ -443,6 +463,7 @@ export default function WarPlanner({ user }) {
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { writeJson('wp.hide', hide) }, [hide])
+  useEffect(() => { if (targetFor != null) writeJson('wp.targetFor', targetFor) }, [targetFor])
 
   /* ------------------------------------------------------- unsaved guard */
 
@@ -954,7 +975,8 @@ export default function WarPlanner({ user }) {
                     onCreate={createItem} onItem={onItem}
                     hide={hide} peers={liveOn ? onScenarioPeers : []}
                     onCursor={liveOn ? sendCursor : undefined}
-                    extend={extend} onExtended={() => { setExtend(null); setTool('select') }} />
+                    extend={extend} onExtended={() => { setExtend(null); setTool('select') }}
+                    targets={targetRings} />
 
             <div className="wp-find">
               <input type="search" value={query} placeholder="Find: Strife, Lv.6, or 876 502"
@@ -1009,10 +1031,16 @@ export default function WarPlanner({ user }) {
                          changeBoard([{ city_id: id, alliance_id: to }],
                            `${c.name} (${c.x}, ${c.y}) is ${to == null ? 'neutral' : `held by ${alliances.find((a) => a.id === to)?.name}`} on the board.`)
                        }}
-                       onPlan={setPlanned} onGo={goTo} onClose={() => setSelCity(null)} />
+                       onPlan={setPlanned} onGo={goTo} onClose={() => setSelCity(null)}
+                       declarers={declarers(map, board, alliances, selectedCity.id)} />
           )}
           <StandingsCard map={map} now={now} planned={planned} scenario={scenario} changed={changed}
-                         onApply={applyScenario} busy={busy} />
+                         onApply={applyScenario} busy={busy} warnings={warnings} />
+          <TargetsCard map={map} alliances={alliances} allianceId={targetAlliance} setAllianceId={setTargetFor}
+                       result={targetResult} basis={onScenario ? 'scenario' : 'board'} setBasis={setBasis}
+                       scenario={scenario} canUseScenario={changed} show={showTargets} setShow={setShowTargets}
+                       onGo={goTo} byId={allianceIds} />
+          <HistoryCard map={map} alliances={alliances} board={board} holdings={holdings} />
           <AlliancesCard map={map} alliances={alliances} now={now} busy={busy}
                          onCreate={(f) => allianceCall(
                            () => api.raw('/war/alliances', { method: 'POST', body: allianceBody(f) }),

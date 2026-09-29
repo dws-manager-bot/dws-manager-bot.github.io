@@ -120,7 +120,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const {
     map, board, holders, alliances, items, tool, toolOpts, editable,
     selectedItem, selectedCity, onSelectItem, onSelectCity, onCreate, onItem,
-    hide = {}, peers = [], onCursor, extend = null, onExtended,
+    hide = {}, peers = [], onCursor, extend = null, onExtended, targets = null,
   } = props
 
   const wrapRef = useRef(null)
@@ -398,7 +398,11 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         const k = Number(g.key.slice(1))
         next = { ...o, points: o.points.map((p, i) => (i === k ? [t.x, t.y] : p)) }
       }
-      else if (o.type === 'note') {
+      else if (o.type === 'note' && o.px) {
+        // In screen pixels, from the note's own top-left corner.
+        const [nx, ny] = P(o.x, o.y + 1)
+        next = { ...o, w: Math.max(80, Math.round(sx - nx)), h: Math.max(32, Math.round(sy - ny)) }
+      } else if (o.type === 'note') {
         next = { ...o, w: Math.max(8, t.x - o.x + 1), h: Math.max(4, o.y - t.y + 1) }
       }
       g.current = next
@@ -534,6 +538,27 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                 const [bx, by] = P(n.x - n.size / 2 + 0.5, n.y - n.size / 2 + 0.5)
                 return <line key={n.id} x1={ax} y1={ay} x2={bx} y2={by} stroke="#fbbf24"
                              strokeWidth="2" strokeDasharray="5 4" strokeOpacity="0.9" />
+              })}
+            </g>
+          )}
+          {targets?.size > 0 && (
+            <g data-noexport="" pointerEvents="none">
+              {map.cities.filter((c) => targets.has(c.id)).map((c) => {
+                const fp = footprint(c)
+                const [x0, y0] = P(fp[0], fp[3])
+                const cx = x0 + (c.size * z) / 2; const cy = y0 + (c.size * z) / 2
+                if (cx < -40 || cy < -40 || cx > size.W + 40 || cy > size.H + 40) return null
+                const r = Math.max(c.size * z, 9) / 2 + 6
+                const sat = targets.get(c.id) === 'sat'
+                return (
+                  <g key={`t${c.id}`}>
+                    <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} rx="5" fill="none"
+                          stroke="#ffffff" strokeWidth="5" strokeOpacity="0.9" />
+                    <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} rx="5" fill="none"
+                          stroke={sat ? '#ef4444' : '#f59e0b'} strokeWidth="2.5"
+                          strokeDasharray={sat ? '5 3' : undefined} />
+                  </g>
+                )
               })}
             </g>
           )}
