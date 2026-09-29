@@ -134,6 +134,50 @@ const seasonMembers = [
   seasonMember('Swindlerella', 1, 0, null, 0, 9400000),
 ]
 
+/* The War planner. Invented alliances, real map ids: a Saturday around the
+   eastern Strife Pass (876, 502) with one camp holding the ground south of it. */
+const warAlliances = [
+  { id: 1, season: 5, name: 'Iron Wolves', tag: 'IW', camp: 1, color: '#2563eb', server: '413' },
+  { id: 2, season: 5, name: 'Dawn Watch', tag: 'DWn', camp: 1, color: '#16a34a', server: '413' },
+  { id: 3, season: 5, name: 'Red Tide', tag: 'RT', camp: 2, color: '#dc2626', server: '415' },
+  { id: 4, season: 5, name: 'Ember Court', tag: 'EMB', camp: 2, color: '#ea580c', server: '415' },
+]
+const hold = (city_id, alliance_id) => ({ city_id, alliance_id, updated_by_name: 'Goba', updated_at: iso(-300) })
+const warBoard = [
+  hold(145, 1), hold(148, 1), hold(157, 2), hold(153, 2), hold(222, 1),
+  hold(136, 3), hold(131, 3), hold(126, 4), hold(219, 3), hold(123, 4), hold(318, 1), hold(483, 1),
+]
+const warDoc = (withDrawings) => ({ scenarios: [
+  { id: 'a', name: 'Plan A', changes: { 219: 1, 136: 1 }, items: withDrawings ? [
+    { id: 'i1', type: 'arrow', a: [846, 470], b: [873, 497], color: '#2563eb', alliance: 1, width: 1.6 },
+    { id: 'i2', type: 'arrow', a: [826, 535], b: [870, 506], c: [853, 530], color: '#16a34a', alliance: 2, width: 1.4, dash: true },
+    { id: 'i3', type: 'pin', x: 873, y: 490, label: 'Rally 10:40', color: '#fbbf24', alliance: null },
+    { id: 'i4', type: 'sticker', x: 874, y: 512, symbol: 'target', size: 10, color: '#dc2626', alliance: null },
+    { id: 'i5', type: 'note', x: 885, y: 530, w: 44, h: 16, text: 'Flip the front tiles at 10:59:30, re-flip 11:01:30', opacity: 0.85, font: 3, color: '#fef3c7' },
+    { id: 'i6', type: 'stamp', kind: 'shelter', x: 872, y: 488, size: 3, color: '#2563eb', alliance: 1 },
+    { id: 'i7', type: 'stamp', kind: 'portal', x: 869, y: 488, size: 2, color: '#2563eb', alliance: 1 },
+  ] : [] },
+  { id: 'b', name: 'Plan B', changes: { 224: 2 }, items: [] },
+] })
+const warPlans = {
+  10: { id: 10, day_id: 1, owner_id: null, owner_name: null, official: true, scenarios: 2, version: 3,
+    source_name: 'Goba', updated_by_name: 'Nyx', updated_at: iso(-90), doc: warDoc(true) },
+  11: { id: 11, day_id: 1, owner_id: '1', owner_name: 'Goba', official: false, scenarios: 2, version: 5,
+    source_name: null, updated_by_name: 'Goba', updated_at: iso(-120), doc: warDoc(true) },
+}
+const warRaw = (path, opts = {}) => {
+  const body = opts.body ? JSON.parse(opts.body) : null
+  if (path === '/war/alliances') return body ? { ...body, id: 9, season: 5 } : warAlliances
+  if (path === '/war/board') return warBoard
+  if (path === '/war/days') return body ? { id: 2, season: 5, ...body, plans: 0, official: false }
+    : [{ id: 1, season: 5, day: '2026-10-03', title: 'Strife Pass', plans: 2, official: true }]
+  if (path === '/war/days/1/plans') return Object.values(warPlans).map(({ doc, ...rest }) => rest)
+  const plan = path.match(/^\/war\/plans\/(\d+)$/)
+  if (plan) return warPlans[plan[1]]
+  if (path === '/war/days/1/mine') return { ...warPlans[11], doc: body.doc, version: 6 }
+  return {}
+}
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -226,7 +270,9 @@ export const api = {
   me: () => ok({ username: 'Goba', is_admin: true }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.
-  raw: (path) => ok(String(path).split('/').length > 2 ? {} : []),
+  raw: (path, opts) => ok(String(path).startsWith('/war/')
+    ? warRaw(String(path), opts)
+    : String(path).split('/').length > 2 ? {} : []),
 }
 export const getToken = () => 'x'
 export const clearToken = () => {}

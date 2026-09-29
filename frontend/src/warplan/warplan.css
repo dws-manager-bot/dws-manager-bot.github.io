@@ -1,0 +1,218 @@
+/* The War planner. Mobile first, like the rest: the map on top and the panels
+   under it on a phone; side by side, map pinned, from 1080px. Kept in its own
+   file so the page brings its styles with it. */
+
+main:has(.wp-layout) { max-width: 1680px; }
+
+.wp-layout { display: grid; grid-template-columns: 1fr; gap: 12px; min-width: 0; margin-top: 12px; }
+.wp-map-col, .wp-side-col { min-width: 0; display: grid; gap: 12px; align-content: start; }
+
+/* ---------- which plan ---------- */
+
+.wp-planbar { padding: 12px 14px; }
+.wp-planbar .card-actions { margin-top: 10px; }
+.wp-planbar-row { display: grid; grid-template-columns: 1fr; gap: 10px; min-width: 0; }
+.wp-planbar-row > * { min-width: 0; }
+.wp-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.wp-unsaved { border-color: rgba(251, 191, 36, 0.5); color: var(--accent); }
+.wp-newday { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.wp-newday label { flex: 1 1 160px; }
+
+/* ---------- the map card ---------- */
+
+.wp-map-card { padding: 10px; display: grid; gap: 8px; }
+
+.wp-scen {
+  display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.wp-scen::-webkit-scrollbar { display: none; }
+.wp-scen .chip { flex: none; min-height: 38px; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.wp-scen-acts { display: flex; gap: 2px; margin-left: auto; flex: none; }
+.wp-scen-acts .btn { min-height: 36px; padding: 4px 8px; color: var(--muted); }
+.wp-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+.wp-tools {
+  display: flex; gap: 4px; align-items: center; overflow-x: auto; scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.wp-tools::-webkit-scrollbar { display: none; }
+.wp-tool {
+  flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  width: 52px; min-height: 48px; padding: 4px 2px;
+  background: var(--bg); color: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font: inherit; font-size: 10.5px; cursor: pointer;
+}
+.wp-tool svg { width: 20px; height: 20px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.wp-tool svg path[fill="none"] { fill: none; }
+.wp-tool:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+.wp-tool.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.wp-tool:disabled { opacity: 0.35; cursor: default; }
+.wp-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wp-tool-opts { display: flex; gap: 8px; align-items: center; flex: none; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--border); }
+.wp-tool-opts select { width: auto; min-height: 40px; padding: 6px 8px; }
+
+.wp-inks { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.wp-tools .wp-inks { flex-wrap: nowrap; }
+.wp-ink {
+  flex: none; min-width: 36px; height: 36px; padding: 0 6px; border-radius: var(--radius-sm);
+  border: 2px solid transparent; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.wp-ink.dot { width: 36px; padding: 0; border-radius: 50%; }
+.wp-ink.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.wp-ink:disabled { opacity: 0.2; cursor: not-allowed; }
+.wp-ink.custom {
+  display: inline-flex; width: 36px; padding: 0; overflow: hidden; border-radius: 50%;
+  background: conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444);
+}
+.wp-ink.custom input { opacity: 0; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; cursor: pointer; }
+
+/* ---------- the map ---------- */
+
+.wp-map {
+  position: relative;
+  height: min(66vh, 620px);
+  min-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #d9cfbb;
+  touch-action: none;           /* every gesture on the map is ours */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.wp-map:active { cursor: grabbing; }
+.wp-map:not(.tool-select) { cursor: crosshair; }
+.wp-map canvas, .wp-map svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wp-map svg [data-city], .wp-map svg [data-item] { cursor: pointer; }
+.wp-map svg [data-handle] { cursor: move; }
+
+.wp-readout {
+  position: absolute; left: 8px; bottom: 8px; pointer-events: none;
+  background: rgba(24, 24, 27, 0.78); color: var(--text); border-radius: var(--radius-sm);
+  padding: 3px 8px; font-size: 12px; font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.wp-readout:empty { display: none; }
+
+.wp-zoom { position: absolute; right: 8px; bottom: 8px; display: grid; gap: 6px; }
+.wp-zbtn {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  background: rgba(24, 24, 27, 0.85); color: var(--text); border: 1px solid var(--border);
+  font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
+}
+.wp-zbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- find ---------- */
+
+.wp-find { position: relative; }
+.wp-found {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px);
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 16px 24px -8px rgba(0, 0, 0, 0.5); overflow: hidden;
+}
+.wp-found button {
+  display: flex; gap: 8px; justify-content: space-between; width: 100%; min-height: 42px;
+  background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--text);
+  font: inherit; font-size: 14px; padding: 8px 12px; text-align: left; cursor: pointer;
+}
+.wp-found button:last-child { border-bottom: 0; }
+.wp-found button:hover { background: var(--card-hover); }
+
+/* ---------- legend ---------- */
+
+.wp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.wp-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.wp-key { width: 11px; height: 11px; display: inline-block; border: 1.5px solid; border-radius: 2px; }
+.wp-key.city { background: #fffbeb; border-color: #b7791f; }
+.wp-key.pass { background: #9a3412; border-color: #431407; border-radius: 1px; }
+.wp-key.stronghold { background: #475569; border-color: #1e293b; transform: rotate(45deg) scale(0.85); }
+.wp-key.oasis { background: #0f766e; border-color: #042f2e; border-radius: 50%; }
+.wp-key.planned { background: repeating-linear-gradient(135deg, #2563eb 0 3px, #efe7d6 3px 6px); border-color: #1e3a8a; }
+
+.wp-swatch { display: inline-block; flex: none; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3); }
+
+/* ---------- inspectors ---------- */
+
+.wp-inspect { border-left: 3px solid var(--accent); }
+.wp-inspect .card-head { flex-wrap: wrap; }
+.wp-close { margin-left: auto; min-height: 36px; font-size: 20px; line-height: 1; padding: 2px 10px; }
+.wp-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; margin-bottom: 12px; }
+.wp-coord {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; padding: 5px 9px; min-height: 32px; cursor: copy;
+}
+.wp-coord:hover { border-color: var(--accent); }
+.wp-sub {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+  margin: 14px 0 6px; font-weight: 600;
+}
+.wp-near { display: flex; flex-wrap: wrap; gap: 6px; }
+.wp-near-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font: inherit; font-size: 12.5px; padding: 4px 10px; cursor: pointer;
+}
+.wp-near-btn:hover { border-color: var(--accent); }
+
+.wp-symbols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.wp-symbol {
+  height: 48px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; padding: 6px;
+}
+.wp-symbol svg { width: 100%; height: 100%; }
+.wp-symbol.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35); }
+
+/* ---------- influence ---------- */
+
+.wp-table-wrap { overflow-x: auto; margin: 0 -4px; }
+.wp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.wp-table th {
+  text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); padding: 6px 4px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.wp-table td { padding: 7px 4px; border-bottom: 1px solid rgba(82, 82, 91, 0.5); vertical-align: middle; }
+.wp-table tfoot td { color: var(--muted); border-bottom: 0; font-size: 12.5px; }
+.wp-table .num { text-align: right; white-space: nowrap; }
+.wp-who { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.wp-name { overflow-wrap: anywhere; }
+.wp-up { color: var(--ok); font-size: 11.5px; }
+.wp-down { color: var(--bad); font-size: 11.5px; }
+.wp-warn { color: var(--warn); font-weight: 700; }
+.wp-over { color: var(--bad); font-weight: 700; }
+
+/* ---------- alliances ---------- */
+
+.wp-camp { margin-top: 4px; }
+.wp-arow {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px;
+  background: none; border: 0; border-bottom: 1px solid rgba(82, 82, 91, 0.5);
+  color: var(--text); font: inherit; font-size: 14px; padding: 6px 4px; text-align: left; cursor: pointer;
+}
+.wp-arow:hover { background: var(--card-hover); }
+.wp-arow .muted { margin-left: auto; white-space: nowrap; }
+.wp-aform { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin: 8px 0; background: rgba(24, 24, 27, 0.4); }
+
+.wp-foot { margin: 0 2px; }
+
+/* ---------- wider ---------- */
+
+@media (min-width: 640px) {
+  .wp-planbar-row { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+
+@media (min-width: 1080px) {
+  .wp-layout { grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.62fr); gap: 16px; }
+  /* The map stays put while the panels beside it scroll, so a change made in
+     a panel is seen on the map as it is made. */
+  .wp-map-col { position: sticky; top: 104px; align-self: start; }
+  .wp-map { height: calc(100vh - 330px); min-height: 460px; }
+}
+
+@media (min-width: 1500px) {
+  .wp-layout { grid-template-columns: minmax(0, 1.8fr) minmax(400px, 0.6fr); }
+}
