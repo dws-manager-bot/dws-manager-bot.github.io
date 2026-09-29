@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { KIND_LABEL, cityTitle, coords } from './mapdata.js'
 import { INKS, SWATCHES, inkOn, nextColor } from './palette.js'
 import { CAP, CAP_WITH_TECH, SCORED, fullNum, shortNum } from './standing.js'
-import { ITEM_LABEL, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
+import { ITEM_LABEL, NOTE, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
 import { DECLARATIONS_PER_DAY } from './targets.js'
 
 /* The War planner's side panels. Each is a plain card; the page owns the data
@@ -241,9 +241,11 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
                        onChange={(e) => set({ opacity: +e.target.value }, `opacity:${item.id}`)} />
               </label>
               <label>
-                <span className="pw-slider-label">Text size <b>{item.font || 4}</b></span>
-                <input type="range" min="1.5" max="12" step="0.5" value={item.font || 4}
-                       onChange={(e) => set({ font: +e.target.value }, `font:${item.id}`)} />
+                <span className="pw-slider-label">Text size <b>{item.px ? `${item.font}px` : 'map-sized'}</b></span>
+                <input type="range" min={NOTE.min} max={NOTE.max} step="1" value={item.px ? item.font : NOTE.font}
+                       onChange={(e) => set(item.px ? { font: +e.target.value }
+                         // A note from before sized itself in tiles; this makes it a pixel note.
+                         : { px: true, font: +e.target.value, w: NOTE.w, h: NOTE.h }, `font:${item.id}`)} />
               </label>
               <div className="wide">
                 <span className="label">Paper</span>

@@ -398,7 +398,11 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         const k = Number(g.key.slice(1))
         next = { ...o, points: o.points.map((p, i) => (i === k ? [t.x, t.y] : p)) }
       }
-      else if (o.type === 'note') {
+      else if (o.type === 'note' && o.px) {
+        // In screen pixels, from the note's own top-left corner.
+        const [nx, ny] = P(o.x, o.y + 1)
+        next = { ...o, w: Math.max(80, Math.round(sx - nx)), h: Math.max(32, Math.round(sy - ny)) }
+      } else if (o.type === 'note') {
         next = { ...o, w: Math.max(8, t.x - o.x + 1), h: Math.max(4, o.y - t.y + 1) }
       }
       g.current = next

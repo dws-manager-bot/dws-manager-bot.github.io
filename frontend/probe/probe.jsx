@@ -169,6 +169,20 @@ if (which === 'warplan' && act) {
           }, 400)
         }, 300)
       }
+      if (act === 'note') {
+        // A new note keeps 12px text at any zoom; the fixture's older note does not.
+        const map = document.querySelector('.wp-map')
+        const r = map.getBoundingClientRect()
+        const p = { bubbles: true, pointerId: 11, pointerType: 'mouse', button: 0, isPrimary: true,
+                    clientX: r.left + r.width * 0.3, clientY: r.top + r.height * 0.3 }
+        const sizes = () => [...document.querySelectorAll('.wp-map svg [data-item] text')]
+          .map((t) => t.getAttribute('font-size')).join(',')
+        ;[...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === 'Note')?.click()
+        setTimeout(() => { map.dispatchEvent(new PointerEvent('pointerdown', p)); map.dispatchEvent(new PointerEvent('pointerup', p)) }, 150)
+        setTimeout(() => { document.body.dataset.before = sizes() }, 400)
+        setTimeout(() => { for (let i = 0; i < 3; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click() }, 500)
+        setTimeout(() => { document.body.dataset.after = sizes() }, 900)
+      }
       if (act === 'tapzone') {
         // Tap open ground inside a territory, well away from its marker.
         const map = document.querySelector('.wp-map')
