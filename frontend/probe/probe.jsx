@@ -6,10 +6,11 @@ import Members from '../src/pages/Members.jsx'
 import Setup from '../src/pages/Setup.jsx'
 import PassWar from '../src/pages/PassWar.jsx'
 import Season from '../src/pages/Season.jsx'
+import WarPlanner from '../src/pages/WarPlanner.jsx'
 import '../src/styles.css'
 
 const which = new URLSearchParams(location.search).get('p') || 'announcements'
-const Page = { announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season }[which]
+const Page = { announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner }[which]
 const user = { discord_id: '1', username: 'Goba', is_admin: true }
 
 window.onerror = (m) => { document.title = 'ERROR: ' + m }
@@ -80,4 +81,71 @@ if (which === 'bgb' && act) {
     }
     setTimeout(() => { document.title = 'done:' + act }, 600)
   }, 300)
+}
+
+/* The War planner opens on the official plan, read only. `act=mine` switches
+   to the author's own draft; `act=city` also selects the eastern Strife Pass. */
+if (which === 'warplan' && act) {
+  setTimeout(() => {
+    const pick = [...document.querySelectorAll('select')].find((el) => [...el.options].some((o) => o.value === '11'))
+    if (pick) { pick.value = '11'; pick.dispatchEvent(new Event('change', { bubbles: true })) }
+    setTimeout(() => {
+      if (act === 'draw' || act === 'png') {
+        // Draw through the same pointer events a finger sends.
+        const map = document.querySelector('.wp-map')
+        const r = map.getBoundingClientRect()
+        const at = (fx, fy) => ({ clientX: r.left + r.width * fx, clientY: r.top + r.height * fy })
+        const fire = (type, p) => map.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, pointerId: 7, pointerType: 'mouse', button: 0, isPrimary: true, ...p }))
+        const tool = (label) => [...document.querySelectorAll('.wp-tool')]
+          .find((b) => b.textContent.trim() === label)?.click()
+        const tap = (fx, fy) => { fire('pointerdown', at(fx, fy)); fire('pointerup', at(fx, fy)) }
+        const steps = [
+          () => tool('Arrow'),
+          () => { fire('pointerdown', at(0.3, 0.7)); fire('pointermove', at(0.45, 0.55)); fire('pointermove', at(0.6, 0.4)) },
+          () => fire('pointerup', at(0.6, 0.4)),
+          () => tool('Curve'),
+          () => { fire('pointerdown', at(0.2, 0.3)); fire('pointermove', at(0.4, 0.25)) },
+          () => fire('pointerup', at(0.4, 0.25)),
+          () => tool('Sticker'),
+          () => tap(0.7, 0.3),
+          () => tool('Stamp'),
+          () => tap(0.62, 0.62),
+          () => tool('Pin'),
+          () => tap(0.15, 0.8),
+          () => { document.body.dataset.items = document.querySelectorAll('.wp-map [data-item]').length },
+          () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true })),
+          () => { document.body.dataset.undone = document.querySelectorAll('.wp-map [data-item]').length },
+        ]
+        steps.forEach((f, i) => setTimeout(f, 120 * (i + 1)))
+        if (act === 'png') {
+          setTimeout(() => {
+            URL.revokeObjectURL = () => {}   // saveFile revokes at once; the overlay needs it
+            HTMLAnchorElement.prototype.click = function show() {
+              const img = Object.assign(document.createElement('img'), { src: this.href })
+              img.style.cssText = 'position:fixed;inset:0;z-index:99;width:100%;background:#000'
+              document.body.appendChild(img)
+            }
+            ;[...document.querySelectorAll('.btn')].find((b) => b.textContent.trim() === 'Download PNG')?.click()
+          }, 120 * (steps.length + 2))
+        }
+      }
+      if (act === 'tapzone') {
+        // Tap open ground inside a territory, well away from its marker.
+        const map = document.querySelector('.wp-map')
+        const r = map.getBoundingClientRect()
+        const p = { bubbles: true, pointerId: 8, pointerType: 'mouse', button: 0, isPrimary: true,
+                    clientX: r.left + r.width * 0.5, clientY: r.top + r.height * 0.1 }
+        map.dispatchEvent(new PointerEvent('pointerdown', p))
+        map.dispatchEvent(new PointerEvent('pointerup', p))
+      }
+      if (act === 'city') {
+        const find = document.querySelector('.wp-find input')
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+        set.call(find, 'strife east'); find.dispatchEvent(new Event('input', { bubbles: true }))
+        setTimeout(() => { document.querySelector('.wp-found button')?.click() }, 150)
+      }
+      setTimeout(() => { document.title = 'done:' + act }, act === 'city' ? 500 : 3000)
+    }, 400)
+  }, 900)
 }

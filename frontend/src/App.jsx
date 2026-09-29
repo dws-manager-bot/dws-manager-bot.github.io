@@ -8,6 +8,7 @@ import Members from './pages/Members.jsx'
 import PassWar from './pages/PassWar.jsx'
 import Season from './pages/Season.jsx'
 import Setup from './pages/Setup.jsx'
+import WarPlanner from './pages/WarPlanner.jsx'
 
 const TABS = [
   { id: 'setup', label: 'Set up', Component: Setup },
@@ -17,6 +18,8 @@ const TABS = [
   { id: 'bgb', label: 'BGB', Component: Bgb },
   { id: 'season', label: 'Season', Component: Season },
   { id: 'history', label: 'History', Component: History },
+  // Admin-only, reading included: it is the alliance's strategy.
+  { id: 'warplan', label: 'War planner', Component: WarPlanner },
   // Any guild member may open this; the officer-only tabs are hidden from them.
   { id: 'passwar', label: 'Pass War map', Component: PassWar, everyone: true },
 ]
