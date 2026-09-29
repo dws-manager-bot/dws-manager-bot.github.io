@@ -137,6 +137,38 @@ if (which === 'warplan' && act) {
         ;[...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === 'Arrow')?.click()
         ;[...document.querySelectorAll('.btn')].find((b) => b.textContent.trim() === 'Add an alliance')?.click()
       }
+      if (act === 'route' || act === 'layers') {
+        const map = document.querySelector('.wp-map')
+        const r = map.getBoundingClientRect()
+        const at = (fx, fy) => ({ clientX: r.left + r.width * fx, clientY: r.top + r.height * fy })
+        const fire = (type, p) => map.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, pointerId: 9, pointerType: 'mouse', button: 0, isPrimary: true, ...p }))
+        const tap = (fx, fy) => { fire('pointerdown', at(fx, fy)); fire('pointerup', at(fx, fy)) }
+        const steps = act === 'route' ? [
+          () => [...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === 'Route')?.click(),
+          () => tap(0.25, 0.75), () => tap(0.4, 0.55), () => tap(0.55, 0.6),
+          () => { tap(0.7, 0.35); tap(0.7, 0.35); map.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, ...at(0.7, 0.35) })) },
+          () => { document.body.dataset.routes = document.querySelectorAll('.wp-map [data-item]').length },
+        ] : [
+          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Oases')?.click(),
+          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Strongholds')?.click(),
+          () => { document.body.dataset.cities = document.querySelectorAll('.wp-map [data-city]').length },
+          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Passes')?.click(),
+          () => { document.body.dataset.nopass = document.querySelectorAll('.wp-map [data-city]').length },
+        ]
+        steps.forEach((f, i) => setTimeout(f, 150 * (i + 1)))
+      }
+      if (act === 'post') {
+        // The official plan is open by default: post both scenarios.
+        const pick = [...document.querySelectorAll('select')].find((el) => [...el.options].some((o) => o.value === '10'))
+        if (pick) { pick.value = '10'; pick.dispatchEvent(new Event('change', { bubbles: true })) }
+        setTimeout(() => {
+          ;[...document.querySelectorAll('.btn')].find((b) => /^Post to Discord/.test(b.textContent.trim()))?.click()
+          setTimeout(() => {
+            ;[...document.querySelectorAll('.btn')].find((b) => /^Post \d+ maps?$/.test(b.textContent.trim()))?.click()
+          }, 400)
+        }, 300)
+      }
       if (act === 'tapzone') {
         // Tap open ground inside a territory, well away from its marker.
         const map = document.querySelector('.wp-map')

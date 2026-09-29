@@ -315,3 +315,118 @@ async def test_malformed_plans_are_refused(client_factory, bad):
     async with client_factory(ADMIN) as c:
         day = await _day(c)
         assert (await c.put(f"/war/days/{day}/mine", json={"doc": bad})).status_code == 422
+
+
+# ----------------------------------------------------------------- discord
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+
+
+def _maps(*names):
+    data = {"channel_id": "1546368345", "message": "Rally 10:40", "scenarios": list(names)}
+    files = [("images", (f"{i}.png", PNG, "image/png")) for i, _ in enumerate(names)]
+    return data, files
+
+
+@pytest.mark.asyncio
+async def test_the_official_plan_posts_once_unless_asked_again(client_factory, monkeypatch):
+    import dwsbot.discord_bot.bot as botmod
+
+    sent = []
+
+    async def fake_post(bot, channel_id, **kw):
+        sent.append((channel_id, kw["scenarios"], len(kw["images"]), kw["source"]))
+        return "https://discord.com/channels/1/2/3"
+
+    monkeypatch.setattr(botmod.bot, "is_ready", lambda: True)
+    monkeypatch.setattr(warplan.warpost, "post", fake_post)
+
+    async with client_factory(ADMIN) as c:
+        day = await _day(c)
+        draft = (await c.put(f"/war/days/{day}/mine", json={"doc": doc()})).json()
+        data, files = _maps("Plan A", "Plan B")
+        r = await c.post(f"/war/plans/{draft['id']}/post", data=data, files=files)
+        assert r.status_code == 409 and "publish" in r.json()["detail"]
+
+        official = (await c.post(f"/war/plans/{draft['id']}/publish")).json()
+        r = await c.post(f"/war/plans/{official['id']}/post", data=data, files=files)
+        assert r.status_code == 200, r.text
+        assert r.json()["url"].endswith("/3") and r.json()["images"] == 2
+        assert sent == [(1546368345, ["Plan A", "Plan B"], 2, "Goba")]
+
+        again = await c.post(f"/war/plans/{official['id']}/post", data=data, files=files)
+        assert again.status_code == 409 and "already posted" in again.json()["detail"]
+        ok = await c.post(f"/war/plans/{official['id']}/post", data={**data, "again": "true"},
+                          files=files)
+        assert ok.status_code == 200 and len(sent) == 2
+
+        listed = (await c.get(f"/war/days/{day}/plans")).json()
+        assert listed[0]["posted_url"].endswith("/3")
+
+
+@pytest.mark.asyncio
+async def test_a_post_needs_one_png_per_scenario(client_factory, monkeypatch):
+    import dwsbot.discord_bot.bot as botmod
+
+    monkeypatch.setattr(botmod.bot, "is_ready", lambda: True)
+    async with client_factory(ADMIN) as c:
+        day = await _day(c)
+        draft = (await c.put(f"/war/days/{day}/mine", json={"doc": doc()})).json()
+        official = (await c.post(f"/war/plans/{draft['id']}/publish")).json()
+        url = f"/war/plans/{official['id']}/post"
+        data, files = _maps("Plan A")
+        not_png = [("images", ("a.png", b"GIF89a....", "image/png"))]
+        assert (await c.post(url, data=data, files=not_png)).status_code == 422
+        data2, _ = _maps("Plan A", "Plan B")
+        assert (await c.post(url, data=data2, files=files)).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_a_discord_refusal_comes_back_as_a_409(client_factory, monkeypatch):
+    import dwsbot.discord_bot.bot as botmod
+
+    async def boom(*a, **kw):
+        raise RuntimeError("Missing Permissions")
+
+    monkeypatch.setattr(botmod.bot, "is_ready", lambda: True)
+    monkeypatch.setattr(warplan.warpost, "post", boom)
+    async with client_factory(ADMIN) as c:
+        day = await _day(c)
+        draft = (await c.put(f"/war/days/{day}/mine", json={"doc": doc()})).json()
+        official = (await c.post(f"/war/plans/{draft['id']}/publish")).json()
+        data, files = _maps("Plan A")
+        r = await c.post(f"/war/plans/{official['id']}/post", data=data, files=files)
+    assert r.status_code == 409 and "Missing Permissions" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_the_post_is_one_message_with_a_heading_and_maps_in_order():
+    from datetime import date
+
+    from dwsbot import warpost
+
+    class Channel:
+        def __init__(self):
+            self.sent = None
+
+        async def send(self, **kw):
+            self.sent = kw
+
+            class Message:
+                jump_url = "https://discord.com/channels/1/2/99"
+            return Message()
+
+    channel = Channel()
+
+    class Bot:
+        def get_channel(self, _):
+            return channel
+
+    url = await warpost.post(Bot(), 2, day=date(2026, 10, 3), day_title="Strife Pass",
+                             message="Rally 10:40", scenarios=["Plan A", "Rush east!"],
+                             images=[PNG, PNG], source="Goba")
+    assert url.endswith("/99")
+    embed = channel.sent["embed"]
+    assert embed.title == "War plan · 2026-10-03 (Sat) · Strife Pass"
+    assert embed.description == "Rally 10:40"
+    assert [f.filename for f in channel.sent["files"]] == ["01_Plan_A.png", "02_Rush_east.png"]

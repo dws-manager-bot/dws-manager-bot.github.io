@@ -760,7 +760,7 @@ class WarItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: str = Field(min_length=1, max_length=40)
-    type: Literal["arrow", "pin", "sticker", "note", "stamp"]
+    type: Literal["arrow", "pin", "route", "sticker", "note", "stamp"]
 
 
 class WarScenario(BaseModel):
@@ -811,6 +811,22 @@ class WarPlanSummary(ORMModel):
     source_name: str | None = None
     updated_by_name: str | None = None
     updated_at: datetime | None = None
+    # A draft its owner has opened to every admin, to edit together live.
+    shared: bool = False
+    # How many admins have it open right now.
+    here: int = 0
+    posted_at: datetime | None = None
+    posted_url: str | None = None
+
+
+class WarPlanShareIn(BaseModel):
+    shared: bool
+
+
+class WarPostOut(BaseModel):
+    url: str
+    images: int
+    posted_at: datetime
 
 
 class WarPlanOut(WarPlanSummary):

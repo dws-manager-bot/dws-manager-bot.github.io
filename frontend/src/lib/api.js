@@ -18,6 +18,11 @@ export function loginUrl() {
   return `${API_URL}/auth/login`
 }
 
+/** A WebSocket address on the API's host: https becomes wss, http ws. */
+export function liveUrl(path) {
+  return `${API_URL.replace(/^http/, 'ws')}${path}`
+}
+
 /**
  * Reads the token the API left in the URL fragment after OAuth, then strips it
  * from the address bar so it does not sit in history or get pasted around.

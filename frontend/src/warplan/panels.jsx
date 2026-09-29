@@ -25,6 +25,13 @@ const TOOLS = [
   ['arrow', 'Arrow', <path key="a" d="M3 17L16 4M9 4h7v7" fill="none" />],
   ['curve', 'Curve', <path key="c" d="M3 17C4 8 10 4 16 4M10.5 3.5l5.5.5-1 5.4" fill="none" />],
   ['pin', 'Pin', <path key="p" d="M10 18s-5.5-5.2-5.5-9.5a5.5 5.5 0 0 1 11 0C15.5 12.8 10 18 10 18zm0-7.3a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />],
+  ['route', 'Route', (
+    <g key="r">
+      <path d="M4.5 15.5L9 8.5l5 4 2.5-8" fill="none" />
+      <circle cx="4.5" cy="15.5" r="2.2" /><circle cx="9" cy="8.5" r="2.2" />
+      <circle cx="14" cy="12.5" r="2.2" /><circle cx="16.5" cy="4.5" r="2.2" />
+    </g>
+  )],
   ['sticker', 'Sticker', <path key="k" d="M10 2.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2L10 14.3l-4.6 2.5.9-5.2L2.5 8l5.2-.7z" />],
   ['note', 'Note', <path key="n" d="M3.5 3.5h13v9l-4 4h-9zM12.5 16.5v-4h4M6.5 7.5h7M6.5 10.5h4" fill="none" />],
   ['stamp', 'Stamp', <path key="t" d="M3 3h6v6H3zM11 11h6v6h-6zM11 3h6v6h-6z" />],
@@ -178,16 +185,18 @@ export function CityPanel({
 
 const NOTE_COLORS = ['#fef3c7', '#ffffff', '#fecdd3', '#bfdbfe', '#bbf7d0', '#18181b']
 
-export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDuplicate, onClose }) {
+export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDuplicate, onClose, onExtend }) {
   const set = (patch, key) => onChange({ ...item, ...patch }, key)
   const ink = { alliance: item.alliance ?? null, color: item.color || '#fbbf24' }
   const shown = alliances.find((a) => a.id === item.alliance)?.color || ink.color
-  const where = item.type === 'arrow' ? `${coords(...item.a)} → ${coords(...item.b)}` : coords(item.x, item.y)
+  const where = item.type === 'arrow' ? `${coords(...item.a)} → ${coords(...item.b)}`
+    : item.type === 'route' ? `${coords(...item.points[0])} → ${coords(...item.points[item.points.length - 1])}`
+      : coords(item.x, item.y)
   return (
     <div className="card wp-inspect">
       <div className="card-head">
         <strong>{ITEM_LABEL[item.type]}</strong>
-        <button type="button" className="wp-coord" onClick={() => copy(item.type === 'arrow' ? where : `${item.x} ${item.y}`)}
+        <button type="button" className="wp-coord" onClick={() => copy('x' in item ? `${item.x} ${item.y}` : where)}
                 title="Copy coordinates">{where}</button>
         <button type="button" className="btn ghost small wp-close" onClick={onClose} aria-label="Close">×</button>
       </div>
@@ -277,6 +286,41 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
               <label className="wide">
                 <span className="pw-slider-label">Width <b>{item.width || 1.6}</b></span>
                 <input type="range" min="0.4" max="6" step="0.2" value={item.width || 1.6}
+                       onChange={(e) => set({ width: +e.target.value }, `width:${item.id}`)} />
+              </label>
+            </>
+          )}
+          {item.type === 'route' && (
+            <>
+              <div className="wide">
+                <span className="label">{`Waypoints · ${item.points.length}`}</span>
+                <ol className="wp-stops">
+                  {item.points.map(([x, y], i) => (
+                    <li key={`${i}:${x}:${y}`}>
+                      <span className="wp-stop-n">{i + 1}</span>
+                      <button type="button" className="wp-coord" title="Copy coordinates"
+                              onClick={() => copy(`${x} ${y}`)}>{coords(x, y)}</button>
+                      <button type="button" className="btn ghost small wp-stop-x" aria-label={`Remove waypoint ${i + 1}`}
+                              disabled={item.points.length <= 2}
+                              onClick={() => set({ points: item.points.filter((_, k) => k !== i) })}>×</button>
+                    </li>
+                  ))}
+                </ol>
+                <div className="row">
+                  <button type="button" className="btn small" onClick={() => onExtend?.(item.id)}>Add stops from the end</button>
+                  <button type="button" className="btn small"
+                          onClick={() => set({ points: [...item.points].reverse() })}>Reverse</button>
+                </div>
+              </div>
+              <div>
+                <span className="label">Line</span>
+                <div className="row">
+                  <button type="button" className={item.dash ? 'chip on' : 'chip'} onClick={() => set({ dash: !item.dash })}>Dashed</button>
+                </div>
+              </div>
+              <label>
+                <span className="pw-slider-label">Width <b>{item.width || 1.2}</b></span>
+                <input type="range" min="0.4" max="5" step="0.2" value={item.width || 1.2}
                        onChange={(e) => set({ width: +e.target.value }, `width:${item.id}`)} />
               </label>
             </>
@@ -505,6 +549,31 @@ export function AlliancesCard({ map, alliances, now, onCreate, onUpdate, onDelet
           <button type="button" className="btn small" onClick={() => setEditing('new')}>Add an alliance</button>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------- legend */
+
+export const LAYERS = [
+  ['city', 'Pyramids'], ['pass', 'Passes'], ['stronghold', 'Strongholds'], ['oasis', 'Oases'],
+  ['fills', 'Territory colors'], ['drawings', 'Drawings'], ['names', 'Names'],
+]
+
+/** The legend is also the layer switch: each entry shows or hides what it names. */
+export function Legend({ hide, setHide, alliances }) {
+  return (
+    <div className="wp-legend small" role="group" aria-label="Show or hide">
+      {LAYERS.map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={!hide[key]}
+                className={hide[key] ? 'wp-layer off' : 'wp-layer'}
+                title={hide[key] ? `Show ${label.toLowerCase()}` : `Hide ${label.toLowerCase()}`}
+                onClick={() => setHide({ ...hide, [key]: !hide[key] })}>
+          <i className={`wp-key ${key}`} />{label}
+        </button>
+      ))}
+      <span className="wp-legend-note"><i className="wp-key planned" />Striped: planned change</span>
+      {alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
     </div>
   )
 }

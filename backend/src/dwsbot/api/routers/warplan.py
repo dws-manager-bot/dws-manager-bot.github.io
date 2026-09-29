@@ -14,14 +14,34 @@ a plan drawn on Tuesday still means the same thing after Wednesday's board edit.
 
 Admin-only, reading included: this is the alliance's strategy, and members get
 it as an image when it is ready.
+
+Plans are also edited live, over the WebSocket at /war/live: see warlive.py.
+Everything here that reads or replaces a plan first asks the live room to write
+itself back, so a REST read never misses the last second of someone's edits.
 """
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import datetime as dt
 import json
+import logging
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy import delete, func, select
 
+from ... import warpost
+from ...config import get_settings
 from ...models import WarAlliance, WarDay, WarHolding, WarPlan
 from ...schemas import (
     WarAllianceIn,
@@ -34,10 +54,16 @@ from ...schemas import (
     WarHoldingOut,
     WarPlanIn,
     WarPlanOut,
+    WarPlanShareIn,
     WarPlanSummary,
+    WarPostOut,
 )
+from ...security import decode_token
+from ...warlive import hub
 from ..deps import AdminUser, DbSession, write_audit
 from .lineups import _names
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/war", tags=["war planner"])
 
@@ -249,11 +275,14 @@ async def update_day(day_id: int, payload: WarDayPatch, session: DbSession, user
                summary="Delete a war day and every plan drawn for it")
 async def delete_day(day_id: int, session: DbSession, user: AdminUser) -> None:
     row = await _day(session, day_id)
+    plan_ids = list(await session.scalars(select(WarPlan.id).where(WarPlan.day_id == row.id)))
     await session.execute(delete(WarPlan).where(WarPlan.day_id == row.id))
     await session.delete(row)
     await write_audit(session, user, "war.day.delete", "war_day", day_id,
                       {"day": row.day.isoformat()})
     await session.commit()
+    for plan_id in plan_ids:
+        hub.gone(plan_id)
 
 
 # -------------------------------------------------------------------- plans
@@ -268,7 +297,8 @@ def _summary(row: WarPlan, names: dict[int, str], cls=WarPlanSummary):
         scenarios=len((row.doc or {}).get("scenarios", [])),
         version=row.version, source_name=row.source_name,
         updated_by_name=names.get(row.updated_by_id) or row.updated_by_name,
-        updated_at=row.updated_at, **extra,
+        updated_at=row.updated_at, shared=bool(row.shared), here=hub.here(row.id),
+        posted_at=row.posted_at, posted_url=row.posted_url, **extra,
     )
 
 
@@ -305,6 +335,7 @@ async def list_plans(day_id: int, session: DbSession, user: AdminUser):
 
 @router.get("/plans/{plan_id}", response_model=WarPlanOut, summary="Read one plan")
 async def get_plan(plan_id: int, session: DbSession, _: AdminUser):
+    await hub.flush(plan_id)
     return await _out(session, await _plan(session, plan_id))
 
 
@@ -313,8 +344,14 @@ async def save_mine(day_id: int, payload: WarPlanIn, session: DbSession, user: A
     await _day(session, day_id)
     doc = payload.doc.model_dump(mode="json")
     _check_size(doc)
+    mine = select(WarPlan.id).where(WarPlan.day_id == day_id, WarPlan.owner_id == user.discord_id)
+    live_id = await session.scalar(mine)
+    if live_id is not None:
+        # Live edits first, so the version check below sees them.
+        await hub.flush(live_id)
     row = await session.scalar(
         select(WarPlan).where(WarPlan.day_id == day_id, WarPlan.owner_id == user.discord_id)
+        .execution_options(populate_existing=True)
     )
     if row is not None and payload.version != row.version:
         # Most likely the same admin on a second device. Saving anyway would
@@ -337,12 +374,15 @@ async def save_mine(day_id: int, payload: WarPlanIn, session: DbSession, user: A
                        "items": sum(len(s["items"]) for s in doc["scenarios"])})
     await session.commit()
     await session.refresh(row)
+    await hub.reload(row.id, "This draft was saved from another window — showing that version.")
     return await _out(session, row)
 
 
 @router.post("/plans/{plan_id}/publish", response_model=WarPlanOut,
              summary="Make a draft the day's official plan")
 async def publish(plan_id: int, session: DbSession, user: AdminUser):
+    # Whatever is being drawn on the draft right now is part of what is published.
+    await hub.flush(plan_id)
     src = await _plan(session, plan_id)
     if src.owner_id is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "That is already the official plan")
@@ -363,6 +403,7 @@ async def publish(plan_id: int, session: DbSession, user: AdminUser):
                       {"from": src.owner_name})
     await session.commit()
     await session.refresh(official)
+    await hub.reload(official.id, f"Republished from {src.owner_name or 'a draft'}.")
     return await _out(session, official)
 
 
@@ -377,3 +418,168 @@ async def delete_plan(plan_id: int, session: DbSession, user: AdminUser) -> None
     await write_audit(session, user, "war.plan.delete", "war_plan", row.day_id,
                       {"official": row.owner_id is None})
     await session.commit()
+    hub.gone(plan_id)
+
+
+@router.patch("/plans/{plan_id}/share", response_model=WarPlanOut,
+              summary="Open your draft to every admin, or close it again")
+async def share_plan(plan_id: int, payload: WarPlanShareIn, session: DbSession, user: AdminUser):
+    row = await _plan(session, plan_id)
+    if row.owner_id is None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "The official plan changes only by publishing a draft over it")
+    if row.owner_id != user.discord_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            f"That draft is {row.owner_name or 'another admin'}'s to share")
+    row.shared = payload.shared
+    await write_audit(session, user, "war.plan.share", "war_plan", row.day_id,
+                      {"shared": payload.shared})
+    await session.commit()
+    await session.refresh(row)
+    hub.set_shared(plan_id, payload.shared)
+    return await _out(session, row)
+
+
+# -------------------------------------------------------------- discord
+
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
+
+@router.post("/plans/{plan_id}/post", response_model=WarPostOut,
+             summary="Post the official plan's maps to a Discord channel")
+async def post_plan(
+    plan_id: int,
+    session: DbSession,
+    user: AdminUser,
+    channel_id: Annotated[str, Form()],
+    scenarios: Annotated[list[str], Form()],
+    images: Annotated[list[UploadFile], File()],
+    message: Annotated[str, Form(max_length=1800)] = "",
+    again: Annotated[bool, Form()] = False,
+):
+    """One message: a heading, then one map per scenario, as the admin framed them.
+
+    Synchronous on purpose, like the BGB cards: the admin would rather wait a
+    few seconds than find out later that Discord refused.
+    """
+    from ...discord_bot.bot import bot
+
+    row = await _plan(session, plan_id)
+    day = await _day(session, row.day_id)
+    if row.owner_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Only the official plan is posted — publish this draft first")
+    if not 1 <= len(images) <= warpost.MAX_IMAGES or len(images) != len(scenarios):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            f"Send between 1 and {warpost.MAX_IMAGES} maps, one per scenario")
+    if row.posted_at and not again:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This plan is already posted. Posting again sends a second message, which the "
+            "alliance will see — confirm if that is what you want.")
+    pngs = []
+    for upload in images:
+        data = await upload.read(MAX_IMAGE_BYTES + 1)
+        if len(data) > MAX_IMAGE_BYTES or not data.startswith(warpost.PNG):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                "Each map must be a PNG under 8 MB")
+        pngs.append(data)
+    if not bot.is_ready():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet — try again")
+
+    try:
+        url = await warpost.post(
+            bot, int(channel_id), day=day.day, day_title=day.title, message=message.strip(),
+            scenarios=[s.strip()[:40] or "Plan" for s in scenarios], images=pngs,
+            source=row.source_name)
+    except Exception as exc:
+        # 409 and not 502: Cloudflare replaces a 5xx body with its own page and
+        # drops the CORS headers, so the real reason would never arrive.
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Discord refused the post: {exc}") from exc
+
+    row.posted_at = dt.datetime.now(dt.UTC)
+    row.posted_url = url
+    await write_audit(session, user, "war.plan.post", "war_plan", row.day_id, {
+        "name": f"War plan {day.day}: posted {len(pngs)} maps",
+        "channel_id": str(channel_id), "url": url,
+    })
+    await session.commit()
+    return WarPostOut(url=url, images=len(pngs), posted_at=row.posted_at)
+
+
+# ------------------------------------------------------------------ live
+
+def _origin_ok(origin: str | None) -> bool:
+    # A browser always sends Origin on a WebSocket, and cross-site WebSocket
+    # hijacking needs a browser. A missing one is a script with its own token.
+    if not origin:
+        return True
+    allowed = {o.rstrip("/") for o in get_settings().cors_origins}
+    return origin.rstrip("/") in allowed
+
+
+@router.websocket("/live")
+async def live(ws: WebSocket) -> None:
+    """Live editing. The first message must be {"type": "hello", "token": ...}.
+
+    The token rides in a message rather than the URL because the access log
+    records URLs. Close codes: 4400 no hello, 4401 bad token, 4403 not an admin
+    or a foreign origin.
+    """
+    if not _origin_ok(ws.headers.get("origin")):
+        await ws.close(code=4403)
+        return
+    await ws.accept()
+    try:
+        hello = json.loads(await asyncio.wait_for(ws.receive_text(), timeout=10))
+        claims = decode_token(str(hello.get("token", "")))
+    except (TimeoutError, ValueError, AttributeError, WebSocketDisconnect):
+        await ws.close(code=4400)
+        return
+    except HTTPException:
+        await ws.close(code=4401)
+        return
+    if not claims.get("adm"):
+        await ws.close(code=4403)
+        return
+
+    client = hub.connect(int(claims["sub"]), claims.get("name", "unknown"))
+
+    async def pump() -> None:
+        while True:
+            await ws.send_json(await client.outbox.get())
+
+    sender = asyncio.create_task(pump())
+    client.send({"type": "welcome", "you": client.sid})
+    try:
+        while True:
+            raw = await ws.receive_text()
+            if len(raw) > 1_200_000:
+                await ws.close(code=1009)
+                break
+            try:
+                msg = json.loads(raw)
+            except ValueError:
+                continue
+            kind = msg.get("type") if isinstance(msg, dict) else None
+            if kind == "join" and isinstance(msg.get("plan"), int):
+                await hub.join(client, msg["plan"], SEASON)
+            elif kind == "leave":
+                await hub.leave(client)
+            elif kind == "op":
+                hub.op(client, msg.get("cid"), msg.get("op"))
+            elif kind == "cursor":
+                hub.cursor(client, msg.get("x"), msg.get("y"), msg.get("scenario"), msg.get("sel"))
+            elif kind == "ping":
+                client.send({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        log.exception("live connection failed")
+    finally:
+        await hub.leave(client)
+        sender.cancel()
+        # The sender may already have died on a closed socket; either way it is done.
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await sender
