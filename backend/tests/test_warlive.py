@@ -53,6 +53,12 @@ def test_an_item_is_put_by_id_and_removed_by_id():
     assert DOC["scenarios"][0]["items"] == [{"id": "p", "type": "pin", "x": 1}]
 
 
+def test_a_waypoint_route_is_a_drawing_like_any_other():
+    route = {"id": "r", "type": "route", "points": [[840, 470], [860, 490], [874, 500]]}
+    doc = apply_op(DOC, {"t": "item", "s": "b", "item": route})
+    assert doc["scenarios"][1]["items"] == [route]
+
+
 def test_a_territory_is_planned_cleared_and_sent_neutral():
     doc = apply_op(DOC, {"t": "change", "s": "a", "city": 145, "v": 2})
     doc = apply_op(doc, {"t": "change", "s": "a", "city": 136, "v": None})

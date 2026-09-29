@@ -42,7 +42,7 @@ MAX_DOC_BYTES = 1_000_000
 MAX_SCENARIOS = 12
 MAX_ITEMS = 1500
 MAX_CHANGES = 400
-ITEM_TYPES = frozenset({"arrow", "pin", "sticker", "note", "stamp"})
+ITEM_TYPES = frozenset({"arrow", "pin", "route", "sticker", "note", "stamp"})
 
 # Seconds of quiet before a room writes itself back.
 SAVE_AFTER = 1.2
