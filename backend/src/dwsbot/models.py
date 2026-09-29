@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    false,
     func,
     text,
     true,
@@ -661,5 +662,12 @@ class WarPlan(Base, TimestampMixin):
     # For the official plan: whose draft it was published from.
     source_id: Mapped[int | None] = mapped_column(Integer)
     source_name: Mapped[str | None] = mapped_column(String(100))
+    # A draft its owner has opened to every admin, to edit together live.
+    shared: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    # For the official plan: when it was last posted to Discord, and where.
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    posted_url: Mapped[str | None] = mapped_column(String(200))
     updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
