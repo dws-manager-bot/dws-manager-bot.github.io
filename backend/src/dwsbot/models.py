@@ -517,3 +517,119 @@ class AuditLog(Base):
     entity: Mapped[str | None] = mapped_column(String(64))
     entity_id: Mapped[str | None] = mapped_column(String(64))
     detail: Mapped[dict | None] = mapped_column(JSONB)
+
+
+# ------------------------------------------------------------- war planner
+#
+# The season map's strategy board. Four tables, from the longest-lived down:
+# the alliances on the map, who holds what right now, the days a war is fought,
+# and the plans drawn for each day. The map itself is static game data and
+# lives in the frontend; these hold only what the alliance decides.
+
+
+class WarAlliance(Base, TimestampMixin):
+    """An alliance on the season map, on either camp.
+
+    Colors are unique within a season because the color is how the map says who
+    holds what. Two alliances in one color would make the map lie.
+    """
+
+    __tablename__ = "war_alliances"
+    __table_args__ = (
+        UniqueConstraint("season", "name", name="uq_war_alliance_name"),
+        UniqueConstraint("season", "color", name="uq_war_alliance_color"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    season: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    tag: Mapped[str | None] = mapped_column(String(16))
+    # 1 or 2, the game's own camp numbers (worldcity.belong_eden_camp).
+    camp: Mapped[int] = mapped_column(Integer, nullable=False)
+    color: Mapped[str] = mapped_column(String(7), nullable=False)
+    # The state it comes from: a season camp spans several servers.
+    server: Mapped[str | None] = mapped_column(String(16))
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class WarHolding(Base):
+    """Who holds one territory right now: the board every plan is drawn over.
+
+    An absent row is a neutral territory. Deleting an alliance deletes its rows,
+    which is the same thing as its territories going neutral.
+    """
+
+    __tablename__ = "war_holdings"
+
+    season: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # worldcity id from the game data: a Pyramid, pass, Stronghold or Oasis.
+    city_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alliance_id: Mapped[int] = mapped_column(
+        ForeignKey("war_alliances.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class WarDay(Base, TimestampMixin):
+    """One day a war is fought, and the plans drawn for it. Usually a Saturday."""
+
+    __tablename__ = "war_days"
+    __table_args__ = (UniqueConstraint("season", "day", name="uq_war_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    season: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(80))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class WarPlan(Base, TimestampMixin):
+    """One admin's draft for a war day, or the day's official plan.
+
+    Same shape as the Pass War line-ups: a draft belongs to one admin, and
+    publishing copies it into the official plan rather than moving it, so the
+    author keeps working on the draft it came from.
+
+    `doc` holds the scenarios: each has its planned captures and losses and its
+    drawings. Every drawing carries its own id, which is what will let two
+    admins edit one plan live without overwriting each other.
+
+    `version` goes up on every save. A save that carries an older version was
+    made over a copy that has since changed, and is refused rather than allowed
+    to silently undo the newer one.
+    """
+
+    __tablename__ = "war_plans"
+    __table_args__ = (
+        UniqueConstraint("day_id", "owner_id", name="uq_war_plan_owner"),
+        # NULL owners are distinct to a unique constraint, so the one-official
+        # rule needs its own index.
+        Index(
+            "uq_war_plan_official", "day_id", unique=True,
+            postgresql_where=text("owner_id IS NULL"),
+            sqlite_where=text("owner_id IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    day_id: Mapped[int] = mapped_column(
+        ForeignKey("war_days.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # NULL marks the day's official plan.
+    owner_id: Mapped[int | None] = mapped_column(BigInteger)
+    owner_name: Mapped[str | None] = mapped_column(String(100))
+    doc: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # For the official plan: whose draft it was published from.
+    source_id: Mapped[int | None] = mapped_column(Integer)
+    source_name: Mapped[str | None] = mapped_column(String(100))
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
