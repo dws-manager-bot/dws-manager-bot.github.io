@@ -224,6 +224,72 @@ class BgbRegistration(Base, TimestampMixin):
         return f"<BgbRegistration {self.name} {self.team}/{self.role}>"
 
 
+class AttendanceEvent(Base, TimestampMixin):
+    """One occasion the alliance turned out for, and was counted at.
+
+    Not `EventDefinition`, which is the bot's calendar -- when a thing happens
+    and who to remind. This is the record of who actually showed up, kept so a
+    season's rewards can be handed out on something better than memory.
+
+    `kind` is a plain string with no check constraint, so a new sort of event
+    needs no migration. "strife_pass" is the first.
+
+    BGB is deliberately not stored here. Its attendance lives on the roster it
+    was fought from, because only the registered could attend at all -- and a
+    member who was never picked has not missed anything.
+    """
+
+    __tablename__ = "attendance_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    held_on: Mapped[date] = mapped_column(Date, nullable=False)
+    # The game's own heading, e.g. "Declare war on Lv.6 Strife Pass (East)".
+    title: Mapped[str | None] = mapped_column(String(200))
+    note: Mapped[str | None] = mapped_column(Text)
+
+    records: Mapped[list[AttendanceRecord]] = relationship(
+        back_populates="event", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (UniqueConstraint("kind", "held_on", name="uq_attendance_event"),)
+
+    def __repr__(self) -> str:
+        return f"<AttendanceEvent {self.kind} {self.held_on}>"
+
+
+class AttendanceRecord(Base, TimestampMixin):
+    """Whether one member turned out, and what they contributed.
+
+    `merits` is the game's own contribution figure where it was captured, and
+    null where it was not -- which is not the same as zero, and is why turning
+    up and contributing are two separate columns.
+    """
+
+    __tablename__ = "attendance_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("attendance_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The name they were going by that day, which is often not today's.
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    present: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    merits: Mapped[int | None] = mapped_column(BigInteger)
+    rank: Mapped[int | None] = mapped_column(Integer)
+
+    event: Mapped[AttendanceEvent] = relationship(back_populates="records")
+    player: Mapped[Player] = relationship()
+
+    __table_args__ = (UniqueConstraint("event_id", "player_id", name="uq_attendance_record"),)
+
+    def __repr__(self) -> str:
+        return f"<AttendanceRecord {self.name} {'in' if self.present else 'out'}>"
+
+
 class Announcement(Base, TimestampMixin):
     """A recurring message the bot posts to a channel on a schedule.
 
