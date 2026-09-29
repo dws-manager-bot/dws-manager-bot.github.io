@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
         members,
         meta,
         players,
+        season,
         setup,
     )
 
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(members.router)
     app.include_router(players.router)
     app.include_router(bgb.router)
+    app.include_router(season.router)
     app.include_router(history.router)
     app.include_router(setup.router)
     app.include_router(lineups.router)

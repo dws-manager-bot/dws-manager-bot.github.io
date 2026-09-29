@@ -558,3 +558,46 @@ class BgbPublishOut(BaseModel):
     messages: int
     images: int
     published_at: datetime
+
+
+# --- the season's standing --------------------------------------------------
+
+class SeasonEventOut(BaseModel):
+    id: int
+    held_on: date
+    title: str | None = None
+    present: int = 0
+    recorded: int = 0
+    has_merits: bool = False     # false where the ranking was never captured
+
+
+class SeasonDayOut(BaseModel):
+    event_id: int
+    held_on: date
+    present: bool = False
+    recorded: bool = False       # false if they were not on that day's sheet at all
+    merits: int | None = None
+
+
+class SeasonMemberOut(BaseModel):
+    player_id: str
+    name: str
+    rank: int | None = None
+    bgb_cp: int | None = None
+    attended: int = 0
+    of: int = 0
+    days: list[SeasonDayOut] = Field(default_factory=list)
+    # Averaged over the days a ranking was captured, 1.0 best. Null when none were.
+    merit_standing: float | None = None
+    merit_days: int = 0
+    first_seen: date | None = None
+    # Beside the count, never inside it: only a fraction of members get a seat.
+    bgb_seats: int = 0
+    bgb_fought: int = 0
+    bgb_no_shows: int = 0
+
+
+class SeasonOut(BaseModel):
+    kind: str
+    events: list[SeasonEventOut] = Field(default_factory=list)
+    members: list[SeasonMemberOut] = Field(default_factory=list)
