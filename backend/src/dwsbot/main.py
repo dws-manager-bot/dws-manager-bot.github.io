@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
         players,
         season,
         setup,
+        warplan,
     )
 
     app.include_router(meta.router)
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(history.router)
     app.include_router(setup.router)
     app.include_router(lineups.router)
+    app.include_router(warplan.router)
     return app
 
 

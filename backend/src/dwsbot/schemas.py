@@ -597,3 +597,196 @@ class SeasonOut(BaseModel):
     kind: str
     events: list[SeasonEventOut] = Field(default_factory=list)
     members: list[SeasonMemberOut] = Field(default_factory=list)
+
+
+# ------------------------------------------------------------- war planner
+
+HexColor = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
+
+
+def _blank_to_none(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    return v or None
+
+
+class WarAllianceIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    tag: str | None = Field(default=None, max_length=16)
+    camp: Literal[1, 2]
+    color: HexColor
+    server: str | None = Field(default=None, max_length=16)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("An alliance needs a name")
+        return v
+
+    @field_validator("tag", "server", "notes")
+    @classmethod
+    def _optional(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @field_validator("color")
+    @classmethod
+    def _lower(cls, v: str) -> str:
+        return v.lower()
+
+
+class WarAlliancePatch(BaseModel):
+    """Only the fields sent change."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    tag: str | None = Field(default=None, max_length=16)
+    camp: Literal[1, 2] | None = None
+    color: HexColor | None = None
+    server: str | None = Field(default=None, max_length=16)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("An alliance needs a name")
+        return v.strip() if v else v
+
+    @field_validator("tag", "server", "notes")
+    @classmethod
+    def _optional(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @field_validator("color")
+    @classmethod
+    def _lower(cls, v: str | None) -> str | None:
+        return v.lower() if v else v
+
+
+class WarAllianceOut(ORMModel):
+    id: int
+    season: int
+    name: str
+    tag: str | None = None
+    camp: int
+    color: str
+    server: str | None = None
+    notes: str | None = None
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+
+
+class WarHoldingOut(ORMModel):
+    city_id: int
+    alliance_id: int
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+
+
+class WarBoardChange(BaseModel):
+    city_id: int
+    # None hands the territory back to neutral.
+    alliance_id: int | None = None
+
+
+class WarBoardIn(BaseModel):
+    changes: list[WarBoardChange] = Field(min_length=1, max_length=400)
+
+
+class WarDayIn(BaseModel):
+    day: date
+    title: str | None = Field(default=None, max_length=80)
+    notes: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("title", "notes")
+    @classmethod
+    def _optional(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class WarDayPatch(BaseModel):
+    title: str | None = Field(default=None, max_length=80)
+    notes: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("title", "notes")
+    @classmethod
+    def _optional(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class WarDayOut(ORMModel):
+    id: int
+    season: int
+    day: date
+    title: str | None = None
+    notes: str | None = None
+    created_by_name: str | None = None
+    plans: int = 0
+    official: bool = False
+
+
+class WarItem(BaseModel):
+    """One drawing. Only the id and kind are checked; the geometry is the
+    client's business, and the plan's overall size is capped instead."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str = Field(min_length=1, max_length=40)
+    type: Literal["arrow", "pin", "sticker", "note", "stamp"]
+
+
+class WarScenario(BaseModel):
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=40)
+    # Territory id -> the alliance planned to hold it, or None for "goes
+    # neutral". Only differences from the board are stored, so a plan still
+    # reads right after the board moves on.
+    changes: dict[str, int | None] = Field(default_factory=dict)
+    items: list[WarItem] = Field(default_factory=list, max_length=1500)
+    notes: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("changes")
+    @classmethod
+    def _territory_keys(cls, v: dict[str, int | None]) -> dict[str, int | None]:
+        if len(v) > 400:
+            raise ValueError("A scenario can change at most 400 territories")
+        if any(not k.isdigit() for k in v):
+            raise ValueError("Territory ids must be numbers")
+        return v
+
+
+class WarDoc(BaseModel):
+    scenarios: list[WarScenario] = Field(min_length=1, max_length=12)
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> WarDoc:
+        ids = [s.id for s in self.scenarios]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Two scenarios share an id")
+        return self
+
+
+class WarPlanIn(BaseModel):
+    doc: WarDoc
+    # The version this edit was made over; None when starting a new draft.
+    version: int | None = None
+
+
+class WarPlanSummary(ORMModel):
+    id: int
+    day_id: int
+    owner_id: Snowflake | None = None
+    owner_name: str | None = None
+    official: bool = False
+    scenarios: int = 0
+    version: int = 1
+    source_name: str | None = None
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+
+
+class WarPlanOut(WarPlanSummary):
+    doc: dict = Field(default_factory=dict)
