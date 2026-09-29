@@ -3,6 +3,7 @@ import { KIND_LABEL, cityTitle, coords } from './mapdata.js'
 import { INKS, SWATCHES, inkOn, nextColor } from './palette.js'
 import { CAP, CAP_WITH_TECH, SCORED, fullNum, shortNum } from './standing.js'
 import { ITEM_LABEL, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
+import { DECLARATIONS_PER_DAY } from './targets.js'
 
 /* The War planner's side panels. Each is a plain card; the page owns the data
    and passes down what a panel shows and what it may change. */
@@ -97,7 +98,7 @@ export function InkPicker({ ink, setInk, alliances }) {
 /* ------------------------------------------------------- territory inspector */
 
 export function CityPanel({
-  map, city, board, holders, alliances, scenario, editable, onBoard, onPlan, onGo, busy, onClose,
+  map, city, board, holders, alliances, scenario, editable, onBoard, onPlan, onGo, busy, onClose, declarers = [],
 }) {
   const held = board.get(city.id)
   const planned = scenario.changes?.[city.id]
@@ -159,6 +160,22 @@ export function CityPanel({
           </small>
         </label>
       </div>
+
+      {(city.kind === 'city' || city.kind === 'pass') && (
+        <>
+          <div className="wp-sub">Can declare on it now</div>
+          {declarers.length ? (
+            <div className="wp-near">
+              {declarers.map(({ alliance, saturday }) => (
+                <span key={alliance.id} className="wp-near-btn static">
+                  <Swatch color={alliance.color} size={10} />
+                  {alliance.tag || alliance.name}{saturday && <span className="muted"> · Saturday</span>}
+                </span>
+              ))}
+            </div>
+          ) : <div className="muted small">No alliance on the board borders it.</div>}
+        </>
+      )}
 
       {city.nearBy.length > 0 && (
         <>
@@ -357,7 +374,7 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
 
 /* ---------------------------------------------------------------- standings */
 
-export function StandingsCard({ map, now, planned, scenario, changed, onApply, busy }) {
+export function StandingsCard({ map, now, planned, scenario, changed, onApply, busy, warnings = [] }) {
   const plannedById = new Map(planned.map((r) => [r.alliance.id, r]))
   const totals = (rows) => rows.reduce((t, r) => ({ ...t, [r.alliance.camp]: (t[r.alliance.camp] || 0) + r.influence }), { 1: 0, 2: 0 })
   const tNow = totals(now)
@@ -420,6 +437,11 @@ export function StandingsCard({ map, now, planned, scenario, changed, onApply, b
           </table>
         </div>
       )}
+      {warnings.length > 0 && (
+        <ul className="wp-warnings" aria-label={`What the rules would stop in ${scenario.name}`}>
+          {warnings.map((w) => <li key={w.text}>{w.text}</li>)}
+        </ul>
+      )}
       <p className="card-body small">
         Pyramids and passes score. Held counts both against the cap of {CAP} ({CAP_WITH_TECH} with Alliance Expansion);
         amber is over {CAP}, red over {CAP_WITH_TECH}.
@@ -442,7 +464,7 @@ const EMPTY = { name: '', tag: '', camp: 1, color: '', server: '', notes: '' }
 function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, busy }) {
   const [f, setF] = useState(() => ({
     ...EMPTY, ...initial,
-    color: initial?.color || nextColor(initial?.camp || 1, alliances),
+    color: initial?.color || nextColor(alliances),
   }))
   const others = alliances.filter((a) => a.id !== initial?.id)
   const taken = new Map(others.map((a) => [a.color.toLowerCase(), a.name]))
@@ -461,10 +483,7 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
         </label>
         <label>
           Camp
-          <select value={f.camp} onChange={(e) => {
-            const camp = Number(e.target.value)
-            setF((o) => ({ ...o, camp, color: initial?.id ? o.color : nextColor(camp, others) }))
-          }}>
+          <select value={f.camp} onChange={(e) => set('camp', Number(e.target.value))}>
             <option value={1}>{campName(map, 1)}</option>
             <option value={2}>{campName(map, 2)}</option>
           </select>
@@ -476,7 +495,7 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
         <div className="wide">
           <span className="label">Color</span>
           <div className="wp-inks">
-            {[...SWATCHES[f.camp], ...SWATCHES[f.camp === 1 ? 2 : 1]].map((c) => (
+            {SWATCHES.map((c) => (
               <button key={c} type="button" disabled={taken.has(c)} title={taken.get(c) || c}
                       className={f.color.toLowerCase() === c ? 'wp-ink on' : 'wp-ink'}
                       style={{ background: c }} onClick={() => set('color', c)} aria-label={c} />
@@ -574,6 +593,85 @@ export function Legend({ hide, setHide, alliances }) {
       ))}
       <span className="wp-legend-note"><i className="wp-key planned" />Striped: planned change</span>
       {alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ targets */
+
+/**
+ * Where one alliance may declare war. Judged on the board by default — the
+ * ground as it stands before anything changes hands that day — or on the open
+ * scenario, to look a step further ahead.
+ */
+export function TargetsCard({ map, alliances, allianceId, setAllianceId, result, basis, setBasis, scenario,
+  canUseScenario, show, setShow, onGo, byId }) {
+  const any = result?.targets.filter((t) => !t.saturday) || []
+  const sat = result?.targets.filter((t) => t.saturday) || []
+  const alliance = byId.get(allianceId)
+  const row = ({ city, saturday }) => {
+    const holder = saturday ? byId.get(result.holders.get(city.id)) : null
+    return (
+      <li key={city.id}>
+        <button type="button" className="wp-target" onClick={() => onGo(city)}>
+          <span className={saturday ? 'wp-ring sat' : 'wp-ring'} />
+          <span className="wp-name">{`Lv.${city.level} ${city.name}`}</span>
+          {holder && <span className="muted small">{holder.tag || holder.name}</span>}
+          <span className="muted small wp-target-at">{`${city.x}, ${city.y}`}</span>
+          <span className="small wp-target-inf">{city.influence}</span>
+        </button>
+      </li>
+    )
+  }
+  return (
+    <div className="card">
+      <div className="card-head">
+        <strong>Targets</strong>
+        <span className="muted small">{`${DECLARATIONS_PER_DAY} declarations a day`}</span>
+      </div>
+      {!alliances.length ? (
+        <p className="card-body">Add the alliances on the map first.</p>
+      ) : (
+        <>
+          <div className="grid">
+            <label>
+              For
+              <select value={allianceId ?? ''} onChange={(e) => setAllianceId(Number(e.target.value))}>
+                {[1, 2].map((camp) => (
+                  <optgroup key={camp} label={campName(map, camp)}>
+                    {alliances.filter((a) => a.camp === camp).map((a) => (
+                      <option key={a.id} value={a.id}>{a.tag ? `[${a.tag}] ${a.name}` : a.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <div>
+              <span className="label">Judged on</span>
+              <div className="row">
+                <button type="button" className={basis === 'board' ? 'chip on' : 'chip'} onClick={() => setBasis('board')}>The board</button>
+                <button type="button" className={basis === 'scenario' ? 'chip on' : 'chip'} disabled={!canUseScenario}
+                        title={canUseScenario ? '' : `${scenario.name} changes nothing`}
+                        onClick={() => setBasis('scenario')}>{`After ${scenario.name}`}</button>
+              </div>
+            </div>
+          </div>
+          <p className="card-body small">
+            {result?.rule === 'base'
+              ? `${alliance?.name} holds nothing${basis === 'scenario' ? ` after ${scenario.name}` : ''}, so it may only declare on the Lv.1 Pyramids of the ${campName(map, alliance?.camp)} Base.`
+              : 'Pyramids and passes bordering ground its camp holds. A pass comes before the Pyramid behind it.'}
+          </p>
+          <label className="inline">
+            <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
+            Ring them on the map
+          </label>
+          {any.length > 0 && <div className="wp-sub">{`Any day · ${any.length}`}</div>}
+          <ul className="wp-targets">{any.map(row)}</ul>
+          {sat.length > 0 && <div className="wp-sub">{`Saturday only — the other camp holds them · ${sat.length}`}</div>}
+          <ul className="wp-targets">{sat.map(row)}</ul>
+          {!any.length && !sat.length && <p className="muted small">Nothing to declare on.</p>}
+        </>
+      )}
     </div>
   )
 }
