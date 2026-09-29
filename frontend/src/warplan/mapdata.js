@@ -61,6 +61,27 @@ function decode(raw) {
         || (y > 0 && !walls[i - N]) || (y + 1 < N && !walls[i + N])) wallEdge[i] = 1
     }
   }
+  // Each Stronghold's area: 1-based index into sareaCity, 0 for none. A held
+  // Stronghold colors its whole area, whoever holds the Pyramid around it.
+  const sarea = new Uint8Array(N * N)
+  const sareaCity = [0, ...(raw.strongholdAreas?.cities || [])]
+  const runs = raw.strongholdAreas?.runs || []
+  for (let i = 0, p = 0; i < runs.length; i += 2) {
+    if (runs[i]) sarea.fill(runs[i], p, p + runs[i + 1])
+    p += runs[i + 1]
+  }
+  // A Stronghold area's rim, drawn only while it is held, so a held area reads
+  // as its own rectangle.
+  const sareaEdge = new Uint8Array(N * N)
+  for (let y = 0; y < N; y += 1) {
+    for (let x = 0; x < N; x += 1) {
+      const i = y * N + x
+      const a = sarea[i]
+      if (!a || walls[i]) continue
+      if ((x + 1 < N && sarea[i + 1] !== a) || (x > 0 && sarea[i - 1] !== a)
+        || (y + 1 < N && sarea[i + N] !== a) || (y > 0 && sarea[i - N] !== a)) sareaEdge[i] = 1
+    }
+  }
   const cities = raw.cities.map((c) => ({ ...c, nearBy: c.nearBy || [] }))
   const byId = new Map(cities.map((c) => [c.id, c]))
   // Pyramids and the Royal Court own the territory they stand in; a pass,
@@ -69,7 +90,7 @@ function decode(raw) {
   for (const c of cities) if (c.kind === 'city') zoneOwner[c.zone] = c.id
 
   return {
-    N, walls, wallEdge, zone, edge, zoneOwner, cities, byId,
+    N, walls, wallEdge, zone, edge, zoneOwner, sarea, sareaCity, sareaEdge, cities, byId,
     camps: raw.camps, build: raw.build, season: raw.season,
   }
 }
