@@ -15,6 +15,11 @@ import { short } from '../lib/cp.js'
  *
  * The tier lines are drawn here rather than computed. What the rewards are, and
  * how many of each, is the game's business and changes every season.
+ *
+ * BGB is not on this page. Only a fifth of the alliance gets a seat, so it
+ * cannot be counted alongside an event everyone can join, and it has enough of
+ * its own — seats, roles, scores, missed starts — to deserve its own standing
+ * rather than one borrowed column here.
  */
 
 const fmtDay = (d) =>
@@ -54,13 +59,12 @@ export default function Season() {
 
   function exportCsv() {
     const head = ['Tier', 'Member', 'Rank', 'Days attended', 'Of', 'Merit standing',
-      'Merit days', 'BGB seats', 'BGB fought', 'BGB no-shows', 'BGB CP']
+      'Merit days', 'CP']
     const rows = [head]
     tiers.forEach((t, i) => {
       for (const m of t.members) {
         rows.push([t.cut == null ? 'Rest' : `Tier ${i + 1}`, m.name, m.rank ?? '',
-          m.attended, m.of, standing(m.merit_standing), m.merit_days,
-          m.bgb_seats, m.bgb_fought, m.bgb_no_shows, m.bgb_cp ?? ''])
+          m.attended, m.of, standing(m.merit_standing), m.merit_days, m.bgb_cp ?? ''])
       }
     })
     save(new Blob([csv(rows)], { type: 'text/csv;charset=utf-8' }),
@@ -166,10 +170,6 @@ export default function Season() {
                       ? `average standing over ${m.merit_days} ranked day${m.merit_days === 1 ? '' : 's'}`
                       : 'never in a captured ranking'}>
                     {standing(m.merit_standing)}
-                  </span>
-                  <span className="season-bgb muted" title="BGB seats, battles fought, starts missed">
-                    {m.bgb_seats ? `${m.bgb_fought}/${m.bgb_seats} BGB` : '—'}
-                    {m.bgb_no_shows > 0 && <b className="bad"> {m.bgb_no_shows} missed</b>}
                   </span>
                   <span className="season-cp muted">{short(m.bgb_cp)}</span>
                 </li>
