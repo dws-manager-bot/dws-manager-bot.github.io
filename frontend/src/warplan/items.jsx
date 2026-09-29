@@ -36,6 +36,7 @@ export function makeItem(type, at, opts) {
   const base = { id: newId(), type, color: opts.color, alliance: opts.alliance ?? null }
   switch (type) {
     case 'arrow': return { ...base, a: at.a, b: at.b, ...(at.c ? { c: at.c } : {}), width: 1.6 }
+    case 'route': return { ...base, points: at.points, width: 1.2 }
     case 'pin': return { ...base, x: at.x, y: at.y, label: '' }
     case 'sticker': return { ...base, x: at.x, y: at.y, symbol: opts.symbol || 'star', size: 14 }
     case 'note': return {
@@ -231,6 +232,40 @@ function Arrow({ item, P, z, color }) {
   )
 }
 
+/**
+ * A waypoint route, like PUBG's map markers: numbered stops joined in order.
+ * The stops stay one size on screen, like pins; the line follows the map.
+ */
+export function Route({ item, P, z, color, draft }) {
+  const pts = item.points.map(([x, y]) => center(P, x, y))
+  if (!pts.length) return null
+  const w = Math.max(2, Math.min(10, (item.width || 1.2) * z))
+  const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x},${y}`).join(' ')
+  const dash = item.dash ? `${w * 2.2} ${w * 1.8}` : undefined
+  const ink = inkOn(color)
+  const last = pts.length - 1
+  return (
+    <g data-item={draft ? undefined : item.id}>
+      <path d={d} fill="none" stroke="#ffffff" strokeOpacity="0.85" strokeWidth={w + 3.5}
+            strokeLinejoin="round" strokeLinecap="round" strokeDasharray={dash} />
+      <path d={d} fill="none" stroke={color} strokeWidth={w} strokeLinejoin="round"
+            strokeLinecap="round" strokeDasharray={dash} />
+      <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(20, w + 12)} />
+      {pts.map(([x, y], i) => {
+        const r = i === last && !draft ? 11 : 9
+        return (
+          <g key={i} transform={`translate(${x},${y})`}>
+            {i === last && !draft && <circle r={r + 4} fill="none" stroke={color} strokeWidth="2" />}
+            <circle r={r} fill={color} stroke="#ffffff" strokeWidth="2.2" />
+            <text y="4" textAnchor="middle" fontFamily={FONT} fontSize={i >= 9 ? 9.5 : 11}
+                  fontWeight="700" fill={ink}>{i + 1}</text>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 function Pin({ item, P, color }) {
   const [x, y] = center(P, item.x, item.y)
   const ink = inkOn(color)
@@ -312,7 +347,7 @@ function Stamp({ item, P, z, color }) {
   )
 }
 
-const ORDER = { note: 0, stamp: 1, arrow: 2, sticker: 3, pin: 4 }
+const ORDER = { note: 0, stamp: 1, arrow: 2, route: 3, sticker: 4, pin: 5 }
 
 /** Every item, bottom to top: notes under everything, pins over everything. */
 export function Items({ items, P, z, colorOf }) {
@@ -322,6 +357,7 @@ export function Items({ items, P, z, colorOf }) {
     switch (item.type) {
       case 'arrow': return <Arrow key={item.id} item={item} P={P} z={z} color={color} />
       case 'pin': return <Pin key={item.id} item={item} P={P} color={color} />
+      case 'route': return <Route key={item.id} item={item} P={P} z={z} color={color} />
       case 'sticker': return <Sticker key={item.id} item={item} P={P} z={z} color={color} />
       case 'note': return <Note key={item.id} item={item} P={P} z={z} />
       case 'stamp': return <Stamp key={item.id} item={item} P={P} z={z} color={color} />
@@ -341,6 +377,11 @@ export function bounds(item, P, z) {
     case 'pin': {
       const [x, y] = center(P, item.x, item.y)
       return [x - 12, y - 33, x + 12, y + 1]
+    }
+    case 'route': {
+      const pts = item.points.map(([x, y]) => center(P, x, y))
+      const xs = pts.map((p) => p[0]); const ys = pts.map((p) => p[1])
+      return [Math.min(...xs) - 11, Math.min(...ys) - 11, Math.max(...xs) + 11, Math.max(...ys) + 11]
     }
     case 'sticker': {
       const [x, y] = center(P, item.x, item.y)
@@ -369,13 +410,21 @@ export function arrowHandles(item, P) {
   return out
 }
 
+/** Where a route's waypoints sit on screen, as handles p0, p1, … */
+export function routeHandles(item, P) {
+  return Object.fromEntries(item.points.map(([x, y], i) => [`p${i}`, center(P, x, y)]))
+}
+
 /** Move an item by whole tiles. */
 export function shifted(item, dx, dy) {
   const mv = ([x, y]) => [x + dx, y + dy]
   if (item.type === 'arrow') {
     return { ...item, a: mv(item.a), b: mv(item.b), ...(item.c ? { c: mv(item.c) } : {}) }
   }
+  if (item.type === 'route') return { ...item, points: item.points.map(mv) }
   return { ...item, x: item.x + dx, y: item.y + dy }
 }
 
-export const ITEM_LABEL = { arrow: 'Arrow', pin: 'Pin', sticker: 'Sticker', note: 'Note', stamp: 'Stamp' }
+export const ITEM_LABEL = {
+  arrow: 'Arrow', pin: 'Pin', route: 'Waypoint route', sticker: 'Sticker', note: 'Note', stamp: 'Stamp',
+}

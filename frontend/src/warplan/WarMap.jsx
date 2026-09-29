@@ -2,7 +2,7 @@ import {
   forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
 import { drawBase, paintBase, zoneStyles } from './base.js'
-import { FONT, Items, arrowHandles, bounds, makeItem, shifted } from './items.jsx'
+import { FONT, Items, Route, arrowHandles, bounds, makeItem, routeHandles, shifted } from './items.jsx'
 import { coords, footprint } from './mapdata.js'
 import { darker, inkOn } from './palette.js'
 
@@ -15,7 +15,12 @@ import { darker, inkOn } from './palette.js'
  * and y runs up the screen as it does on the game's minimap.
  *
  * Gestures: drag to pan, pinch or wheel to zoom. With a drawing tool, a drag
- * draws an arrow and a tap places a pin, sticker, note or stamp.
+ * draws an arrow and a tap places a pin, sticker, note or stamp. A waypoint
+ * route is tapped out stop by stop and finished with a double-click, Enter or
+ * Esc; Backspace takes the last stop back.
+ *
+ * Other admins on the same plan show as named cursors, and what they have
+ * selected is outlined in their color. None of that goes into the PNG.
  */
 
 const ZMAX = 40
@@ -37,7 +42,7 @@ function passLabel(name, z) {
 
 /* ------------------------------------------------------------------ markers */
 
-function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity }) {
+function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity, hide }) {
   const out = []
   const labels = []
   for (const c of map.cities) {
@@ -47,6 +52,7 @@ function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selected
     const cxs = x0 + px / 2
     const cys = y0 + px / 2
     if (cxs < -60 || cys < -60 || cxs > W + 60 || cys > H + 60) continue
+    if (hide[c.kind] && selectedCity !== c.id) continue
     if (c.kind === 'oasis' && z < 1.1 && selectedCity !== c.id) continue
     if (c.kind === 'stronghold' && z < 0.55 && selectedCity !== c.id) continue
 
@@ -94,7 +100,7 @@ function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selected
     else if (royal && z >= 0.6) label = 'Royal Court'
     else if (c.kind === 'stronghold' && z >= 2.2) label = 'Stronghold'
     const owner = holder != null && z >= 1.3 ? allianceOf(holder) : null
-    if (label || owner) {
+    if ((label || owner) && !hide.names) {
       const fs = Math.max(10, Math.min(13, 9 + z))
       labels.push(
         <text key={`l${c.id}`} x={cxs} y={cys + s / 2 + fs + 1} textAnchor="middle" fontFamily={FONT}
@@ -114,6 +120,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const {
     map, board, holders, alliances, items, tool, toolOpts, editable,
     selectedItem, selectedCity, onSelectItem, onSelectCity, onCreate, onItem,
+    hide = {}, peers = [], onCursor, extend = null, onExtended,
   } = props
 
   const wrapRef = useRef(null)
@@ -123,6 +130,9 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
   const [draft, setDraft] = useState(null)       // an arrow being drawn
+  const [route, setRoute] = useState(null)       // a route being tapped out: { points, id? }
+  const routeRef = useRef(null)
+  routeRef.current = route
   const gesture = useRef({ pointers: new Map() })
 
   const N = map.N
@@ -171,12 +181,13 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   /* ----------------------------------------------------------- the raster */
 
   const image = useMemo(() => {
-    const styles = zoneStyles(map, board, holders, colorOf)
+    const styles = hide.fills ? new Array(map.zoneOwner.length).fill(null)
+      : zoneStyles(map, board, holders, colorOf)
     const c = document.createElement('canvas')
     c.width = N; c.height = N
     c.getContext('2d').putImageData(paintBase(map, styles), 0, 0)
     return c
-  }, [map, board, holders, colorOf, N])
+  }, [map, board, holders, colorOf, N, hide.fills])
 
   const paint = useCallback((canvas, v, W, H, dpr) => {
     canvas.width = Math.round(W * dpr)
@@ -221,6 +232,60 @@ const WarMap = forwardRef(function WarMap(props, ref) {
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [zoomAt])
+
+  /* ------------------------------------------------------------- routes */
+
+  const finishRoute = useCallback(() => {
+    const r = routeRef.current
+    if (!r) return
+    routeRef.current = null
+    setRoute(null)
+    if (r.points.length >= 2) {
+      if (r.orig) onItem(r.orig.id, { ...r.orig, points: r.points }, 'done')
+      else onCreate(makeItem('route', { points: r.points }, toolOpts), { keep: false })
+    }
+    if (r.orig) onExtended?.()
+  }, [onItem, onCreate, onExtended, toolOpts])
+
+  // Kept in the ref at once as well as in state: a double-click that
+  // finishes the route can arrive before React has rendered the last stop.
+  const changeRoute = (next) => { routeRef.current = next; setRoute(next) }
+
+  const addStop = (t) => {
+    const r = routeRef.current
+    const points = r ? r.points : []
+    const last = points[points.length - 1]
+    if (last && last[0] === t.x && last[1] === t.y) return
+    changeRoute({ ...(r || {}), points: [...points, [t.x, t.y]] })
+  }
+
+  // Carrying on from the end of an existing route.
+  useEffect(() => {
+    if (extend == null) return
+    const it = items.find((i) => i.id === extend)
+    if (it?.type === 'route') changeRoute({ points: it.points, orig: it })
+  }, [extend])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving the route tool keeps what was tapped out.
+  useEffect(() => {
+    if (tool !== 'route' && routeRef.current) finishRoute()
+  }, [tool, finishRoute])
+
+  useEffect(() => {
+    if (!route) return undefined
+    const onKey = (e) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); finishRoute() }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        const r = routeRef.current
+        if (r && r.points.length > 1) changeRoute({ ...r, points: r.points.slice(0, -1) })
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [route, finishRoute])
 
   const local = (e) => {
     const r = wrapRef.current.getBoundingClientRect()
@@ -270,6 +335,11 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       Object.assign(g, { mode: 'pan', empty: true })
       return
     }
+    if (tool === 'route') {
+      if (!routeRef.current) onSelectItem(null)
+      Object.assign(g, { mode: 'place', tile: t })
+      return
+    }
     if (tool === 'arrow' || tool === 'curve') {
       Object.assign(g, { mode: 'draw', a: [t.x, t.y], b: null })
       setDraft({ a: [t.x, t.y], b: [t.x, t.y] })
@@ -282,10 +352,11 @@ const WarMap = forwardRef(function WarMap(props, ref) {
     if (!view) return
     const g = gesture.current
     const [sx, sy] = local(e)
+    const here = toTile(sx, sy)
+    onCursor?.(here.wx, here.wy)
     if (!g.pointers.has(e.pointerId)) {
       if (e.pointerType === 'mouse') {
-        const t = toTile(sx, sy)
-        setHover((h) => (h && h.x === t.x && h.y === t.y ? h : { x: t.x, y: t.y }))
+        setHover((h) => (h && h.x === here.x && h.y === here.y ? h : { x: here.x, y: here.y }))
       }
       return
     }
@@ -323,6 +394,10 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       const o = g.orig
       let next = o
       if (o.type === 'arrow') next = { ...o, [g.key]: [t.x, t.y] }
+      else if (o.type === 'route') {
+        const k = Number(g.key.slice(1))
+        next = { ...o, points: o.points.map((p, i) => (i === k ? [t.x, t.y] : p)) }
+      }
       else if (o.type === 'note') {
         next = { ...o, w: Math.max(8, t.x - o.x + 1), h: Math.max(4, o.y - t.y + 1) }
       }
@@ -364,6 +439,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         onCreate(makeItem('arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
       }
       setDraft(null)
+    } else if (g.mode === 'place' && !g.moved && tool === 'route') {
+      addStop(g.tile)
     } else if (g.mode === 'place' && !g.moved) {
       const item = makeItem(tool, g.tile, toolOpts)
       if (item) onCreate(item, { keep: e.shiftKey })
@@ -444,7 +521,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onPointerLeave={() => setHover(null)}
+      onPointerLeave={() => { setHover(null); onCursor?.(null) }}
+      onDoubleClick={() => { if (routeRef.current) finishRoute() }}
     >
       <canvas ref={canvasRef} />
       {view && size.W > 0 && (
@@ -461,11 +539,53 @@ const WarMap = forwardRef(function WarMap(props, ref) {
           )}
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
             <Cities map={map} board={board} holders={holders} P={P} z={z} W={size.W} H={size.H}
-                    colorOf={colorOf} allianceOf={allianceOf} selectedCity={selectedCity} />
+                    colorOf={colorOf} allianceOf={allianceOf} selectedCity={selectedCity} hide={hide} />
           </g>
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
-            <Items items={items} P={P} z={z} colorOf={itemColor} />
+            {!hide.drawings && (
+              <Items items={route?.orig ? items.filter((i) => i.id !== route.orig.id) : items}
+                     P={P} z={z} colorOf={itemColor} />
+            )}
             {draftArrow && <Items items={[draftArrow]} P={P} z={z} colorOf={itemColor} />}
+          </g>
+          {route && (() => {
+            const color = route.orig ? itemColor(route.orig) : itemColor({ alliance: toolOpts.alliance, color: toolOpts.color })
+            const last = route.points[route.points.length - 1]
+            const ghost = hover && last && (hover.x !== last[0] || hover.y !== last[1])
+            return (
+              <g pointerEvents="none">
+                {ghost && (() => {
+                  const [ax, ay] = P(last[0] + 0.5, last[1] + 0.5)
+                  const [bx, by] = P(hover.x + 0.5, hover.y + 0.5)
+                  return <line x1={ax} y1={ay} x2={bx} y2={by} stroke={color} strokeWidth="2"
+                               strokeDasharray="4 4" strokeOpacity="0.8" />
+                })()}
+                <Route item={{ ...(route.orig || {}), points: route.points }} P={P} z={z} color={color} draft />
+              </g>
+            )
+          })()}
+          <g data-noexport="" pointerEvents="none">
+            {peers.filter((p) => p.sel).map((p) => {
+              const it = items.find((i) => i.id === p.sel)
+              if (!it) return null
+              const [x0, y0, x1, y1] = bounds(it, P, z)
+              return <rect key={`s${p.sid}`} x={x0 - 8} y={y0 - 8} width={x1 - x0 + 16} height={y1 - y0 + 16}
+                           fill="none" stroke={p.color} strokeWidth="2" strokeDasharray="6 4" rx="4" />
+            })}
+            {peers.filter((p) => p.cursor).map((p) => {
+              const [x, y] = P(p.cursor[0], p.cursor[1])
+              if (x < -20 || y < -20 || x > size.W + 20 || y > size.H + 20) return null
+              return (
+                <g key={p.sid} transform={`translate(${x},${y})`}>
+                  <path d="M0,0 L0,17 L4.6,12.6 L8,20 L11,18.6 L7.6,11.4 L13.6,11.2 Z"
+                        fill={p.color} stroke="#18181b" strokeWidth="1.2" strokeLinejoin="round" />
+                  <rect x="14" y="16" rx="4" height="18" width={p.name.length * 7 + 12} fill={p.color} />
+                  <text x="20" y="29" fontFamily={FONT} fontSize="12" fontWeight="600" fill={inkOn(p.color)}>
+                    {p.name}
+                  </text>
+                </g>
+              )
+            })}
           </g>
           {city && (() => {
             const fp = footprint(city)
@@ -495,6 +615,12 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                             stroke={k === 'c' ? '#f59e0b' : '#ffffff'} strokeWidth="2.5" />
                   </g>
                 ))}
+                {editable && sel.type === 'route' && Object.entries(routeHandles(sel, P)).map(([k, [hx, hy]]) => (
+                  <g key={k} data-handle={k}>
+                    <circle cx={hx} cy={hy} r="15" fill="transparent" />
+                    <circle cx={hx} cy={hy} r="13" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+                  </g>
+                ))}
                 {editable && sel.type === 'note' && (
                   <g data-handle="wh">
                     <rect x={bx1 - 10} y={by1 - 10} width="26" height="26" fill="transparent" />
@@ -506,6 +632,20 @@ const WarMap = forwardRef(function WarMap(props, ref) {
             )
           })()}
         </svg>
+      )}
+      {route && (
+        <div className="wp-routebar" onPointerDown={(e) => e.stopPropagation()}>
+          <span>{`Route · ${route.points.length} stop${route.points.length === 1 ? '' : 's'}`}</span>
+          <button type="button" className="btn small"
+                  disabled={route.points.length < 2}
+                  onClick={() => changeRoute({ ...route, points: route.points.slice(0, -1) })}>
+            Undo stop
+          </button>
+          <button type="button" className="btn primary small" onClick={finishRoute}>
+            {route.points.length < 2 ? 'Cancel' : 'Finish'}
+          </button>
+          <span className="muted small">Double-click or Enter to finish</span>
+        </div>
       )}
       <div className="wp-readout" aria-live="off">{readout ? coords(readout.x, readout.y) : ''}</div>
       <div className="wp-zoom">

@@ -170,7 +170,7 @@ const warPlans = {
     source_name: null, updated_by_name: 'Goba', updated_at: iso(-120), doc: warDoc(true) },
 }
 const warRaw = (path, opts = {}) => {
-  const body = opts.body ? JSON.parse(opts.body) : null
+  const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : null
   if (path === '/war/alliances') return body ? { ...body, id: 9, season: 5 } : warAlliances
   if (path === '/war/board') return warBoard
   if (path === '/war/days') return body ? { id: 2, season: 5, ...body, plans: 0, official: false }
@@ -179,6 +179,9 @@ const warRaw = (path, opts = {}) => {
   const plan = path.match(/^\/war\/plans\/(\d+)$/)
   if (plan) return warPlans[plan[1]]
   if (path === '/war/days/1/mine') return { ...warPlans[11], doc: body.doc, version: 6 }
+  if (path === '/war/plans/10/post') {
+    return { url: 'https://discord.com/channels/1/222/333', images: opts.body.getAll('images').length, posted_at: iso(0) }
+  }
   return {}
 }
 
@@ -291,3 +294,5 @@ export const getToken = () => 'x'
 export const clearToken = () => {}
 export const consumeTokenFromUrl = () => null
 export const loginUrl = () => '#'
+// No live server behind the probe: the planner runs in its offline mode.
+export const liveUrl = () => null
