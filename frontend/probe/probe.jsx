@@ -131,6 +131,12 @@ if (which === 'warplan' && act) {
           }, 120 * (steps.length + 2))
         }
       }
+      if (act === 'ink') {
+        // The color pickers: the toolbar's (a drawing tool picked) and the
+        // alliance form's.
+        ;[...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === 'Arrow')?.click()
+        ;[...document.querySelectorAll('.btn')].find((b) => b.textContent.trim() === 'Add an alliance')?.click()
+      }
       if (act === 'tapzone') {
         // Tap open ground inside a territory, well away from its marker.
         const map = document.querySelector('.wp-map')
