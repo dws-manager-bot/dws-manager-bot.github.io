@@ -721,6 +721,15 @@ class WarBoardIn(BaseModel):
     changes: list[WarBoardChange] = Field(min_length=1, max_length=400)
 
 
+class WarBoardEventOut(BaseModel):
+    """One edit to the board: when, by whom, and each territory it moved."""
+
+    at: datetime
+    by: str | None = None
+    # [{"city": 219, "from": 3, "to": 1}, ...]; None is neutral.
+    changes: list[dict] = Field(default_factory=list)
+
+
 class WarDayIn(BaseModel):
     day: date
     title: str | None = Field(default=None, max_length=80)
