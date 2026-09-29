@@ -2,10 +2,11 @@
  * Who holds what, and what it is worth.
  *
  * Influence per territory is the game's own number: the city panel's
- * "Influence +N" is worldcity.s5_force, and it is in season5.json as
- * `influence`. Pyramids and passes score. Strongholds do not — the game says
- * they "do not count as alliance territory". Oases are held but not scored
- * until someone confirms in game that they add to it.
+ * "Influence +N" is worldcity.s6_force — s6, though the map files say S5 — and
+ * it is in season5.json as `influence`: 20, 40, 60, 120, 240, 400 for levels
+ * 1 to 6, 1600 for the Royal Court, passes the same as Pyramids by level.
+ * Oases score nothing (confirmed in game); Strongholds have no value in that
+ * column at all, and the game says they "do not count as alliance territory".
  *
  * The cap is the game's too: 6 cities per alliance, 8 after the Alliance
  * Expansion tech, where "cities" includes passes.
