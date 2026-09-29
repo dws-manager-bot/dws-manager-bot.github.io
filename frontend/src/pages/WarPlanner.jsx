@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api } from '../lib/api.js'
+import { api, getToken, liveUrl } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import { save as saveFile } from '../lib/files.js'
 import { SERVER_TZ } from '../lib/servertime.js'
 import WarMap from '../warplan/WarMap.jsx'
+import PostPanel from '../warplan/PostPanel.jsx'
 import { loadMap, search } from '../warplan/mapdata.js'
 import { holdersWith, standings } from '../warplan/standing.js'
 import { newId, shifted } from '../warplan/items.jsx'
+import { OpError, applyOp, inverseOf, replay } from '../warplan/ops.js'
+import { Live } from '../warplan/live.js'
 import {
-  AlliancesCard, CityPanel, ItemPanel, StandingsCard, Swatch, Toolbar, campName,
+  AlliancesCard, CityPanel, ItemPanel, Legend, StandingsCard, Toolbar, campName,
 } from '../warplan/panels.jsx'
 import '../warplan/warplan.css'
 
@@ -19,6 +22,13 @@ import '../warplan/warplan.css'
  * A war day holds one draft per admin and one official plan; a plan holds
  * scenarios, and a scenario holds its planned captures and its drawings.
  * Publishing copies a draft into the official plan, as the Pass War map does.
+ *
+ * Plans are edited live when the connection is up: every edit is an operation
+ * (ops.js) sent to the plan's room, which orders them and hands each to
+ * everyone on the plan, and saves a moment later. The page keeps the room's
+ * confirmed doc and its own edits still on their way, and shows the second
+ * replayed over the first. Without a connection it falls back to editing
+ * locally and saving with the button, as it always did.
  *
  * Admins only: this is the alliance's strategy. Members get the PNG.
  */
@@ -64,8 +74,18 @@ const dayLabel = (iso) => new Intl.DateTimeFormat(undefined, {
 
 const unsavedKey = (dayId) => `wp.unsaved.${dayId}`
 const readJson = (key) => { try { return JSON.parse(localStorage.getItem(key) || 'null') } catch { return null } }
+const writeJson = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private or full */ } }
+const forget = (key) => { try { localStorage.removeItem(key) } catch { /* ignore */ } }
 
 const typing = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+/** Once the map has drawn what was just set. Animation frames stop in a
+    background tab, so a timer finishes the wait if they never come. */
+const nextFrame = () => new Promise((resolve) => {
+  let done = false
+  const finish = () => { if (!done) { done = true; setTimeout(resolve, 30) } }
+  requestAnimationFrame(() => requestAnimationFrame(finish))
+  setTimeout(finish, 250)
+})
 
 /* --------------------------------------------------------------------- page */
 
@@ -93,6 +113,14 @@ export default function WarPlanner({ user }) {
   const [selItem, setSelItem] = useState(null)
   const [selCity, setSelCity] = useState(null)
   const [query, setQuery] = useState('')
+  const [hide, setHide] = useState(() => readJson('wp.hide') || {})
+  const [extend, setExtend] = useState(null)
+  const [posting, setPosting] = useState(false)
+
+  const [liveStatus, setLiveStatus] = useState('connecting')
+  const [room, setRoom] = useState(null)           // { plan, editable, seq, saved } once the room has answered
+  const [peers, setPeers] = useState([])           // on this plan
+  const [people, setPeople] = useState([])         // on this war day, any plan
 
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -102,25 +130,255 @@ export default function WarPlanner({ user }) {
   const docRef = useRef(doc)
   docRef.current = doc
   const hist = useRef({ past: [], future: [], key: null, at: 0 })
-  const dragBase = useRef(null)
+  const drag = useRef(null)
+  const liveRef = useRef(null)
+  const confirmed = useRef(null)                   // the room's doc, every operation it has sent applied
+  const pending = useRef([])                       // [{ cid, op }] sent, not yet back
+  const dragOp = useRef(null)                      // where a drag is now, not yet sent
+  const planIdRef = useRef(null)
+  const youRef = useRef(null)
+  const cursor = useRef({ t: 0, timer: null, at: null })
 
   /* -------------------------------------------------------------- derived */
 
   const board = useMemo(() => new Map(holdings.map((h) => [h.city_id, h.alliance_id])), [holdings])
   const scenario = doc.scenarios.find((s) => s.id === scenarioId) || doc.scenarios[0]
   const holders = useMemo(() => holdersWith(board, scenario.changes), [board, scenario.changes])
+  const planId = plan?.id ?? null
   const isMine = planKey === 'mine' || (plan && plan.owner_id === me)
-  const editable = Boolean(isMine)
-  const dirty = editable && JSON.stringify(doc) !== saved
+  const liveOn = liveStatus === 'live' && planId != null && room?.plan === planId
+  const editable = liveOn ? Boolean(room.editable) : Boolean(isMine) && !plan?.official
+  const offlineDirty = !liveOn && editable && JSON.stringify(doc) !== saved
+  const unsent = liveOn && (pending.current.length > 0 || room.seq > room.saved)
   const day = days.find((d) => d.id === dayId) || null
   const mine = plans.find((p) => p.owner_id === me) || null
-  const canPublish = !plan?.official && (editable || Boolean(plan))
+  // Any admin may publish any saved draft; your own, saved or not.
+  const canPublish = !plan?.official && (isMine || Boolean(plan))
   const changed = Object.keys(scenario.changes).some((id) => (scenario.changes[id] ?? null) !== (board.get(Number(id)) ?? null))
 
   const now = useMemo(() => (map ? standings(map, board, alliances) : []), [map, board, alliances])
   const planned = useMemo(() => (map ? standings(map, holders, alliances) : []), [map, holders, alliances])
 
-  const fail = (err) => setError(err?.message || String(err))
+  const fail = useCallback((err) => setError(err?.message || (err ? String(err) : null)), [])
+
+  const scenarioRef = useRef(scenario.id)
+  scenarioRef.current = scenario.id
+  const selRef = useRef(selItem)
+  selRef.current = selItem
+
+  /* ------------------------------------------------------ the working doc */
+
+  const setView = (next) => { docRef.current = next; setDoc(next) }
+
+  /** The room's doc with this page's own edits on top: what to show. */
+  const recompute = () => {
+    if (!confirmed.current) return
+    const ops = pending.current.map((p) => p.op)
+    if (dragOp.current) ops.push(dragOp.current)
+    setView(replay(confirmed.current, ops))
+  }
+
+  const send = (op) => {
+    const cid = newId()
+    pending.current.push({ cid, op })
+    liveRef.current?.send({ type: 'op', cid, op })
+  }
+
+  const resetHistory = () => { hist.current = { past: [], future: [], key: null, at: 0 }; drag.current = null; dragOp.current = null }
+
+  /** Edits sharing a key within a moment (typing, a slider) undo as one. */
+  const remember = (entry, key) => {
+    const h = hist.current
+    const last = h.past[h.past.length - 1]
+    if (key && last && h.key === key && Date.now() - h.at < 1500) {
+      last.ops = [...last.ops, ...entry.ops]
+      last.inv = [...entry.inv, ...last.inv]
+    } else {
+      h.past.push(entry)
+      if (h.past.length > 150) h.past.shift()
+    }
+    h.future = []
+    h.key = key || null
+    h.at = Date.now()
+  }
+
+  /** Apply operations here, and send them to the room when live. */
+  const commit = (ops, { key = null, record = true } = {}) => {
+    if (!editable || !ops.length) return false
+    let cur = docRef.current
+    const inv = []
+    try {
+      for (const op of ops) {
+        const back = inverseOf(cur, op)
+        cur = applyOp(cur, op)
+        if (back) inv.unshift(back)
+      }
+    } catch (err) {
+      if (err instanceof OpError) { fail(err); return false }
+      throw err
+    }
+    if (record) remember({ ops, inv }, key)
+    setView(cur)
+    if (liveOn) ops.forEach(send)
+    return true
+  }
+
+  const undo = () => {
+    const h = hist.current
+    const entry = h.past.pop()
+    if (!entry) return
+    h.key = null
+    if (commit(entry.inv, { record: false })) h.future.push(entry)
+  }
+  const redo = () => {
+    const h = hist.current
+    const entry = h.future.pop()
+    if (!entry) return
+    if (commit(entry.ops, { record: false })) h.past.push(entry)
+  }
+
+  const showDoc = useCallback((d, baseline) => {
+    const n = normalize(d)
+    setView(n)
+    setSaved(JSON.stringify(baseline === undefined ? n : normalize(baseline)))
+    setScenarioId(n.scenarios[0].id)
+    setSelItem(null); setSelCity(null)
+    resetHistory()
+  }, [])
+
+  /* ------------------------------------------------------------- the room */
+
+  const onMessage = (m) => {
+    switch (m.type) {
+      case 'welcome':
+        youRef.current = m.you
+        break
+      case 'state': {
+        if (m.plan !== planIdRef.current) return
+        const wasDirty = offlineDirty
+        confirmed.current = m.doc
+        setRoom({ plan: m.plan, editable: m.editable, seq: m.seq, saved: m.seq })
+        setPeers(m.peers || [])
+        if (pending.current.length) {
+          // Back after a drop: what never arrived goes again.
+          pending.current.forEach((p) => liveRef.current?.send({ type: 'op', cid: p.cid, op: p.op }))
+        } else if (wasDirty && m.editable && m.version === plan?.version) {
+          // Edits made before the connection came up go as one replacement.
+          send({ t: 'doc', doc: docRef.current })
+        }
+        setSaved(JSON.stringify(m.doc))
+        recompute()
+        break
+      }
+      case 'op': {
+        if (m.plan !== planIdRef.current || !confirmed.current) return
+        const k = pending.current.findIndex((p) => p.cid === m.cid)
+        if (k >= 0) pending.current.splice(k, 1)
+        try {
+          confirmed.current = applyOp(confirmed.current, m.op)
+        } catch {
+          // Out of step with the room: ask for its doc again.
+          liveRef.current?.join(m.plan)
+          return
+        }
+        setRoom((r) => (r ? { ...r, seq: m.seq } : r))
+        recompute()
+        break
+      }
+      case 'reject': {
+        const k = pending.current.findIndex((p) => p.cid === m.cid)
+        if (k >= 0) pending.current.splice(k, 1)
+        recompute()
+        setError(`That change was not saved: ${m.reason}`)
+        break
+      }
+      case 'saved':
+        if (m.plan !== planIdRef.current) return
+        setRoom((r) => (r ? { ...r, saved: Math.max(r.saved, m.seq) } : r))
+        setPlan((p) => (p && p.id === m.plan ? { ...p, version: m.version, updated_at: new Date().toISOString() } : p))
+        break
+      case 'reset':
+        if (m.plan !== planIdRef.current) return
+        confirmed.current = m.doc
+        pending.current = []
+        resetHistory()
+        setRoom((r) => (r ? { ...r, editable: m.editable, seq: m.seq, saved: m.seq } : r))
+        setPlan((p) => (p ? { ...p, version: m.version } : p))
+        setSaved(JSON.stringify(m.doc))
+        recompute()
+        if (m.reason) setNotice(m.reason)
+        break
+      case 'editable':
+        if (m.plan !== planIdRef.current) return
+        setRoom((r) => (r ? { ...r, editable: m.editable } : r))
+        setPlan((p) => (p ? { ...p, shared: m.shared } : p))
+        if (!m.editable) setTool('select')
+        break
+      case 'joined':
+        if (m.plan === planIdRef.current) setPeers((ps) => [...ps.filter((p) => p.sid !== m.peer.sid), m.peer])
+        break
+      case 'left':
+        setPeers((ps) => ps.filter((p) => p.sid !== m.sid))
+        break
+      case 'cursor':
+        if (m.plan !== planIdRef.current) return
+        setPeers((ps) => (ps.some((p) => p.sid === m.sid)
+          ? ps.map((p) => (p.sid === m.sid ? { ...p, ...m } : p)) : [...ps, m]))
+        break
+      case 'here':
+        setPeople(m.people || [])
+        break
+      case 'gone':
+        if (m.plan === planIdRef.current && dayId) {
+          setNotice('That plan was deleted.')
+          openDay(dayId).catch(fail)
+        }
+        break
+      default:
+    }
+  }
+  const onMessageRef = useRef(onMessage)
+  onMessageRef.current = onMessage
+
+  useEffect(() => {
+    const url = liveUrl('/war/live')
+    const token = getToken()
+    if (!url || !token) { setLiveStatus('offline'); return undefined }
+    const live = new Live({
+      url, token,
+      onMessage: (m) => onMessageRef.current(m),
+      onStatus: (s) => setLiveStatus(s),
+    })
+    liveRef.current = live
+    return () => { live.close(); liveRef.current = null }
+  }, [])
+
+  // One room at a time: the plan on screen.
+  useEffect(() => {
+    planIdRef.current = planId
+    pending.current = []
+    confirmed.current = null
+    setRoom(null)
+    setPeers([])
+    liveRef.current?.join(planId)
+  }, [planId])
+
+  /** Tell the room where this admin is pointing, at most twenty times a second. */
+  const sendCursor = useCallback((x, y) => {
+    const c = cursor.current
+    if (x !== undefined) c.at = x == null ? null : [x, y]
+    const go = () => {
+      c.t = performance.now(); c.timer = null
+      liveRef.current?.send({
+        type: 'cursor', x: c.at?.[0] ?? null, y: c.at?.[1] ?? null,
+        scenario: scenarioRef.current, sel: selRef.current,
+      })
+    }
+    if (performance.now() - c.t > 50) go()
+    else if (!c.timer) c.timer = setTimeout(go, 50)
+  }, [])
+
+  useEffect(() => { if (liveOn) sendCursor() }, [liveOn, scenario.id, selItem, sendCursor])
 
   /* -------------------------------------------------------------- loading */
 
@@ -130,22 +388,12 @@ export default function WarPlanner({ user }) {
     return list
   }, [])
 
-  const resetHistory = () => { hist.current = { past: [], future: [], key: null, at: 0 }; dragBase.current = null }
-
-  const showDoc = useCallback((d, baseline) => {
-    const n = normalize(d)
-    setDoc(n); docRef.current = n
-    setSaved(JSON.stringify(baseline === undefined ? n : normalize(baseline)))
-    setScenarioId(n.scenarios[0].id)
-    setSelItem(null); setSelCity(null)
-    resetHistory()
-  }, [])
-
-  /** Open a plan: an id, or 'mine' for a draft not saved yet. Work this device
-      never saved, made over the same version, is offered back. */
+  /** Open a plan: an id, or 'mine' for a draft not saved yet. Unsaved work on
+      this device, made over the same version, is offered back. */
   const openPlan = useCallback(async (key, id, list) => {
     const own = (list || plans).find((p) => p.owner_id === me)
     setRecover(null)
+    setPosting(false)
     setPlanKey(key)
     let version = 0
     if (key === 'mine') {
@@ -156,8 +404,8 @@ export default function WarPlanner({ user }) {
       setPlan(p)
       showDoc(p.doc)
       version = p.version
-      if (p.owner_id !== me) setTool('select')
     }
+    setTool('select')
     if (key === 'mine' || key === own?.id) {
       const stash = readJson(unsavedKey(id))
       if (stash?.doc && stash.base === version) setRecover(stash)
@@ -167,7 +415,7 @@ export default function WarPlanner({ user }) {
   /** Open a war day on its official plan, else your draft. */
   const openDay = useCallback(async (id) => {
     setDayId(id)
-    try { localStorage.setItem('wp.day', String(id)) } catch { /* private mode */ }
+    writeJson('wp.day', id)
     const list = await fetchPlans(id)
     const official = list.find((p) => p.official)
     const own = list.find((p) => p.owner_id === me)
@@ -185,7 +433,7 @@ export default function WarPlanner({ user }) {
         if (!live) return
         setMap(m); setAlliances(a); setHoldings(b); setDays(d)
         if (d.length) {
-          const remembered = Number(localStorage.getItem('wp.day'))
+          const remembered = Number(readJson('wp.day'))
           const upcoming = [...d].reverse().find((x) => x.day >= serverToday())
           await openDay((d.find((x) => x.id === remembered) || upcoming || d[0]).id)
         }
@@ -194,147 +442,106 @@ export default function WarPlanner({ user }) {
     return () => { live = false }
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => { writeJson('wp.hide', hide) }, [hide])
+
   /* ------------------------------------------------------- unsaved guard */
 
   useEffect(() => {
-    if (!dirty || !dayId) return undefined
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(unsavedKey(dayId), JSON.stringify({ base: plan?.version ?? 0, doc, at: Date.now() }))
-      } catch { /* full or private */ }
-    }, 600)
+    if (!offlineDirty || !dayId) return undefined
+    const t = setTimeout(() => writeJson(unsavedKey(dayId), { base: plan?.version ?? 0, doc, at: Date.now() }), 600)
     return () => clearTimeout(t)
-  }, [dirty, doc, dayId, plan])
+  }, [offlineDirty, doc, dayId, plan])
 
   useEffect(() => {
-    if (!dirty) return undefined
+    if (!offlineDirty && !unsent) return undefined
     const warn = (e) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  }, [offlineDirty, unsent])
 
-  const leaveOk = () => !dirty || confirm('Your draft has unsaved changes. Leave them?\n\nThey stay on this device and are offered back when you open your draft again.')
+  const leaveOk = () => !offlineDirty || confirm('Your draft has unsaved changes. Leave them?\n\nThey stay on this device and are offered back when you open your draft again.')
 
-  /* -------------------------------------------------------------- editing */
+  /* ------------------------------------------------------------ drawings */
 
-  const push = (snapshot, key) => {
-    const h = hist.current
-    const merge = key && h.key === key && Date.now() - h.at < 1500
-    if (!merge) {
-      h.past.push(snapshot)
-      if (h.past.length > 150) h.past.shift()
-    }
-    h.future = []; h.key = key || null; h.at = Date.now()
-  }
+  const S = scenario.id
 
-  /** Change the working doc, remembering the old one for undo. Edits sharing
-      a key within a moment (typing, a slider) undo as one. */
-  const change = (fn, key) => {
-    if (!editable) return
-    const cur = docRef.current
-    const next = fn(cur)
-    if (next === cur) return
-    push(cur, key)
-    docRef.current = next
-    setDoc(next)
-  }
-
-  const editScenario = (fn, key) => change((d) => ({
-    ...d, scenarios: d.scenarios.map((s) => (s.id === scenario.id ? fn(s) : s)),
-  }), key)
-
-  const undo = () => {
-    const h = hist.current
-    if (!h.past.length) return
-    h.future.push(docRef.current)
-    const prev = h.past.pop()
-    h.key = null
-    docRef.current = prev; setDoc(prev)
-  }
-  const redo = () => {
-    const h = hist.current
-    if (!h.future.length) return
-    h.past.push(docRef.current)
-    const next = h.future.pop()
-    docRef.current = next; setDoc(next)
-  }
-
-  /** Add a drawing and select it. Placing one is nearly always followed by
-      adjusting it, so the tool goes back to Select — unless Shift was held,
-      for laying down several in a row. */
   const createItem = (item, { keep = false } = {}) => {
-    editScenario((s) => ({ ...s, items: [...s.items, item] }))
+    if (!commit([{ t: 'item', s: S, item }])) return
     setSelItem(item.id); setSelCity(null)
+    // Placing one is nearly always followed by adjusting it, so the tool goes
+    // back to Select — unless Shift was held, for laying down several.
     if (!keep) setTool('select')
   }
 
   /** From the map: a drag in progress ('live') or finished ('done'). */
   const onItem = (id, next, phase) => {
     if (!editable) return
-    if (!dragBase.current) dragBase.current = docRef.current
-    const cur = docRef.current
-    const upd = {
-      ...cur,
-      scenarios: cur.scenarios.map((s) => (s.id === scenario.id
-        ? { ...s, items: s.items.map((i) => (i.id === id ? next : i)) } : s)),
+    const op = { t: 'item', s: S, item: next }
+    if (!drag.current) drag.current = { before: scenario.items.find((i) => i.id === id), sentAt: 0 }
+    const d = drag.current
+    if (phase === 'live') {
+      dragOp.current = op
+      setView(applyOp(docRef.current, op))
+      // Others see a drag as it happens, a few frames at a time.
+      if (liveOn && performance.now() - d.sentAt > 80) { d.sentAt = performance.now(); send(op); dragOp.current = null }
+      return
     }
-    docRef.current = upd; setDoc(upd)
-    if (phase === 'done') { push(dragBase.current); dragBase.current = null }
+    dragOp.current = null
+    drag.current = null
+    if (d.before) remember({ ops: [op], inv: [{ t: 'item', s: S, item: d.before }] })
+    setView(applyOp(docRef.current, op))
+    if (liveOn) send(op)
   }
 
-  const updateItem = (next, key) => editScenario((s) => ({
-    ...s, items: s.items.map((i) => (i.id === next.id ? next : i)),
-  }), key)
+  const updateItem = (next, key) => commit([{ t: 'item', s: S, item: next }], { key })
 
   const deleteItem = (id) => {
-    editScenario((s) => ({ ...s, items: s.items.filter((i) => i.id !== id) }))
+    commit([{ t: 'unitem', s: S, id }])
     setSelItem(null)
   }
 
-  const duplicateItem = (item) => {
-    const copy = { ...shifted(item, 6, -6), id: newId() }
-    createItem(copy)
-  }
+  const duplicateItem = (item) => createItem({ ...shifted(item, 6, -6), id: newId() })
 
-  const setPlanned = (cityId, value) => editScenario((s) => {
-    const changes = { ...s.changes }
+  const setPlanned = (cityId, value) => {
+    const has = String(cityId) in scenario.changes
     const boardHas = board.get(cityId) ?? null
     // Planning what the board already says is no plan at all.
-    if (value === undefined || (value ?? null) === boardHas) delete changes[cityId]
-    else changes[cityId] = value
-    return { ...s, changes }
-  })
+    if (value === undefined || (value ?? null) === boardHas) {
+      if (has) commit([{ t: 'change', s: S, city: cityId, clear: true }])
+    } else {
+      commit([{ t: 'change', s: S, city: cityId, v: value }])
+    }
+  }
 
   /* ------------------------------------------------------------ scenarios */
 
   const addScenario = () => {
     const s = blankScenario(nextName(doc.scenarios))
-    change((d) => ({ ...d, scenarios: [...d.scenarios, s] }))
-    setScenarioId(s.id); setSelItem(null)
+    if (commit([{ t: 'scen', scenario: s }])) { setScenarioId(s.id); setSelItem(null) }
   }
   const duplicateScenario = () => {
     const s = {
       ...scenario, id: newId(), name: `${scenario.name} copy`.slice(0, 40),
       changes: { ...scenario.changes }, items: scenario.items.map((i) => ({ ...i, id: newId() })),
     }
-    change((d) => ({ ...d, scenarios: [...d.scenarios, s] }))
-    setScenarioId(s.id); setSelItem(null)
+    const at = doc.scenarios.findIndex((x) => x.id === scenario.id) + 1
+    if (commit([{ t: 'scen', scenario: s, at }])) { setScenarioId(s.id); setSelItem(null) }
   }
   const renameScenario = () => {
     const name = prompt('Scenario name', scenario.name)?.trim()
     if (!name) return
-    editScenario((s) => ({ ...s, name: name.slice(0, 40) }))
+    commit([{ t: 'scen', scenario: { id: scenario.id, name: name.slice(0, 40) } }])
   }
   const deleteScenario = () => {
     if (doc.scenarios.length < 2) return
     if (!confirm(`Delete ${scenario.name}, with its ${scenario.items.length} drawings?`)) return
     const rest = doc.scenarios.filter((s) => s.id !== scenario.id)
-    change((d) => ({ ...d, scenarios: rest }))
-    setScenarioId(rest[0].id); setSelItem(null)
+    if (commit([{ t: 'unscen', s: scenario.id }])) { setScenarioId(rest[0].id); setSelItem(null) }
   }
 
   /* ---------------------------------------------------------------- saving */
 
+  /** The button, for when there is no live connection or no draft yet. */
   async function saveDraft() {
     setBusy('Saving…'); setError(null)
     try {
@@ -343,10 +550,10 @@ export default function WarPlanner({ user }) {
       })
       setPlan(r); setPlanKey(r.id)
       const n = normalize(r.doc)
-      setDoc(n); docRef.current = n; setSaved(JSON.stringify(n))
-      try { localStorage.removeItem(unsavedKey(dayId)) } catch { /* ignore */ }
+      setView(n); setSaved(JSON.stringify(n))
+      forget(unsavedKey(dayId))
       setRecover(null)
-      setNotice('Saved to your draft.')
+      setNotice(plan ? 'Saved to your draft.' : 'Your draft is saved. From here on it saves as you draw.')
       await fetchPlans(dayId)
       setDays(await api.raw('/war/days'))
       return r
@@ -356,8 +563,8 @@ export default function WarPlanner({ user }) {
   async function publish() {
     if (!confirm(`Make ${isMine ? 'your draft' : `${plan?.owner_name}'s draft`} the official plan for ${day ? dayLabel(day.day) : 'this day'}?`)) return
     let src = plan
-    // Your own draft is published as you see it, so it is saved first.
-    if (isMine && (dirty || !plan)) {
+    // Your own draft is published as you see it, so offline edits are saved first.
+    if (isMine && !liveOn && (offlineDirty || !plan)) {
       src = await saveDraft()
       if (!src) return
     }
@@ -371,23 +578,20 @@ export default function WarPlanner({ user }) {
     } catch (err) { fail(err) } finally { setBusy('') }
   }
 
-  /** Take whatever is open — the official plan, someone else's draft — as the
-      start of your own. Nothing is saved until you save. */
+  /** Take whatever is open — the official plan, someone else's draft — as
+      your own draft. It replaces what your draft held, so it asks first. */
   async function copyToMine() {
     const copyOf = normalize(docRef.current)
-    if (mine && !confirm('Replace what is in your draft with this plan?\n\nNothing changes until you save.')) return
-    setBusy('Opening…')
+    if (mine && !confirm('Replace what is in your draft with this plan?')) return
+    setBusy('Copying…'); setError(null)
     try {
-      if (mine) {
-        const p = await api.raw(`/war/plans/${mine.id}`)
-        setPlan(p); setPlanKey(p.id)
-        showDoc(copyOf, p.doc)
-      } else {
-        setPlan(null); setPlanKey('mine')
-        showDoc(copyOf, blankDoc())
-      }
-      setRecover(null)
-      setNotice('Copied into your draft. Save to keep it.')
+      const cur = mine ? await api.raw(`/war/plans/${mine.id}`) : null
+      const r = await api.raw(`/war/days/${dayId}/mine`, {
+        method: 'PUT', body: JSON.stringify({ doc: copyOf, version: cur?.version ?? null }),
+      })
+      const list = await fetchPlans(dayId)
+      await openPlan(r.id, dayId, list)
+      setNotice('Copied into your draft.')
     } catch (err) { fail(err) } finally { setBusy('') }
   }
 
@@ -399,10 +603,22 @@ export default function WarPlanner({ user }) {
     setBusy('Deleting…')
     try {
       await api.raw(`/war/plans/${plan.id}`, { method: 'DELETE' })
-      if (!official) try { localStorage.removeItem(unsavedKey(dayId)) } catch { /* ignore */ }
+      if (!official) forget(unsavedKey(dayId))
       setDays(await api.raw('/war/days'))
       await openDay(dayId)
       setNotice(official ? 'The official plan is withdrawn.' : 'Your draft is deleted.')
+    } catch (err) { fail(err) } finally { setBusy('') }
+  }
+
+  async function toggleShare() {
+    setBusy('Saving…'); setError(null)
+    try {
+      const r = await api.raw(`/war/plans/${plan.id}/share`, {
+        method: 'PATCH', body: JSON.stringify({ shared: !plan.shared }),
+      })
+      setPlan((p) => ({ ...p, shared: r.shared }))
+      setNotice(r.shared ? 'Every admin can now edit this draft with you, live.' : 'Only you can edit this draft again.')
+      await fetchPlans(dayId)
     } catch (err) { fail(err) } finally { setBusy('') }
   }
 
@@ -485,9 +701,14 @@ export default function WarPlanner({ user }) {
 
   /* --------------------------------------------------------------- view */
 
-  const planLabel = (p) => (p.official
-    ? `★ Official plan${p.source_name ? ` — from ${p.source_name}'s draft` : ''}`
-    : p.owner_id === me ? 'My draft' : `Draft — ${p.owner_name || 'another admin'}`)
+  const hereOn = (id) => new Set(people.filter((p) => p.plan === id && p.id !== me).map((p) => p.name)).size
+  const planLabel = (p) => {
+    const base = p.official
+      ? `★ Official plan${p.source_name ? ` — from ${p.source_name}'s draft` : ''}`
+      : p.owner_id === me ? 'My draft' : `Draft — ${p.owner_name || 'another admin'}${p.shared ? ' (shared)' : ''}`
+    const n = hereOn(p.id)
+    return n ? `${base} · ${n} here` : base
+  }
 
   const found = useMemo(() => (map && query ? search(map, query) : null), [map, query])
 
@@ -496,18 +717,39 @@ export default function WarPlanner({ user }) {
     setSelCity(c.id); setSelItem(null); setQuery('')
   }
 
+  const caption = (name) => [day && dayLabel(day.day), plan ? planLabel({ ...plan, id: -1 }) : 'My draft', name]
+    .filter(Boolean).join(' · ')
+
   async function downloadPng() {
     try {
-      const caption = [day && dayLabel(day.day), plan ? planLabel(plan) : 'My draft', scenario.name].filter(Boolean).join(' · ')
-      const blob = await mapRef.current.toPng(caption)
+      const blob = await mapRef.current.toPng(caption(scenario.name))
       saveFile(blob, `war_plan_${day?.day || 'draft'}_${scenario.name.replace(/\W+/g, '_')}.png`)
     } catch (err) { fail(err) }
+  }
+
+  /** One scenario's map as the view stands, for the Discord post. */
+  const renderScenario = async (sid) => {
+    const back = scenarioRef.current
+    setScenarioId(sid); setSelItem(null); setSelCity(null)
+    await nextFrame()
+    const s = docRef.current.scenarios.find((x) => x.id === sid)
+    const blob = await mapRef.current.toPng(caption(s?.name))
+    setScenarioId(back)
+    return blob
   }
 
   const selectedItem = selItem ? scenario.items.find((i) => i.id === selItem) : null
   const selectedCity = selCity && map ? map.byId.get(selCity) : null
   const effectiveTool = editable ? tool : 'select'
   const toolOpts = { color: ink.color, alliance: ink.alliance, symbol, stamp }
+  const onScenarioPeers = peers.filter((p) => p.scenario === scenario.id)
+  const others = people.filter((p) => p.sid !== youRef.current)
+
+  const pickTool = (t) => {
+    setTool(t)
+    // A drawing tool with drawings hidden would draw into nothing visible.
+    if (t !== 'select' && hide.drawings) setHide((h) => ({ ...h, drawings: false }))
+  }
 
   if (!map) {
     return (
@@ -518,6 +760,10 @@ export default function WarPlanner({ user }) {
       </div>
     )
   }
+
+  const status = liveOn
+    ? (unsent ? 'Saving…' : 'Saved')
+    : liveStatus === 'connecting' ? 'Connecting…' : null
 
   return (
     <div className="page">
@@ -534,12 +780,11 @@ export default function WarPlanner({ user }) {
             {`This device has unsaved changes to your draft from ${new Date(recover.at).toLocaleString()}.`}
           </div>
           <button className="btn small" onClick={() => {
-            change(() => normalize(recover.doc)); setScenarioId(normalize(recover.doc).scenarios[0].id); setRecover(null)
-          }}>Restore</button>
-          <button className="btn small" onClick={() => {
-            try { localStorage.removeItem(unsavedKey(dayId)) } catch { /* ignore */ }
+            const n = normalize(recover.doc)
+            if (commit([{ t: 'doc', doc: n }])) setScenarioId(n.scenarios[0].id)
             setRecover(null)
-          }}>Discard</button>
+          }}>Restore</button>
+          <button className="btn small" onClick={() => { forget(unsavedKey(dayId)); setRecover(null) }}>Discard</button>
         </div>
       )}
 
@@ -593,31 +838,64 @@ export default function WarPlanner({ user }) {
           <>
             <div className="wp-planbar-row wp-status">
               {plan?.official && <span className="tag">Official</span>}
-              {editable ? <span className="pill">your draft</span> : <span className="pill">read only</span>}
-              {dirty && <span className="pill wp-unsaved">unsaved</span>}
-              <span className="muted small">
-                {plan?.updated_at
-                  ? `Last saved by ${plan.updated_by_name || 'someone'}, ${new Date(plan.updated_at).toLocaleString()}`
-                  : 'Not saved yet.'}
+              {isMine ? <span className="pill">your draft</span>
+                : editable ? <span className="pill wp-shared">{`shared by ${plan?.owner_name}`}</span>
+                  : <span className="pill">read only</span>}
+              {plan?.shared && isMine && <span className="pill wp-shared">shared</span>}
+              <span className={`wp-live ${liveOn ? 'on' : liveStatus}`}
+                    title={liveOn ? 'Edits reach everyone on this plan as they are made' : 'Not connected live'}>
+                <i />{liveOn ? 'Live' : liveStatus === 'connecting' ? 'Connecting' : 'Offline'}
               </span>
+              {status && <span className="muted small">{status}</span>}
+              {offlineDirty && <span className="pill wp-unsaved">unsaved</span>}
+              {others.length > 0 && (
+                <span className="wp-people" aria-label="Also on this war day">
+                  {others.map((p) => (
+                    <span key={p.sid} className="wp-person" title={p.plan === planId ? `${p.name} is on this plan` : `${p.name} is on another plan`}>
+                      <i style={{ background: p.color }} />{p.name}{p.plan !== planId && <span className="muted"> · elsewhere</span>}
+                    </span>
+                  ))}
+                </span>
+              )}
+              {!liveOn && (
+                <span className="muted small">
+                  {plan?.updated_at
+                    ? `Last saved by ${plan.updated_by_name || 'someone'}, ${new Date(plan.updated_at).toLocaleString()}`
+                    : 'Not saved yet.'}
+                </span>
+              )}
             </div>
             <div className="card-actions">
-              {editable ? (
+              {isMine && (!liveOn || !plan) && (
+                <button className="btn primary" onClick={saveDraft} disabled={Boolean(busy) || (!offlineDirty && Boolean(plan))}>
+                  {busy === 'Saving…' ? 'Saving…' : plan ? 'Save to my draft' : 'Create my draft'}
+                </button>
+              )}
+              {editable && (
                 <>
-                  <button className="btn primary" onClick={saveDraft} disabled={Boolean(busy) || (!dirty && Boolean(plan))}>
-                    {busy === 'Saving…' ? 'Saving…' : 'Save to my draft'}
-                  </button>
                   <button className="btn small" onClick={undo} disabled={!hist.current.past.length} title="Undo (Ctrl+Z)">Undo</button>
                   <button className="btn small" onClick={redo} disabled={!hist.current.future.length} title="Redo (Ctrl+Shift+Z)">Redo</button>
                 </>
-              ) : (
+              )}
+              {!isMine && (
                 <button className="btn" onClick={copyToMine} disabled={Boolean(busy)}>Copy into my draft</button>
+              )}
+              {isMine && plan && (
+                <button className="btn" onClick={toggleShare} disabled={Boolean(busy)}
+                        title="Let every admin edit this draft with you, live">
+                  {plan.shared ? 'Stop sharing' : 'Let other admins edit'}
+                </button>
               )}
               {canPublish && (
                 <button className="btn" onClick={publish} disabled={Boolean(busy)}>Publish as official</button>
               )}
+              {plan?.official && (
+                <button className="btn" onClick={() => setPosting(true)} disabled={Boolean(busy)}>
+                  {plan.posted_at ? 'Post to Discord again' : 'Post to Discord'}
+                </button>
+              )}
               <button className="btn" onClick={downloadPng}>Download PNG</button>
-              {plan && (plan.official || editable) && (
+              {plan && (plan.official || isMine) && (
                 <button className="btn danger small" onClick={deletePlan} disabled={Boolean(busy)}>
                   {plan.official ? 'Withdraw official' : 'Delete draft'}
                 </button>
@@ -638,15 +916,19 @@ export default function WarPlanner({ user }) {
         <div className="wp-map-col">
           <div className="card wp-map-card">
             <div className="wp-scen" role="tablist" aria-label="Scenarios">
-              {doc.scenarios.map((s) => (
-                <button key={s.id} type="button" role="tab" aria-selected={s.id === scenario.id}
-                        className={s.id === scenario.id ? 'chip on' : 'chip'}
-                        onClick={() => { setScenarioId(s.id); setSelItem(null) }}
-                        onDoubleClick={() => editable && s.id === scenario.id && renameScenario()}>
-                  {s.name}
-                  {Object.keys(s.changes).length > 0 && <span className="wp-dot" aria-label="plans captures" />}
-                </button>
-              ))}
+              {doc.scenarios.map((s) => {
+                const on = peers.filter((p) => p.scenario === s.id)
+                return (
+                  <button key={s.id} type="button" role="tab" aria-selected={s.id === scenario.id}
+                          className={s.id === scenario.id ? 'chip on' : 'chip'}
+                          onClick={() => { setScenarioId(s.id); setSelItem(null) }}
+                          onDoubleClick={() => editable && s.id === scenario.id && renameScenario()}>
+                    {s.name}
+                    {Object.keys(s.changes).length > 0 && <span className="wp-dot" aria-label="plans captures" />}
+                    {on.map((p) => <i key={p.sid} className="wp-peer-dot" style={{ background: p.color }} title={p.name} />)}
+                  </button>
+                )
+              })}
               {editable && doc.scenarios.length < 12 && (
                 <button type="button" className="chip" onClick={addScenario}>+ Scenario</button>
               )}
@@ -661,7 +943,7 @@ export default function WarPlanner({ user }) {
               )}
             </div>
 
-            <Toolbar tool={effectiveTool} setTool={setTool} editable={editable} ink={ink} setInk={setInk}
+            <Toolbar tool={effectiveTool} setTool={pickTool} editable={editable} ink={ink} setInk={setInk}
                      alliances={alliances} symbol={symbol} setSymbol={setSymbol} stamp={stamp} setStamp={setStamp} />
 
             <WarMap ref={mapRef} map={map} board={board} holders={holders} alliances={alliances}
@@ -669,7 +951,10 @@ export default function WarPlanner({ user }) {
                     selectedItem={selItem} selectedCity={selCity}
                     onSelectItem={(id) => { setSelItem(id); if (id) setSelCity(null) }}
                     onSelectCity={(id) => { setSelCity(id); if (id) setSelItem(null) }}
-                    onCreate={createItem} onItem={onItem} />
+                    onCreate={createItem} onItem={onItem}
+                    hide={hide} peers={liveOn ? onScenarioPeers : []}
+                    onCursor={liveOn ? sendCursor : undefined}
+                    extend={extend} onExtended={() => { setExtend(null); setTool('select') }} />
 
             <div className="wp-find">
               <input type="search" value={query} placeholder="Find: Strife, Lv.6, or 876 502"
@@ -695,23 +980,26 @@ export default function WarPlanner({ user }) {
               )}
             </div>
 
-            <div className="wp-legend muted small">
-              <span><i className="wp-key city" />Pyramid</span>
-              <span><i className="wp-key pass" />Pass</span>
-              <span><i className="wp-key stronghold" />Stronghold</span>
-              <span><i className="wp-key oasis" />Oasis</span>
-              <span><i className="wp-key planned" />Striped: planned change</span>
-              {alliances.map((a) => <span key={a.id}><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
-            </div>
+            <Legend hide={hide} setHide={setHide} alliances={alliances} />
           </div>
         </div>
 
         {/* ------------------------------------------------------- panels */}
         <div className="wp-side-col">
+          {posting && plan?.official && (
+            <PostPanel plan={plan} day={day} dayText={day ? dayLabel(day.day) : ''} scenarios={doc.scenarios}
+                       render={renderScenario} onError={fail} onClose={() => setPosting(false)}
+                       onPosted={(r) => {
+                         setPlan((p) => ({ ...p, posted_at: r.posted_at, posted_url: r.url }))
+                         setPosting(false)
+                         setNotice(`Posted ${r.images} map${r.images === 1 ? '' : 's'} to Discord.`)
+                       }} />
+          )}
           {selectedItem && (
             <ItemPanel item={selectedItem} alliances={alliances} editable={editable}
                        onChange={updateItem} onDelete={() => deleteItem(selectedItem.id)}
-                       onDuplicate={() => duplicateItem(selectedItem)} onClose={() => setSelItem(null)} />
+                       onDuplicate={() => duplicateItem(selectedItem)} onClose={() => setSelItem(null)}
+                       onExtend={(id) => { setSelItem(null); setTool('route'); setExtend(id) }} />
           )}
           {selectedCity && (
             <CityPanel map={map} city={selectedCity} board={board} holders={holders} alliances={alliances}

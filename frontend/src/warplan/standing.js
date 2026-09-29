@@ -65,3 +65,6 @@ export function shortNum(n) {
 }
 
 export const fullNum = (n) => n.toLocaleString('en-US')
+
+/** Discord's limit on attachments to one message, which is one map per scenario. */
+export const MAX_IMAGES = 10
