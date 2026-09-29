@@ -259,11 +259,13 @@ export default function WarPlanner({ user }) {
     docRef.current = next; setDoc(next)
   }
 
-  const createItem = (item) => {
+  /** Add a drawing and select it. Placing one is nearly always followed by
+      adjusting it, so the tool goes back to Select — unless Shift was held,
+      for laying down several in a row. */
+  const createItem = (item, { keep = false } = {}) => {
     editScenario((s) => ({ ...s, items: [...s.items, item] }))
     setSelItem(item.id); setSelCity(null)
-    // A placed thing is usually followed by editing it, not by placing another.
-    if (item.type === 'note' || item.type === 'pin') setTool('select')
+    if (!keep) setTool('select')
   }
 
   /** From the map: a drag in progress ('live') or finished ('done'). */

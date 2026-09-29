@@ -70,12 +70,13 @@ export function InkPicker({ ink, setInk, alliances }) {
                 title={a.name} className={ink.alliance === a.id ? 'wp-ink on' : 'wp-ink'}
                 style={{ background: a.color, color: inkOn(a.color) }}
                 onClick={() => setInk({ alliance: a.id, color: a.color })}>
-          {(a.tag || a.name).slice(0, 4)}
+          {(a.tag || a.name).slice(0, 3)}
         </button>
       ))}
+      {alliances.length > 0 && <span className="wp-ink-sep" aria-hidden="true" />}
       {INKS.map((c) => (
         <button key={c} type="button" role="radio" aria-checked={ink.alliance == null && ink.color === c}
-                title={c} className={ink.alliance == null && ink.color === c ? 'wp-ink dot on' : 'wp-ink dot'}
+                title={c} className={ink.alliance == null && ink.color === c ? 'wp-ink on' : 'wp-ink'}
                 style={{ background: c }} onClick={() => setInk({ alliance: null, color: c })} />
       ))}
       <label className="wp-ink custom" title="Any color">
@@ -222,7 +223,7 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
                 <span className="label">Paper</span>
                 <div className="wp-inks">
                   {NOTE_COLORS.map((c) => (
-                    <button key={c} type="button" className={item.color === c ? 'wp-ink dot on' : 'wp-ink dot'}
+                    <button key={c} type="button" className={item.color === c ? 'wp-ink on' : 'wp-ink'}
                             style={{ background: c }} aria-label={c} onClick={() => set({ color: c })} />
                   ))}
                   <label className="wp-ink custom" title="Any color">
@@ -433,7 +434,7 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
           <div className="wp-inks">
             {[...SWATCHES[f.camp], ...SWATCHES[f.camp === 1 ? 2 : 1]].map((c) => (
               <button key={c} type="button" disabled={taken.has(c)} title={taken.get(c) || c}
-                      className={f.color.toLowerCase() === c ? 'wp-ink dot on' : 'wp-ink dot'}
+                      className={f.color.toLowerCase() === c ? 'wp-ink on' : 'wp-ink'}
                       style={{ background: c }} onClick={() => set('color', c)} aria-label={c} />
             ))}
             <label className="wp-ink custom" title="Any color">

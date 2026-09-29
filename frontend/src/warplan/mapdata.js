@@ -50,6 +50,17 @@ function decode(raw) {
       if ((x + 1 < N && zone[i + 1] !== zone[i]) || (y + 1 < N && zone[i + N] !== zone[i])) edge[i] = 1
     }
   }
+  // A wall tile beside open ground: the outline that keeps a wall readable
+  // once it is drawn in the ground's own color.
+  const wallEdge = new Uint8Array(N * N)
+  for (let y = 0; y < N; y += 1) {
+    for (let x = 0; x < N; x += 1) {
+      const i = y * N + x
+      if (!walls[i]) continue
+      if ((x > 0 && !walls[i - 1]) || (x + 1 < N && !walls[i + 1])
+        || (y > 0 && !walls[i - N]) || (y + 1 < N && !walls[i + N])) wallEdge[i] = 1
+    }
+  }
   const cities = raw.cities.map((c) => ({ ...c, nearBy: c.nearBy || [] }))
   const byId = new Map(cities.map((c) => [c.id, c]))
   // Pyramids and the Royal Court own the territory they stand in; a pass,
@@ -58,7 +69,7 @@ function decode(raw) {
   for (const c of cities) if (c.kind === 'city') zoneOwner[c.zone] = c.id
 
   return {
-    N, walls, zone, edge, zoneOwner, cities, byId,
+    N, walls, wallEdge, zone, edge, zoneOwner, cities, byId,
     camps: raw.camps, build: raw.build, season: raw.season,
   }
 }

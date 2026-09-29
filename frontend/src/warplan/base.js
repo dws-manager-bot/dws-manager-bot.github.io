@@ -10,7 +10,12 @@ import { rgb } from './palette.js'
 
 const SAND = [239, 231, 214]
 const EDGE = [215, 201, 174]
-const WALL = [84, 72, 58]
+// Walls are ground-colored with an outline. Drawn dark they were the loudest
+// thing on the map, and the passes — dark red, sitting in the walls' gaps —
+// disappeared into them. Territory fills stop at a wall, so the walls still
+// show as margins between colored ground.
+const WALL = [232, 224, 206]
+const WALL_EDGE = [176, 158, 126]
 export const OUTSIDE = '#d9cfbb'
 
 const mix = (c, a, base = SAND) => [
@@ -43,7 +48,7 @@ export function zoneStyles(map, board, holders, colorOf) {
 }
 
 export function paintBase(map, styles) {
-  const { N, walls, zone, edge } = map
+  const { N, walls, wallEdge, zone, edge } = map
   const img = new ImageData(N, N)
   const d = img.data
   const put = (o, c) => { d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255 }
@@ -52,7 +57,7 @@ export function paintBase(map, styles) {
     for (let x = 0; x < N; x += 1) {
       const i = y * N + x
       const o = (row + x) * 4
-      if (walls[i]) { put(o, WALL); continue }
+      if (walls[i]) { put(o, wallEdge[i] ? WALL_EDGE : WALL); continue }
       const s = styles[zone[i]]
       let c = s ? s.fill : null
       if (s && s.planned && ((x + y) & 7) < 4) c = s.was
