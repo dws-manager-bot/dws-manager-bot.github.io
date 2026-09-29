@@ -42,11 +42,12 @@ from sqlalchemy import delete, func, select
 
 from ... import warpost
 from ...config import get_settings
-from ...models import WarAlliance, WarDay, WarHolding, WarPlan
+from ...models import AuditLog, WarAlliance, WarDay, WarHolding, WarPlan
 from ...schemas import (
     WarAllianceIn,
     WarAllianceOut,
     WarAlliancePatch,
+    WarBoardEventOut,
     WarBoardIn,
     WarDayIn,
     WarDayOut,
@@ -213,6 +214,24 @@ async def change_board(payload: WarBoardIn, session: DbSession, user: AdminUser)
         await write_audit(session, user, "war.board", "war_board", SEASON, {"changes": log})
     await session.commit()
     return list(await session.scalars(select(WarHolding).where(WarHolding.season == SEASON)))
+
+
+@router.get("/board/history", response_model=list[WarBoardEventOut],
+            summary="Every change to the board this season, oldest first")
+async def board_history(session: DbSession, _: AdminUser):
+    """The season's history is the board's edits replayed in order.
+
+    Nothing new is stored for it: every board edit already writes one audit
+    row naming each territory it moved, from whom and to whom. The client
+    replays them and scores each step with the map's own influence values.
+    """
+    rows = await session.scalars(
+        select(AuditLog)
+        .where(AuditLog.action == "war.board", AuditLog.entity_id == str(SEASON))
+        .order_by(AuditLog.at, AuditLog.id)
+    )
+    return [WarBoardEventOut(at=r.at, by=r.actor_name, changes=(r.detail or {}).get("changes", []))
+            for r in rows]
 
 
 # --------------------------------------------------------------------- days

@@ -187,6 +187,33 @@ async def test_removing_an_alliance_releases_what_it_held(client_factory):
         assert len(list(await s.scalars(select(WarHolding)))) == 1
 
 
+@pytest.mark.asyncio
+async def test_the_boards_history_is_every_edit_in_order(client_factory):
+    async with client_factory(ADMIN) as c:
+        bot = await _alliance(c)
+        xod = await _alliance(c, "XoD", "#dc2626", camp=2)
+        await c.put("/war/board", json={"changes": [{"city_id": 219, "alliance_id": xod["id"]}]})
+        await c.put("/war/board", json={"changes": [
+            {"city_id": 219, "alliance_id": bot["id"]},
+            {"city_id": 145, "alliance_id": bot["id"]},
+        ]})
+        # A no-op edit leaves no trace, so it adds no step to the history.
+        await c.put("/war/board", json={"changes": [{"city_id": 145, "alliance_id": bot["id"]}]})
+        events = (await c.get("/war/board/history")).json()
+    assert [e["changes"] for e in events] == [
+        [{"city": 219, "from": None, "to": xod["id"]}],
+        [{"city": 219, "from": xod["id"], "to": bot["id"]},
+         {"city": 145, "from": None, "to": bot["id"]}],
+    ]
+    assert events[0]["by"] == "Goba" and events[0]["at"] <= events[1]["at"]
+
+
+@pytest.mark.asyncio
+async def test_members_cannot_read_the_history(client_factory):
+    async with client_factory(MEMBER) as c:
+        assert (await c.get("/war/board/history")).status_code == 403
+
+
 # -------------------------------------------------------------------- days
 
 @pytest.mark.asyncio
