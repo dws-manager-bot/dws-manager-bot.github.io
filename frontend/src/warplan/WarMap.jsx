@@ -361,12 +361,12 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         const c = tool === 'curve'
           ? [Math.round((ax + b[0]) / 2 - (b[1] - ay) * 0.25), Math.round((ay + b[1]) / 2 + (b[0] - ax) * 0.25)]
           : null
-        onCreate(makeItem('arrow', { a: [ax, ay], b, c }, toolOpts))
+        onCreate(makeItem('arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
       }
       setDraft(null)
     } else if (g.mode === 'place' && !g.moved) {
       const item = makeItem(tool, g.tile, toolOpts)
-      if (item) onCreate(item)
+      if (item) onCreate(item, { keep: e.shiftKey })
     } else if (g.mode === 'city' && !g.moved) {
       onSelectCity(g.city)
     } else if (g.mode === 'pan' && !g.moved && g.empty) {
