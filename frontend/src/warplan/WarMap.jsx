@@ -1,7 +1,7 @@
 import {
   forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
-import { drawBase, paintBase, zoneStyles } from './base.js'
+import { drawBase, noStyles, paintBase, zoneStyles } from './base.js'
 import { FONT, Items, Route, arrowHandles, bounds, makeItem, routeHandles, shifted } from './items.jsx'
 import { coords, footprint } from './mapdata.js'
 import { darker, inkOn } from './palette.js'
@@ -181,8 +181,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   /* ----------------------------------------------------------- the raster */
 
   const image = useMemo(() => {
-    const styles = hide.fills ? new Array(map.zoneOwner.length).fill(null)
-      : zoneStyles(map, board, holders, colorOf)
+    const styles = hide.fills ? noStyles(map) : zoneStyles(map, board, holders, colorOf)
     const c = document.createElement('canvas')
     c.width = N; c.height = N
     c.getContext('2d').putImageData(paintBase(map, styles), 0, 0)
