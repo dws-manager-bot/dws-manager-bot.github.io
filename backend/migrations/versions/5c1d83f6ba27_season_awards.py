@@ -1,7 +1,7 @@
 """Which reward tier each member falls in
 
 Revision ID: 5c1d83f6ba27
-Revises: b4f21c8d05e7
+Revises: d7e2a4c90b16
 Create Date: 2026-09-29
 
 The game hands seasonal rewards out in four fixed bands and the sizes are its,
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 
 revision = '5c1d83f6ba27'
-down_revision = 'b4f21c8d05e7'
+down_revision = 'd7e2a4c90b16'
 branch_labels = None
 depends_on = None
 
