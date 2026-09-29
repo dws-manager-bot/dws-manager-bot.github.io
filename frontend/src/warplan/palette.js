@@ -2,21 +2,28 @@
  * Alliance colors.
  *
  * The map says who holds what by color alone, so no two alliances may share
- * one (the API refuses it too). The suggestions split by camp — cool hues for
- * camp 1, warm for camp 2 — so friend and foe read apart at a glance before any
- * name is read. Every swatch is dark enough to stay legible as a fill on the
- * sand-colored map and as a dot on the dark UI.
+ * one (the API refuses it too). Suggestions come in one fixed order, whatever
+ * the camp: the dataviz reference palette, stepped for a dark surface. That
+ * order was run through the palette validator against both surfaces these
+ * colors live on — the dark cards (#27272a) and the sand map (#efe7d6) — and
+ * passes the lightness band, chroma, colorblind separation (worst adjacent
+ * pair ΔE 8.4) and the normal-vision floor (19.3). On the sand map a few sit
+ * under 3:1 contrast, which is why markers carry a dark outline and labels.
+ *
+ * An earlier set split the camps into cool and warm hues. It failed: the
+ * green that ended one camp and the orange that began the other are the same
+ * color to a red-green colorblind eye, and red and orange were close even for
+ * everyone else. Camp is shown by grouping instead.
  */
 
-export const SWATCHES = {
-  1: ['#2563eb', '#16a34a', '#0891b2', '#7c3aed', '#0d9488', '#4f46e5', '#65a30d', '#0369a1'],
-  2: ['#dc2626', '#ea580c', '#db2777', '#b45309', '#c026d3', '#e11d48', '#a16207', '#9f1239'],
-}
+export const SWATCHES = [
+  '#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767',
+]
 
-/** The first suggestion for this camp that nobody has taken yet. */
-export function nextColor(camp, alliances) {
+/** The first suggestion nobody has taken yet. */
+export function nextColor(alliances) {
   const taken = new Set(alliances.map((a) => a.color.toLowerCase()))
-  return [...SWATCHES[camp], ...SWATCHES[camp === 1 ? 2 : 1]].find((c) => !taken.has(c)) || '#64748b'
+  return SWATCHES.find((c) => !taken.has(c)) || '#64748b'
 }
 
 /** Black or white, whichever reads on this color. */

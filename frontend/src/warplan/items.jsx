@@ -28,6 +28,9 @@ export const STICKERS = {
 
 export const STAMPS = { shelter: { size: 3, label: 'Shelter' }, portal: { size: 2, label: 'Portal' } }
 
+/** A new note, in screen pixels: 12px text, and the range the size slider allows. */
+export const NOTE = { font: 12, min: 8, max: 40, w: 220, h: 64 }
+
 let seq = 0
 export const newId = () => `${Date.now().toString(36)}${(seq += 1).toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
@@ -39,9 +42,11 @@ export function makeItem(type, at, opts) {
     case 'route': return { ...base, points: at.points, width: 1.2 }
     case 'pin': return { ...base, x: at.x, y: at.y, label: '' }
     case 'sticker': return { ...base, x: at.x, y: at.y, symbol: opts.symbol || 'star', size: 14 }
+    // Sized in screen pixels (`px`), like a callout pinned to its tile: the
+    // text is the size picked at every zoom.
     case 'note': return {
-      ...base, x: at.x, y: at.y, w: 60, h: 26, text: '', opacity: 0.85, font: 4,
-      color: opts.noteColor || '#fef3c7',
+      ...base, x: at.x, y: at.y, px: true, w: NOTE.w, h: NOTE.h, font: NOTE.font, text: '',
+      opacity: 0.85, color: opts.noteColor || '#fef3c7',
     }
     case 'stamp': {
       const s = STAMPS[opts.stamp || 'shelter'].size
@@ -299,15 +304,37 @@ function Sticker({ item, P, z, color }) {
   )
 }
 
-function Note({ item, P, z }) {
+/**
+ * Where a note sits on screen and what it shows. A pixel note (`px`) keeps its
+ * size at every zoom and grows downward to fit its text, so a larger font
+ * never cuts the text off. A note from before that kept its size in tiles,
+ * growing and shrinking with the map, and still draws that way until its text
+ * size is changed.
+ */
+export function noteBox(item, P, z) {
   const [x, y] = P(item.x, item.y + 1)          // top-left corner of the note
+  if (item.px) {
+    const font = item.font || NOTE.font
+    const pad = Math.max(6, font * 0.5)
+    const w = item.w || NOTE.w
+    const lines = wrap(item.text || 'Note', w - pad * 2, font, 200)
+    const h = Math.max(item.h || NOTE.h, pad * 2 + lines.length * font * 1.3)
+    return { x, y, w, h, font, pad, lines, legible: true }
+  }
   const w = item.w * z
   const h = item.h * z
-  const px = (item.font || 4) * z
-  const pad = Math.max(3, px * 0.45)
+  const font = (item.font || 4) * z
+  const pad = Math.max(3, font * 0.45)
+  const legible = font >= 6.5
+  const lines = legible ? wrap(item.text, w - pad * 2, font, Math.max(1, Math.floor((h - pad * 2) / (font * 1.25)))) : []
+  return { x, y, w, h, font, pad, lines, legible }
+}
+
+function Note({ item, P, z }) {
+  const { x, y, w, h, font: px, pad, lines: all, legible } = noteBox(item, P, z)
   const ink = inkOn(item.color)
-  const legible = px >= 6.5
-  const lines = legible ? wrap(item.text, w - pad * 2, px, Math.max(1, Math.floor((h - pad * 2) / (px * 1.25)))) : []
+  const lines = item.text ? all : []
+  const step = item.px ? 1.3 : 1.25
   return (
     <g data-item={item.id}>
       <rect x={x} y={y} width={w} height={h} rx={Math.min(6, px * 0.5)}
@@ -315,7 +342,7 @@ function Note({ item, P, z }) {
             stroke={darker(item.color, 0.7)} strokeOpacity={Math.min(1, (item.opacity ?? 0.85) + 0.15)}
             strokeWidth="1.2" />
       {lines.map((line, i) => (
-        <text key={i} x={x + pad} y={y + pad + px * (i + 0.9) * 1.25 - px * 0.25}
+        <text key={i} x={x + pad} y={y + pad + px * (i + 0.9) * step - px * 0.25}
               fontFamily={FONT} fontSize={px} fontWeight="500" fill={ink}>
           {line}
         </text>
@@ -389,8 +416,8 @@ export function bounds(item, P, z) {
       return [x - r, y - r, x + r, y + r]
     }
     case 'note': {
-      const [x, y] = P(item.x, item.y + 1)
-      return [x, y, x + item.w * z, y + item.h * z]
+      const { x, y, w, h } = noteBox(item, P, z)
+      return [x, y, x + w, y + h]
     }
     case 'stamp': {
       const s = STAMPS[item.kind]?.size || 3
