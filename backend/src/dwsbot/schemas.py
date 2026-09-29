@@ -591,10 +591,6 @@ class SeasonMemberOut(BaseModel):
     merit_standing: float | None = None
     merit_days: int = 0
     first_seen: date | None = None
-    # Beside the count, never inside it: only a fraction of members get a seat.
-    bgb_seats: int = 0
-    bgb_fought: int = 0
-    bgb_no_shows: int = 0
 
 
 class SeasonOut(BaseModel):

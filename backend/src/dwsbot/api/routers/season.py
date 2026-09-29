@@ -13,8 +13,11 @@ Merits are averaged only over the days they were recorded. One conquest mattered
 less than the others and its ranking was never captured; counting that as a zero
 would punish everyone who turned up to it.
 
-BGB is reported beside the count and never inside it. Only twenty of a hundred
-get a seat, so a member who was never picked has missed nothing.
+BGB is deliberately absent. Only twenty of a hundred get a seat, so it cannot
+be counted here without punishing a member who was never picked -- and it has
+seats, roles, scores and missed starts of its own, which a single column beside
+a Strife Pass count would flatten into something that looks comparable and is
+not. It gets its own standing, on its own terms, or none.
 """
 from __future__ import annotations
 
@@ -23,14 +26,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
-from ...models import (
-    AttendanceEvent,
-    AttendanceRecord,
-    BgbEvent,
-    BgbRegistration,
-    Player,
-    PlayerName,
-)
+from ...models import AttendanceEvent, AttendanceRecord, Player, PlayerName
 from ...schemas import SeasonDayOut, SeasonEventOut, SeasonMemberOut, SeasonOut
 from ..deps import AdminUser, DbSession
 
@@ -80,22 +76,6 @@ async def season(
     for record in records:
         seen[record.player_id][record.event_id] = record
 
-    # BGB sits beside the count: seats taken, battles fought, starts missed.
-    bgb = defaultdict(lambda: {"seats": 0, "fought": 0, "no_shows": 0})
-    rows = await session.execute(
-        select(BgbRegistration.player_id, BgbRegistration.role,
-               BgbRegistration.participated, func.count())
-        .join(BgbEvent)
-        .where(BgbRegistration.player_id.isnot(None))
-        .group_by(BgbRegistration.player_id, BgbRegistration.role,
-                  BgbRegistration.participated))
-    for pid, role, participated, count in rows:
-        bgb[pid]["seats"] += count
-        if participated:
-            bgb[pid]["fought"] += count
-        elif role == "starter" and participated is not None:
-            bgb[pid]["no_shows"] += count
-
     players = list(await session.scalars(
         select(Player).where(Player.active.is_(True))))
     first_seen = dict((await session.execute(
@@ -121,8 +101,6 @@ async def season(
             merit_standing=(sum(places) / len(places)) if places else None,
             merit_days=len(places),
             first_seen=first_seen.get(player.id),
-            bgb_seats=bgb[player.id]["seats"], bgb_fought=bgb[player.id]["fought"],
-            bgb_no_shows=bgb[player.id]["no_shows"],
         ))
 
     # Attendance first, then who was there at the first wave. A member with no

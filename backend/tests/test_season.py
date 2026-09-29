@@ -26,7 +26,7 @@ from dwsbot.models import (
     BgbRegistration,
     Player,
     PlayerName,
-)
+)  # BgbEvent/BgbRegistration are seeded only to prove they do not show up
 from dwsbot.schemas import MeOut
 
 
@@ -133,14 +133,11 @@ async def test_merits_break_a_tie(client_factory):
 @pytest.mark.asyncio
 async def test_a_day_without_merits_is_not_a_zero(client_factory):
     """One conquest mattered less and its ranking was never captured."""
-    ids = await seed(client_factory.maker, {
+    await seed(client_factory.maker, {
         "Steady": [(True, 500)] * 4,
         "Rival": [(True, 500)] * 4,
     }, merits_on=(0, 1, 2))
     # Rival scored nothing on the uncaptured day; it must not count against them.
-    async with client_factory.maker() as s:
-        rec = await s.get(AttendanceRecord, 1)
-        assert rec is not None
     async with client_factory() as c:
         body = (await c.get("/season")).json()
     for m in body["members"]:
@@ -149,7 +146,6 @@ async def test_a_day_without_merits_is_not_a_zero(client_factory):
         assert m["days"][3]["present"] is True
         assert m["days"][3]["merits"] is None
     assert [e["has_merits"] for e in body["events"]] == [True, True, True, False]
-    assert ids  # seeded
 
 
 @pytest.mark.asyncio
@@ -166,7 +162,7 @@ async def test_a_member_with_no_merit_day_sorts_below_one_with_a_standing(client
 
 
 @pytest.mark.asyncio
-async def test_bgb_sits_beside_the_count_and_never_inside_it(client_factory):
+async def test_bgb_is_nowhere_in_the_season(client_factory):
     ids = await seed(client_factory.maker, {
         "Picked": [(True, 100)] * 4,
         "NeverPicked": [(True, 100)] * 4,
@@ -181,11 +177,18 @@ async def test_bgb_sits_beside_the_count_and_never_inside_it(client_factory):
                               role="starter", name="NeverPicked", participated=False))
         await s.commit()
     async with client_factory() as c:
-        body = {m["name"]: m for m in (await c.get("/season")).json()["members"]}
-    # Both attended everything, so BGB changes neither one's attendance.
+        payload = (await c.get("/season")).json()
+    body = {m["name"]: m for m in payload["members"]}
+    # One fought a battle and one missed their start, and the season cannot tell:
+    # only a fraction of members ever get a seat, so BGB is neither counted here
+    # nor reported here. `bgb_cp` stays -- that is the member's power, not a
+    # record of anything they did.
     assert body["Picked"]["attended"] == body["NeverPicked"]["attended"] == 4
-    assert body["Picked"]["bgb_seats"] == 1 and body["Picked"]["bgb_fought"] == 1
-    assert body["NeverPicked"]["bgb_no_shows"] == 1
+    # The whole shape, so a BGB field cannot creep back in unnoticed.
+    assert set(body["Picked"]) == {
+        "player_id", "name", "rank", "bgb_cp", "attended", "of", "days",
+        "merit_standing", "merit_days", "first_seen",
+    }
 
 
 @pytest.mark.asyncio
