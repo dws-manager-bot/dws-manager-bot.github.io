@@ -186,7 +186,7 @@ async def test_bgb_is_nowhere_in_the_season(client_factory):
     assert body["Picked"]["attended"] == body["NeverPicked"]["attended"] == 4
     # The whole shape, so a BGB field cannot creep back in unnoticed.
     assert set(body["Picked"]) == {
-        "player_id", "name", "rank", "bgb_cp", "attended", "of", "days",
+        "player_id", "name", "rank", "bgb_cp", "total_cp", "attended", "of", "days",
         "merit_standing", "merit_days", "first_seen",
     }
 
@@ -200,3 +200,109 @@ async def test_a_member_absent_from_a_sheet_counts_as_away(client_factory):
         m = (await c.get("/season")).json()["members"][0]
     assert m["attended"] == 3
     assert m["days"][1]["recorded"] is False and m["days"][1]["present"] is False
+
+
+# --- the reward board -------------------------------------------------------
+#
+# The game hands rewards out in four fixed bands, and the sizes are its: one
+# leader, eight backbone, thirty key players, and the rest contributors. Only
+# the first three are recorded; the fourth is whoever is left.
+
+async def board(client, awards, season="5"):
+    return await client.put("/season/awards", json={"season": season, "awards": awards})
+
+
+@pytest.mark.asyncio
+async def test_an_empty_board_makes_everyone_a_contributor(client_factory):
+    await seed(client_factory.maker, {"A": [(True, 1)] * 4, "B": [(True, 2)] * 4})
+    async with client_factory() as c:
+        body = (await c.get("/season/awards")).json()
+    assert body["awards"] == {}
+    assert body["caps"] == {"leader": 1, "backbone": 8, "key": 30, "contributor": 61}
+
+
+@pytest.mark.asyncio
+async def test_a_board_is_saved_and_read_back(client_factory):
+    ids = await seed(client_factory.maker, {f"M{i}": [(True, i)] * 4 for i in range(4)})
+    async with client_factory() as c:
+        r = await board(c, [
+            {"player_id": str(ids["M0"]), "tier": "leader"},
+            {"player_id": str(ids["M1"]), "tier": "backbone"},
+            {"player_id": str(ids["M2"]), "tier": "key"},
+        ])
+        assert r.status_code == 200, r.text
+        body = (await c.get("/season/awards")).json()
+    assert body["awards"] == {str(ids["M0"]): "leader", str(ids["M1"]): "backbone",
+                              str(ids["M2"]): "key"}
+    # M3 was never placed, which is what being a contributor is.
+    assert str(ids["M3"]) not in body["awards"]
+
+
+@pytest.mark.asyncio
+async def test_the_game_s_band_sizes_are_enforced(client_factory):
+    ids = await seed(client_factory.maker, {f"M{i}": [(True, 1)] * 4 for i in range(10)})
+    async with client_factory() as c:
+        r = await board(c, [{"player_id": str(ids[f"M{i}"]), "tier": "leader"}
+                            for i in range(2)])
+        assert r.status_code == 422 and "leader takes 1, not 2" in r.json()["detail"]
+
+        r = await board(c, [{"player_id": str(ids[f"M{i}"]), "tier": "backbone"}
+                            for i in range(9)])
+        assert r.status_code == 422 and "backbone takes 8, not 9" in r.json()["detail"]
+
+        # Eight is fine.
+        r = await board(c, [{"player_id": str(ids[f"M{i}"]), "tier": "backbone"}
+                            for i in range(8)])
+        assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
+async def test_a_member_cannot_be_in_two_tiers(client_factory):
+    ids = await seed(client_factory.maker, {"A": [(True, 1)] * 4})
+    async with client_factory() as c:
+        r = await board(c, [{"player_id": str(ids["A"]), "tier": "leader"},
+                            {"player_id": str(ids["A"]), "tier": "backbone"}])
+    assert r.status_code == 422 and "only be in one tier" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_board_naming_a_stranger_is_refused(client_factory):
+    await seed(client_factory.maker, {"A": [(True, 1)] * 4})
+    async with client_factory() as c:
+        r = await board(c, [{"player_id": "11111111-2222-3333-4444-555555555555",
+                             "tier": "leader"}])
+    assert r.status_code == 422 and "not a member" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_saving_replaces_the_board_rather_than_adding_to_it(client_factory):
+    ids = await seed(client_factory.maker, {"A": [(True, 1)] * 4, "B": [(True, 2)] * 4})
+    async with client_factory() as c:
+        await board(c, [{"player_id": str(ids["A"]), "tier": "leader"}])
+        await board(c, [{"player_id": str(ids["B"]), "tier": "leader"}])
+        body = (await c.get("/season/awards")).json()
+    # A was dragged out; the board on the page is the board.
+    assert body["awards"] == {str(ids["B"]): "leader"}
+
+
+@pytest.mark.asyncio
+async def test_seasons_are_kept_apart(client_factory):
+    ids = await seed(client_factory.maker, {"A": [(True, 1)] * 4})
+    async with client_factory() as c:
+        await board(c, [{"player_id": str(ids["A"]), "tier": "leader"}], season="5")
+        assert (await c.get("/season/awards?season=6")).json()["awards"] == {}
+        assert (await c.get("/season/awards?season=5")).json()["awards"] != {}
+
+
+@pytest.mark.asyncio
+async def test_the_standing_carries_what_the_candidates_sort_by(client_factory):
+    """Rank, attendance, BGB CP and total CP all have to reach the page."""
+    ids = await seed(client_factory.maker, {"A": [(True, 5)] * 4})
+    async with client_factory.maker() as s:
+        player = await s.get(Player, ids["A"])
+        player.rank, player.bgb_cp, player.total_cp = 5, 292_185_930, 1_694_095_810
+        await s.commit()
+    async with client_factory() as c:
+        m = (await c.get("/season")).json()["members"][0]
+    assert (m["rank"], m["bgb_cp"], m["total_cp"], m["attended"]) == \
+        (5, 292_185_930, 1_694_095_810, 4)

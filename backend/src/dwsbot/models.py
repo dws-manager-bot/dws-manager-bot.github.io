@@ -290,6 +290,36 @@ class AttendanceRecord(Base, TimestampMixin):
         return f"<AttendanceRecord {self.name} {'in' if self.present else 'out'}>"
 
 
+class SeasonAward(Base, TimestampMixin):
+    """Which reward tier a member falls in for a season.
+
+    The game hands seasonal rewards out in four fixed bands, and the sizes are
+    the game's, not ours: one leader, eight backbone, thirty key players, and
+    everybody else a contributor. Only the first three are assigned — the
+    contributors are whoever is left, so a member with no row here is one.
+
+    Kept per season, because the alliance is judged afresh each time.
+    """
+
+    __tablename__ = "season_awards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    season: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # leader | backbone | key. A contributor has no row: they are the remainder,
+    # and writing sixty of them down would make the absence of one meaningful.
+    tier: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    player: Mapped[Player] = relationship()
+
+    __table_args__ = (UniqueConstraint("season", "player_id", name="uq_season_award"),)
+
+    def __repr__(self) -> str:
+        return f"<SeasonAward {self.season} {self.tier}>"
+
+
 class Announcement(Base, TimestampMixin):
     """A recurring message the bot posts to a channel on a schedule.
 

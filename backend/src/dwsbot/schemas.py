@@ -584,6 +584,7 @@ class SeasonMemberOut(BaseModel):
     name: str
     rank: int | None = None
     bgb_cp: int | None = None
+    total_cp: int | None = None
     attended: int = 0
     of: int = 0
     days: list[SeasonDayOut] = Field(default_factory=list)
@@ -597,6 +598,30 @@ class SeasonOut(BaseModel):
     kind: str
     events: list[SeasonEventOut] = Field(default_factory=list)
     members: list[SeasonMemberOut] = Field(default_factory=list)
+
+
+class SeasonAwardIn(BaseModel):
+    player_id: uuid.UUID
+    tier: Literal["leader", "backbone", "key"]
+
+
+class SeasonAwardsIn(BaseModel):
+    """The whole board at once.
+
+    A full replacement rather than one move at a time: the page holds the entire
+    arrangement, and saving it whole is what makes two admins dragging at the
+    same time resolve to one of their boards rather than a mixture of both.
+    """
+
+    season: str = Field(default="5", max_length=16)
+    awards: list[SeasonAwardIn] = Field(default_factory=list)
+
+
+class SeasonAwardsOut(BaseModel):
+    season: str
+    # player id -> leader | backbone | key. A contributor is simply absent.
+    awards: dict[str, str] = Field(default_factory=dict)
+    caps: dict[str, int] = Field(default_factory=dict)
 
 
 # ------------------------------------------------------------- war planner
