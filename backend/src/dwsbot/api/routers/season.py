@@ -23,16 +23,29 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from fastapi import APIRouter, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import delete, func, select
 
-from ...models import AttendanceEvent, AttendanceRecord, Player, PlayerName
-from ...schemas import SeasonDayOut, SeasonEventOut, SeasonMemberOut, SeasonOut
-from ..deps import AdminUser, DbSession
+from ...models import AttendanceEvent, AttendanceRecord, Player, PlayerName, SeasonAward
+from ...schemas import (
+    SeasonAwardsIn,
+    SeasonAwardsOut,
+    SeasonDayOut,
+    SeasonEventOut,
+    SeasonMemberOut,
+    SeasonOut,
+)
+from ..deps import AdminUser, DbSession, write_audit
 
 router = APIRouter(prefix="/season", tags=["season"])
 
 STRIFE_PASS = "strife_pass"
+
+# The game's own bands, and its own numbers. There is one leader and it is
+# the R5. Contributors are not capped here because they are the remainder --
+# an alliance holds a hundred, so the rest is sixty-one at the most.
+CAPS = {"leader": 1, "backbone": 8, "key": 30}
+CONTRIBUTORS = 61
 
 
 def _percentiles(merits: dict) -> dict:
@@ -96,7 +109,7 @@ async def season(
         places = standing.get(player.id, [])
         members.append(SeasonMemberOut(
             player_id=str(player.id), name=player.name, rank=player.rank,
-            bgb_cp=player.bgb_cp,
+            bgb_cp=player.bgb_cp, total_cp=player.total_cp,
             attended=sum(1 for d in days if d.present), of=len(events), days=days,
             merit_standing=(sum(places) / len(places)) if places else None,
             merit_days=len(places),
@@ -117,4 +130,53 @@ async def season(
             has_merits=any(r.merits is not None for r in by_event[e.id]),
         ) for e in events],
         members=members,
+    )
+
+
+@router.get("/awards", response_model=SeasonAwardsOut,
+            summary="Which reward tier each member is in")
+async def awards(session: DbSession, _: AdminUser, season: str = Query("5")):
+    rows = await session.scalars(select(SeasonAward).where(SeasonAward.season == season))
+    return SeasonAwardsOut(
+        season=season,
+        awards={str(r.player_id): r.tier for r in rows},
+        caps={**CAPS, "contributor": CONTRIBUTORS},
+    )
+
+
+@router.put("/awards", response_model=SeasonAwardsOut, summary="Replace the whole board")
+async def set_awards(payload: SeasonAwardsIn, session: DbSession, user: AdminUser):
+    counts: dict[str, int] = {}
+    for award in payload.awards:
+        counts[award.tier] = counts.get(award.tier, 0) + 1
+    over = [f"{tier} takes {CAPS[tier]}, not {n}"
+            for tier, n in counts.items() if n > CAPS[tier]]
+    if over:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "; ".join(over))
+
+    chosen = {a.player_id for a in payload.awards}
+    if len(chosen) != len(payload.awards):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "A member can only be in one tier.")
+    known = set(await session.scalars(select(Player.id).where(Player.id.in_(chosen))))
+    missing = chosen - known
+    if missing:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "That board names somebody who is not a member.")
+
+    # Replaced whole rather than merged: the board on the page is the board.
+    await session.execute(delete(SeasonAward).where(SeasonAward.season == payload.season))
+    for award in payload.awards:
+        session.add(SeasonAward(season=payload.season, player_id=award.player_id,
+                                tier=award.tier))
+    await write_audit(session, user, "season.awards", "season", payload.season, {
+        "name": f"Season {payload.season}: "
+                + ", ".join(f"{counts.get(t, 0)} {t}" for t in CAPS),
+        "season": payload.season, "counts": counts,
+    })
+    await session.commit()
+    return SeasonAwardsOut(
+        season=payload.season,
+        awards={str(a.player_id): a.tier for a in payload.awards},
+        caps={**CAPS, "contributor": CONTRIBUTORS},
     )

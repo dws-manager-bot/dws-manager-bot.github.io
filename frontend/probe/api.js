@@ -109,30 +109,34 @@ const resultTeamA = {
 }
 const noShows = outcomes.filter((o) => o.no_show)
 
-/* A season standing shaped like the real one: everybody turns out, so the
-   merit tiebreak is what actually orders them. */
+/* A season standing shaped like the real one: nearly everybody turns out, so
+   the merit tiebreak is what actually orders them, and there are enough members
+   to fill the bands the game allows. */
 const SEASON_DAYS = ['2026-09-05', '2026-09-13', '2026-09-19', '2026-09-26']
-const seasonMember = (name, rank, attended, merit, meritDays, cp) => ({
-  player_id: name, name, rank, bgb_cp: cp,
-  attended, of: 4,
-  days: SEASON_DAYS.map((d, i) => ({
-    event_id: i + 1, held_on: d, present: i < attended,
-    recorded: true, merits: i === 3 || merit == null ? null : Math.round(merit * 1_500_000),
-  })),
-  merit_standing: merit, merit_days: meritDays,
+const NAMES = ['Dubai88', 'GreenCosmos', 'Kagura Forger', 'Emeraldream', '\u30fbCeline\u30fb',
+  'XoD', 'Ck360', 'Anya Forger', '\\Aaryan', 'JoN Snow', 'M\u00fcikito', 'DittoTokk\u00ef',
+  'KubiKiri', 'Sorxas', 'Jaina', 'Starlight Ros\u00e9', 'ProTein', 'K\u00efeva', 'meimei',
+  'Mics Mad Eye', 'JADE', 'Ashli', 'Deadcoffin', 'night catt', 'kanlaon',
+  'Swindlerella', 'AccountForSale\u00b0', 'Unranked One', 'Liraa', 'Sandy',
+  'Hacienda Hattori', 'Balbazar09', '\u00b0Boogeyman', 'Arianne', 'CaMilla',
+  'Mirkoo', 'Ahnmi', 'BlessTheBess', 'kanlaon2', 'Amiiiiit']
+const seasonMembers = NAMES.map((name, i) => {
+  const attended = i < 30 ? 4 : i < 35 ? 3 : i < 38 ? 2 : i === 38 ? 1 : 0
+  const merit = i === 27 ? null : Math.max(0.02, 1 - i * 0.025)
+  return {
+    player_id: `p${i}`, name,
+    rank: i === 0 ? 5 : i < 6 ? 4 : i < 16 ? 3 : i < 28 ? 2 : 1,
+    bgb_cp: 292_000_000 - i * 6_500_000,
+    total_cp: 1_694_000_000 - i * 31_000_000,
+    attended, of: 4,
+    days: SEASON_DAYS.map((d, j) => ({
+      event_id: j + 1, held_on: d, present: j < attended, recorded: true,
+      merits: j === 3 || merit == null ? null : Math.round(merit * 1_500_000),
+    })),
+    merit_standing: merit, merit_days: merit == null ? 0 : 3,
+  }
 })
-const seasonMembers = [
-  seasonMember('Dubai88', 5, 4, 0.98, 3, 292270935),
-  seasonMember('Emeraldream', 4, 4, 0.96, 3, 173470331),
-  seasonMember('・Celine・', 4, 4, 0.95, 3, 172309865),
-  seasonMember('Kagura Forger', 4, 4, 0.71, 3, 176699474),
-  seasonMember('Mics Mad Eye', 2, 4, 0.09, 3, 26494184),
-  seasonMember('JADE', 2, 4, 0.07, 3, 19850000),
-  seasonMember('Unranked One', 1, 4, null, 0, 12400000),
-  seasonMember('Starlight Rosé', 3, 3, 0.62, 2, 40557958),
-  seasonMember('night catt', 2, 2, 0.10, 2, 21057814),
-  seasonMember('Swindlerella', 1, 0, null, 0, 9400000),
-]
+let probeAwards = { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }
 
 /* The War planner. Invented alliances, real map ids: a Saturday around the
    eastern Strife Pass (876, 502) with one camp holding the ground south of it. */
@@ -197,6 +201,15 @@ export const api = {
   guidedSetup: () => ok({}),
   roles: () => ok([]),
   listPlayers: () => ok(players),
+  seasonAwards: () => ok({
+    season: '5', awards: probeAwards,
+    caps: { leader: 1, backbone: 8, key: 30, contributor: 61 },
+  }),
+  setSeasonAwards: (data) => {
+    probeAwards = Object.fromEntries(data.awards.map((a) => [a.player_id, a.tier]))
+    return ok({ season: data.season, awards: probeAwards,
+      caps: { leader: 1, backbone: 8, key: 30, contributor: 61 } })
+  },
   season: () => ok({
     kind: 'strife_pass',
     events: SEASON_DAYS.map((d, i) => ({

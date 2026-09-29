@@ -173,6 +173,9 @@ export const api = {
 
   /* The season standing, ranked and ready to tier. */
   season: (kind) => request(`/season${kind ? `?kind=${kind}` : ''}`),
+  seasonAwards: (season) => request(`/season/awards${season ? `?season=${season}` : ''}`),
+  setSeasonAwards: (data) =>
+    request('/season/awards', { method: 'PUT', body: JSON.stringify(data) }),
 
   /* The roster spreadsheet. The template is a file rather than JSON, and the
      upload is a form, so both go around `request`, which speaks JSON only. */
