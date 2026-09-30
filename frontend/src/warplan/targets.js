@@ -74,7 +74,8 @@ export function declarers(map, holders, alliances, cityId) {
  * What in a scenario the rules would stop: more captures than one day's
  * declarations, and captures of ground not yet reachable from the board.
  * Both are judged against the board — declarations are made before anything
- * that day changes hands.
+ * that day changes hands. Strongholds and oases are taken without one, so
+ * neither rule touches them.
  */
 export function checkScenario(map, board, alliances, scenario) {
   const byId = new Map(alliances.map((a) => [a.id, a]))
@@ -82,6 +83,7 @@ export function checkScenario(map, board, alliances, scenario) {
   for (const [key, to] of Object.entries(scenario.changes || {})) {
     const id = Number(key)
     if (to == null || board.get(id) === to || !byId.has(to)) continue
+    if (!isTerritory(map.byId.get(id))) continue
     if (!planned.has(to)) planned.set(to, [])
     planned.get(to).push(id)
   }
