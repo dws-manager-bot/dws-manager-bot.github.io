@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { KIND_LABEL, cityTitle, coords } from './mapdata.js'
-import { INKS, SWATCHES, inkOn, nextColor } from './palette.js'
+import { CAMP_COLORS, INKS, SWATCHES, inkOn, nextColor } from './palette.js'
 import { CAP, CAP_WITH_TECH, SCORED, fullNum, shortNum } from './standing.js'
 import { ITEM_LABEL, NOTE, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
 import { DECLARATIONS_PER_DAY } from './targets.js'
@@ -581,10 +581,21 @@ export const LAYERS = [
   ['fills', 'Territory colors'], ['drawings', 'Drawings'], ['names', 'Names'],
 ]
 
-/** The legend is also the layer switch: each entry shows or hides what it names. */
-export function Legend({ hide, setHide, alliances }) {
+/**
+ * The legend is also the layer switch: each entry shows or hides what it names.
+ * Ahead of it, whether held ground is colored by alliance or by camp; the
+ * swatches at the end follow that choice.
+ */
+export function Legend({ map, hide, setHide, alliances, colorBy, setColorBy }) {
+  const camps = colorBy === 'camp'
   return (
-    <div className="wp-legend small" role="group" aria-label="Show or hide">
+    <div className={camps ? 'wp-legend small camps' : 'wp-legend small'} role="group" aria-label="Show or hide">
+      <span className="wp-colorby" role="group" aria-label="Color held ground by">
+        <button type="button" className={camps ? 'chip' : 'chip on'} aria-pressed={!camps}
+                title="Each alliance in its own color" onClick={() => setColorBy('alliance')}>Alliances</button>
+        <button type="button" className={camps ? 'chip on' : 'chip'} aria-pressed={camps}
+                title="Camp against camp: the top camp blue, the bottom red" onClick={() => setColorBy('camp')}>Camps</button>
+      </span>
       {LAYERS.map(([key, label]) => (
         <button key={key} type="button" aria-pressed={!hide[key]}
                 className={hide[key] ? 'wp-layer off' : 'wp-layer'}
@@ -594,7 +605,11 @@ export function Legend({ hide, setHide, alliances }) {
         </button>
       ))}
       <span className="wp-legend-note"><i className="wp-key planned" />Striped: planned change</span>
-      {alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
+      {camps
+        ? [1, 2].map((camp) => (
+          <span key={camp} className="wp-legend-note"><Swatch color={CAMP_COLORS[camp]} size={10} />{campName(map, camp)}</span>
+        ))
+        : alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
     </div>
   )
 }

@@ -183,6 +183,18 @@ if (which === 'warplan' && act) {
         setTimeout(() => { for (let i = 0; i < 3; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click() }, 500)
         setTimeout(() => { document.body.dataset.after = sizes() }, 900)
       }
+      if (act === 'camps' || act === 'campzoom') {
+        // The map camp against camp; `campzoom` also steps in twice to see
+        // the passes near their true size.
+        ;[...document.querySelectorAll('.wp-colorby .chip')].find((b) => b.textContent.trim() === 'Camps')?.click()
+        if (act === 'campzoom') {
+          for (let i = 0; i < 2; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click()
+        }
+        setTimeout(() => {
+          document.body.dataset.fills = [...new Set([...document.querySelectorAll('.wp-map [data-city] rect, .wp-map [data-city] polygon, .wp-map [data-city] circle')]
+            .map((n) => n.getAttribute('fill')).filter((f) => f && f !== 'transparent'))].join(',')
+        }, 300)
+      }
       if (act === 'stronghold') {
         const find = document.querySelector('.wp-find input')
         const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set

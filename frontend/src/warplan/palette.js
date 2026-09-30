@@ -20,6 +20,14 @@ export const SWATCHES = [
   '#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767',
 ]
 
+/**
+ * The map colored camp against camp, in place of the alliances: the top camp
+ * blue, the bottom camp red. The pair passes the palette validator on the
+ * light surface (colorblind ΔE 29.9, normal-vision 38.2, both over 3:1).
+ * The history chart keeps its own pair, stepped for its dark card.
+ */
+export const CAMP_COLORS = { 1: '#2563eb', 2: '#dc2626' }
+
 /** The first suggestion nobody has taken yet. */
 export function nextColor(alliances) {
   const taken = new Set(alliances.map((a) => a.color.toLowerCase()))

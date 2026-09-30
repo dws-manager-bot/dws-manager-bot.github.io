@@ -1,3 +1,4 @@
+import season from '../src/warplan/season5.json'
 const now = Date.now()
 const iso = (min) => new Date(now + min * 60000).toISOString()
 const rows = [
@@ -154,6 +155,17 @@ const warBoard = [
   // its area should show Ember Court's color over Iron Wolves' ground.
   hold(322, 4),
 ]
+// `&board=full`: the whole map held, to judge colors at a glance — the top
+// half by the top camp's two alliances, the bottom half by the bottom camp's,
+// every third territory left neutral.
+if (new URLSearchParams(location.search).get('board') === 'full') {
+  const taken = new Set(warBoard.map((h) => h.city_id))
+  for (const c of season.cities) {
+    if (taken.has(c.id) || c.id % 3 === 0 || c.kind === 'oasis') continue
+    if (c.y > 560) warBoard.push(hold(c.id, c.id % 2 ? 1 : 2))
+    else if (c.y < 440) warBoard.push(hold(c.id, c.id % 2 ? 3 : 4))
+  }
+}
 // The board's edits, oldest first, adding up to warBoard above.
 const warHistory = [
   { at: iso(-60 * 24 * 9), by: 'Goba', changes: [{ city: 145, from: null, to: 1 }, { city: 136, from: null, to: 3 }] },
