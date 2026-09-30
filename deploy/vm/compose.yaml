@@ -1,0 +1,76 @@
+# The backend on one small VM (Google Cloud e2-micro, 1 GB): the app, its
+# Postgres, and the Cloudflare tunnel that brings dws-api.xronocore.qzz.io to
+# it. No port is published; the tunnel dials out.
+#
+# One app container, always. A second opens a second Discord gateway session
+# and every scheduled announcement posts twice. `docker compose up -d` stops
+# the old container before it starts the new one, so a redeploy never overlaps.
+#
+# Lives in /opt/dws-manager on the VM, beside two files that are never
+# committed: `.env` (DB_PASSWORD) and `app.env` (the app's settings, the same
+# keys as deploy/secret.example.yaml, with DATABASE_URL pointing at `db`).
+name: dws-manager
+
+services:
+  app:
+    image: ghcr.io/dws-manager-bot/dws-manager-bot:latest
+    restart: unless-stopped
+    env_file: app.env
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dws_manager
+      POSTGRES_DB: dws_manager
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    # Sized for the machine: the database is about 10 MB and the app's pool
+    # opens at most ten connections.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - effective_cache_size=128MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=25
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dws_manager -d dws_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--config", "/etc/cloudflared/config.yml", "run"]
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on: [app]
+    mem_limit: 128m
+
+volumes:
+  pgdata:

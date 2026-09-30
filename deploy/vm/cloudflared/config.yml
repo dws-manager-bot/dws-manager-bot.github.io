@@ -1,0 +1,12 @@
+# The VM's own tunnel, `dws-manager-gcp`. It carries this one hostname; the
+# home server's tunnel carries the rest. Beside this file on the VM sits
+# credentials.json, which `cloudflared tunnel create` wrote and which is never
+# committed.
+tunnel: aa4226e2-637d-401a-b3f2-4203e76d90cd
+credentials-file: /etc/cloudflared/credentials.json
+protocol: http2
+no-autoupdate: true
+ingress:
+  - hostname: dws-api.xronocore.qzz.io
+    service: http://app:8000
+  - service: http_status:404
