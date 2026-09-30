@@ -769,7 +769,7 @@ class WarItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: str = Field(min_length=1, max_length=40)
-    type: Literal["arrow", "pin", "route", "sticker", "note", "stamp"]
+    type: Literal["arrow", "line", "pencil", "pin", "route", "sticker", "note", "stamp"]
 
 
 class WarScenario(BaseModel):

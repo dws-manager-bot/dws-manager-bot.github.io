@@ -23,9 +23,9 @@ from dwsbot import warlive
 from dwsbot.api.deps import current_user, get_session, require_admin
 from dwsbot.api.routers import warplan
 from dwsbot.db import Base
-from dwsbot.schemas import MeOut
+from dwsbot.schemas import MeOut, WarDoc
 from dwsbot.security import issue_token
-from dwsbot.warlive import OpError, apply_op
+from dwsbot.warlive import OpError, apply_op, check_doc
 
 
 @compiles(JSONB, "sqlite")
@@ -57,6 +57,20 @@ def test_a_waypoint_route_is_a_drawing_like_any_other():
     route = {"id": "r", "type": "route", "points": [[840, 470], [860, 490], [874, 500]]}
     doc = apply_op(DOC, {"t": "item", "s": "b", "item": route})
     assert doc["scenarios"][1]["items"] == [route]
+
+
+def test_a_line_and_a_pencil_stroke_are_drawings_too():
+    line = {"id": "l", "type": "line", "a": [840, 470], "b": [874, 500], "width": 1.2}
+    stroke = {"id": "s", "type": "pencil", "width": 0.8,
+              "points": [[840.5, 470.25], [851.1, 480.9], [874.02, 500.5]]}
+    doc = apply_op(DOC, {"t": "item", "s": "b", "item": line})
+    doc = apply_op(doc, {"t": "item", "s": "b", "item": stroke})
+    assert doc["scenarios"][1]["items"] == [line, stroke]
+    assert check_doc(doc) == doc
+    # And a draft holding them saves: the schema knows both kinds.
+    assert [i.type for i in WarDoc.model_validate(doc).scenarios[1].items] == ["line", "pencil"]
+    with pytest.raises(OpError):
+        apply_op(DOC, {"t": "item", "s": "b", "item": {"id": "x", "type": "spray"}})
 
 
 def test_a_territory_is_planned_cleared_and_sent_neutral():
