@@ -164,6 +164,11 @@ main:has(.wp-layout) { max-width: 1680px; }
 .wp-layer:hover { border-color: var(--muted); }
 .wp-layer.off { color: var(--muted); text-decoration: line-through; opacity: 0.6; }
 .wp-layer.off .wp-key { filter: grayscale(1); opacity: 0.5; }
+/* Alliances | Camps: two joined chips, ahead of the layer switches. */
+.wp-colorby { display: inline-flex; margin-right: 4px; }
+.wp-colorby .chip { min-height: 30px; padding: 3px 10px; font-size: 12.5px; border-radius: 0; }
+.wp-colorby .chip:first-child { border-radius: 9999px 0 0 9999px; }
+.wp-colorby .chip:last-child { border-radius: 0 9999px 9999px 0; margin-left: -1px; }
 .wp-key.fills { background: rgba(37, 99, 235, 0.35); border-color: #2563eb; }
 .wp-key.drawings { border: 0; background: none; position: relative; }
 .wp-key.drawings::before { content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: #fbbf24; transform: rotate(-35deg); }
@@ -180,6 +185,7 @@ main:has(.wp-layout) { max-width: 1680px; }
 .wp-key { width: 11px; height: 11px; display: inline-block; border: 1.5px solid; border-radius: 2px; }
 .wp-key.city { background: #fffbeb; border-color: #b7791f; }
 .wp-key.pass { background: #9a3412; border-color: #431407; border-radius: 1px; }
+.wp-legend.camps .wp-key.pass { background: #3f3f46; border-color: #18181b; }
 .wp-key.stronghold { background: #475569; border-color: #1e293b; transform: rotate(45deg) scale(0.85); }
 .wp-key.oasis { background: #0f766e; border-color: #042f2e; border-radius: 50%; }
 .wp-key.planned { background: repeating-linear-gradient(135deg, #2563eb 0 3px, #efe7d6 3px 6px); border-color: #1e3a8a; }

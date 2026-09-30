@@ -1,10 +1,12 @@
 import {
   forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
-import { drawBase, noStyles, paintBase, zoneStyles } from './base.js'
-import { FONT, Items, Route, arrowHandles, bounds, makeItem, routeHandles, shifted } from './items.jsx'
+import { GRID_Z, drawBase, noStyles, paintBase, zoneStyles } from './base.js'
+import {
+  FONT, Items, PENCIL, Pencil, Route, arrowHandles, bounds, makeItem, routeHandles, shifted, simplify,
+} from './items.jsx'
 import { coords, footprint } from './mapdata.js'
-import { darker, inkOn } from './palette.js'
+import { CAMP_COLORS, darker, inkOn } from './palette.js'
 
 /**
  * The season map, interactive.
@@ -15,12 +17,16 @@ import { darker, inkOn } from './palette.js'
  * and y runs up the screen as it does on the game's minimap.
  *
  * Gestures: drag to pan, pinch or wheel to zoom. With a drawing tool, a drag
- * draws an arrow and a tap places a pin, sticker, note or stamp. A waypoint
- * route is tapped out stop by stop and finished with a double-click, Enter or
- * Esc; Backspace takes the last stop back.
+ * draws an arrow or a straight line, the pencil draws wherever the pointer
+ * goes, and a tap places a pin, sticker, note or stamp. A waypoint route is
+ * tapped out stop by stop and finished with a double-click, Enter or Esc;
+ * Backspace takes the last stop back.
  *
  * Other admins on the same plan show as named cursors, and what they have
  * selected is outlined in their color. None of that goes into the PNG.
+ *
+ * `colorBy` paints held ground by alliance, or by camp — blue for the top
+ * camp, red for the bottom. The PNG is whichever is showing.
  */
 
 const ZMAX = 40
@@ -32,6 +38,9 @@ const NEUTRAL = {
   stronghold: { fill: '#475569', stroke: '#1e293b' },
   oasis: { fill: '#0f766e', stroke: '#042f2e' },
 }
+// Camp against camp, red means the bottom camp, so an unheld pass leaves its
+// dark red for charcoal.
+const NEUTRAL_PASS_CAMPS = { fill: '#3f3f46', stroke: '#18181b' }
 
 const HALO = { stroke: '#ffffff', strokeWidth: 3.2, strokeLinejoin: 'round', paintOrder: 'stroke' }
 
@@ -40,9 +49,26 @@ function passLabel(name, z) {
   return name.replace('Strife Pass', 'Strife').replace('Temple Fortress', 'Temple').replace('Sands Fortress', 'Sands')
 }
 
+/**
+ * A marker's drawn size in px: its footprint at this zoom, never below a size
+ * that can be seen and tapped. A pass is 5 tiles to a Pyramid's 7, yet it is
+ * what a plan turns on, so it draws up to half again its footprint while
+ * zoomed out, easing back to its true size where the tile grid appears — there
+ * stamps are placed against it tile by tile.
+ */
+function markerSize(c, z) {
+  const px = c.size * z
+  if (c.kind === 'pass') {
+    const grow = 1 + 0.5 * Math.min(1, Math.max(0, (GRID_Z - z) / 5))
+    return Math.max(px * grow, 12)
+  }
+  const royal = c.kind === 'city' && c.size > 7
+  return Math.max(px, { city: royal ? 13 : 9, stronghold: 8, oasis: 6 }[c.kind])
+}
+
 /* ------------------------------------------------------------------ markers */
 
-function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity, hide }) {
+function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity, hide, camps }) {
   const out = []
   const labels = []
   for (const c of map.cities) {
@@ -59,10 +85,10 @@ function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selected
     const holder = holders.get(c.id)
     const planned = holder !== board.get(c.id)
     const color = holder != null ? colorOf(holder) : null
-    const look = color ? { fill: color, stroke: darker(color, 0.55) } : NEUTRAL[c.kind]
+    const look = color ? { fill: color, stroke: darker(color, 0.55) }
+      : camps && c.kind === 'pass' ? NEUTRAL_PASS_CAMPS : NEUTRAL[c.kind]
     const royal = c.kind === 'city' && c.size > 7
-    const min = { city: royal ? 13 : 9, pass: 8, stronghold: 8, oasis: 6 }[c.kind]
-    const s = Math.max(px, min)
+    const s = markerSize(c, z)
     const dash = planned ? '3 2' : undefined
     const sw = planned ? 2.2 : 1.4
     const hit = Math.max(s, 26)
@@ -106,7 +132,7 @@ function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selected
         <text key={`l${c.id}`} x={cxs} y={cys + s / 2 + fs + 1} textAnchor="middle" fontFamily={FONT}
               fontSize={fs} fontWeight="600" fill="#1c1917" {...HALO}>
           {label}
-          {owner && <tspan fill={darker(owner.color, 0.8)} fontWeight="700">{label ? ` · ${owner.tag || owner.name}` : owner.tag || owner.name}</tspan>}
+          {owner && <tspan fill={darker(color, 0.8)} fontWeight="700">{label ? ` · ${owner.tag || owner.name}` : owner.tag || owner.name}</tspan>}
         </text>,
       )
     }
@@ -120,7 +146,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const {
     map, board, holders, alliances, items, tool, toolOpts, editable,
     selectedItem, selectedCity, onSelectItem, onSelectCity, onCreate, onItem,
-    hide = {}, peers = [], onCursor, extend = null, onExtended, targets = null,
+    hide = {}, peers = [], onCursor, extend = null, onExtended, targets = null, colorBy = 'alliance',
   } = props
 
   const wrapRef = useRef(null)
@@ -129,7 +155,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const [size, setSize] = useState({ W: 0, H: 0 })
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
-  const [draft, setDraft] = useState(null)       // an arrow being drawn
+  const [draft, setDraft] = useState(null)       // an arrow or line being drawn
+  const [scribble, setScribble] = useState(null) // a pencil stroke being drawn: map points
   const [route, setRoute] = useState(null)       // a route being tapped out: { points, id? }
   const routeRef = useRef(null)
   routeRef.current = route
@@ -137,7 +164,13 @@ const WarMap = forwardRef(function WarMap(props, ref) {
 
   const N = map.N
   const byAlliance = useMemo(() => new Map(alliances.map((a) => [a.id, a])), [alliances])
-  const colorOf = useCallback((id) => byAlliance.get(id)?.color || '#94a3b8', [byAlliance])
+  // What a holder paints the ground and its markers: the alliance's own color,
+  // or its camp's when the map is read camp against camp. Drawings keep theirs.
+  const colorOf = useCallback((id) => {
+    const a = byAlliance.get(id)
+    if (!a) return '#94a3b8'
+    return (colorBy === 'camp' ? CAMP_COLORS[a.camp] : a.color) || '#94a3b8'
+  }, [byAlliance, colorBy])
   const allianceOf = useCallback((id) => byAlliance.get(id) || null, [byAlliance])
   const itemColor = useCallback(
     (item) => (item.alliance != null && byAlliance.get(item.alliance)?.color) || item.color || '#fbbf24',
@@ -304,6 +337,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       // A second finger turns whatever was happening into a pinch.
       if (g.mode === 'move' || g.mode === 'handle') onItem(g.id, g.current || g.orig, 'done')
       setDraft(null)
+      setScribble(null)
       const [[ax, ay], [bx, by]] = [...g.pointers.values()]
       Object.assign(g, { mode: 'pinch', dist: Math.hypot(ax - bx, ay - by), view, mid: [(ax + bx) / 2, (ay + by) / 2] })
       return
@@ -339,9 +373,15 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       Object.assign(g, { mode: 'place', tile: t })
       return
     }
-    if (tool === 'arrow' || tool === 'curve') {
+    if (tool === 'arrow' || tool === 'curve' || tool === 'line') {
       Object.assign(g, { mode: 'draw', a: [t.x, t.y], b: null })
       setDraft({ a: [t.x, t.y], b: [t.x, t.y] })
+      return
+    }
+    if (tool === 'pencil') {
+      onSelectItem(null)
+      Object.assign(g, { mode: 'pencil', pts: [[t.wx, t.wy]] })
+      setScribble(g.pts)
       return
     }
     Object.assign(g, { mode: 'place', tile: t })
@@ -392,7 +432,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       const t = toTile(sx, sy)
       const o = g.orig
       let next = o
-      if (o.type === 'arrow') next = { ...o, [g.key]: [t.x, t.y] }
+      if (o.type === 'arrow' || o.type === 'line') next = { ...o, [g.key]: [t.x, t.y] }
       else if (o.type === 'route') {
         const k = Number(g.key.slice(1))
         next = { ...o, points: o.points.map((p, i) => (i === k ? [t.x, t.y] : p)) }
@@ -410,6 +450,14 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       const t = toTile(sx, sy)
       g.b = [t.x, t.y]
       setDraft({ a: g.a, b: g.b })
+    } else if (g.mode === 'pencil') {
+      // A point every pixel and a half of travel is plenty to follow a hand.
+      const t = toTile(sx, sy)
+      const [lx, ly] = g.pts[g.pts.length - 1]
+      if (Math.hypot(t.wx - lx, t.wy - ly) * g.view.z >= 1.5) {
+        g.pts = [...g.pts, [t.wx, t.wy]]
+        setScribble(g.pts)
+      }
     }
   }
 
@@ -439,9 +487,21 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         const c = tool === 'curve'
           ? [Math.round((ax + b[0]) / 2 - (b[1] - ay) * 0.25), Math.round((ay + b[1]) / 2 + (b[0] - ax) * 0.25)]
           : null
-        onCreate(makeItem('arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
+        onCreate(makeItem(tool === 'line' ? 'line' : 'arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
       }
       setDraft(null)
+    } else if (g.mode === 'pencil') {
+      if (g.moved && g.pts.length >= 2) {
+        // Thin it to within about a pixel of what was drawn, and further still
+        // if it is long enough to hit the cap. Kept to the hundredth of a tile.
+        let eps = 1 / g.view.z
+        let pts = simplify(g.pts, eps)
+        while (pts.length > PENCIL.maxPoints) { eps *= 1.6; pts = simplify(g.pts, eps) }
+        const r = (v) => Math.round(v * 100) / 100
+        // The pencil stays in hand: a drawing is usually more than one stroke.
+        onCreate(makeItem('pencil', { points: pts.map(([x, y]) => [r(x), r(y)]) }, toolOpts), { keep: true })
+      }
+      setScribble(null)
     } else if (g.mode === 'place' && !g.moved && tool === 'route') {
       addStop(g.tile)
     } else if (g.mode === 'place' && !g.moved) {
@@ -513,7 +573,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const readout = hover || (view ? { x: Math.floor(view.cx), y: Math.floor(view.cy) } : null)
 
   const draftArrow = draft && (draft.a[0] !== draft.b[0] || draft.a[1] !== draft.b[1])
-    ? { id: '__draft', type: 'arrow', a: draft.a, b: draft.b, width: 1.6, color: toolOpts.color, alliance: toolOpts.alliance }
+    ? { id: '__draft', type: tool === 'line' ? 'line' : 'arrow', a: draft.a, b: draft.b, width: tool === 'line' ? 1.2 : 1.6,
+        color: toolOpts.color, alliance: toolOpts.alliance }
     : null
 
   return (
@@ -547,7 +608,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                 const [x0, y0] = P(fp[0], fp[3])
                 const cx = x0 + (c.size * z) / 2; const cy = y0 + (c.size * z) / 2
                 if (cx < -40 || cy < -40 || cx > size.W + 40 || cy > size.H + 40) return null
-                const r = Math.max(c.size * z, 9) / 2 + 6
+                const r = markerSize(c, z) / 2 + 6
                 const sat = targets.get(c.id) === 'sat'
                 return (
                   <g key={`t${c.id}`}>
@@ -563,7 +624,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
           )}
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
             <Cities map={map} board={board} holders={holders} P={P} z={z} W={size.W} H={size.H}
-                    colorOf={colorOf} allianceOf={allianceOf} selectedCity={selectedCity} hide={hide} />
+                    colorOf={colorOf} allianceOf={allianceOf} selectedCity={selectedCity} hide={hide}
+                    camps={colorBy === 'camp'} />
           </g>
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
             {!hide.drawings && (
@@ -571,6 +633,10 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                      P={P} z={z} colorOf={itemColor} />
             )}
             {draftArrow && <Items items={[draftArrow]} P={P} z={z} colorOf={itemColor} />}
+            {scribble && (
+              <Pencil item={{ points: scribble }} P={P} z={z} draft
+                      color={itemColor({ alliance: toolOpts.alliance, color: toolOpts.color })} />
+            )}
           </g>
           {route && (() => {
             const color = route.orig ? itemColor(route.orig) : itemColor({ alliance: toolOpts.alliance, color: toolOpts.color })
@@ -614,7 +680,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
           {city && (() => {
             const fp = footprint(city)
             const [x0, y0] = P(fp[0], fp[3])
-            const s = Math.max(city.size * z, 12) + 10
+            const s = Math.max(markerSize(city, z), 12) + 10
             const cx = x0 + (city.size * z) / 2; const cy = y0 + (city.size * z) / 2
             return (
               <g data-noexport="" pointerEvents="none">
@@ -632,7 +698,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
               <g data-noexport="">
                 <rect x={bx0 - pad} y={by0 - pad} width={bx1 - bx0 + pad * 2} height={by1 - by0 + pad * 2}
                       fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 4" pointerEvents="none" />
-                {editable && sel.type === 'arrow' && Object.entries(arrowHandles(sel, P)).map(([k, [hx, hy]]) => (
+                {editable && (sel.type === 'arrow' || sel.type === 'line') && Object.entries(arrowHandles(sel, P)).map(([k, [hx, hy]]) => (
                   <g key={k} data-handle={k}>
                     <circle cx={hx} cy={hy} r="16" fill="transparent" />
                     <circle cx={hx} cy={hy} r={k === 'c' ? 6 : 7} fill={k === 'c' ? '#ffffff' : '#f59e0b'}

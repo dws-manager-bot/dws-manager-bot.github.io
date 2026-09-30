@@ -1,7 +1,8 @@
 import { inkOn, darker } from './palette.js'
 
 /**
- * The drawings on a scenario: arrows, pins, stickers, notes and stamps.
+ * The drawings on a scenario: arrows, lines, pencil strokes, waypoint routes,
+ * pins, stickers, notes and stamps.
  *
  * Every item keeps its geometry in tiles, in the game's coordinates, so it
  * stays on the ground it was drawn on at any zoom. Pins stay one size on
@@ -31,6 +32,14 @@ export const STAMPS = { shelter: { size: 3, label: 'Shelter' }, portal: { size: 
 /** A new note, in screen pixels: 12px text, and the range the size slider allows. */
 export const NOTE = { font: 12, min: 8, max: 40, w: 220, h: 64 }
 
+/**
+ * A pencil stroke: its width in tiles, and the most points one may keep. A
+ * stroke is thinned as it is finished (see `simplify`), which leaves a circle
+ * round a territory at a few dozen points; the cap keeps a long scribble from
+ * eating the plan's 1 MB.
+ */
+export const PENCIL = { width: 0.8, maxPoints: 500 }
+
 let seq = 0
 export const newId = () => `${Date.now().toString(36)}${(seq += 1).toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
@@ -39,6 +48,9 @@ export function makeItem(type, at, opts) {
   const base = { id: newId(), type, color: opts.color, alliance: opts.alliance ?? null }
   switch (type) {
     case 'arrow': return { ...base, a: at.a, b: at.b, ...(at.c ? { c: at.c } : {}), width: 1.6 }
+    case 'line': return { ...base, a: at.a, b: at.b, width: 1.2 }
+    // Points in tiles, to the hundredth: freehand is not snapped to the grid.
+    case 'pencil': return { ...base, points: at.points, width: PENCIL.width }
     case 'route': return { ...base, points: at.points, width: 1.2 }
     case 'pin': return { ...base, x: at.x, y: at.y, label: '' }
     case 'sticker': return { ...base, x: at.x, y: at.y, symbol: opts.symbol || 'star', size: 14 }
@@ -213,12 +225,13 @@ function head([tx, ty], [bx, by], w) {
   return `${bx},${by} ${p1.join(',')} ${p2.join(',')}`
 }
 
+/** An arrow, or — for a `line` — the same stroke with no head. */
 function Arrow({ item, P, z, color }) {
   const { d, tail, a, b } = arrowPath(item, P)
   const w = strokeWidth(item, z)
   const dash = item.dash ? `${w * 2.2} ${w * 1.6}` : undefined
-  const heads = [head(tail, b, w)]
-  if (item.both) {
+  const heads = item.type === 'line' ? [] : [head(tail, b, w)]
+  if (item.both && item.type !== 'line') {
     const t2 = item.c ? tail : b
     heads.push(head(t2, a, w))
   }
@@ -267,6 +280,72 @@ export function Route({ item, P, z, color, draft }) {
           </g>
         )
       })}
+    </g>
+  )
+}
+
+/**
+ * Fewer points along the same stroke (Ramer–Douglas–Peucker): every point
+ * dropped lies within `eps` of the line that replaces it. A stroke that ends
+ * where it began — a circle round a territory — measures from its start.
+ */
+export function simplify(pts, eps) {
+  if (pts.length < 3) return pts
+  const keep = new Uint8Array(pts.length)
+  keep[0] = 1
+  keep[pts.length - 1] = 1
+  const stack = [[0, pts.length - 1]]
+  while (stack.length) {
+    const [i, j] = stack.pop()
+    const [ax, ay] = pts[i]
+    const [bx, by] = pts[j]
+    const dx = bx - ax; const dy = by - ay
+    const len = Math.hypot(dx, dy)
+    let far = -1
+    let best = eps
+    for (let k = i + 1; k < j; k += 1) {
+      const [px, py] = pts[k]
+      const d = len ? Math.abs(dy * (px - ax) - dx * (py - ay)) / len : Math.hypot(px - ax, py - ay)
+      if (d > best) { best = d; far = k }
+    }
+    if (far >= 0) { keep[far] = 1; stack.push([i, far], [far, j]) }
+  }
+  return pts.filter((_, k) => keep[k])
+}
+
+/** A stroke through screen points, rounded off: each point is the control of
+    a curve from the midpoint before it to the midpoint after. */
+function strokePath(pts) {
+  const f = (v) => v.toFixed(1)
+  const [x0, y0] = pts[0]
+  if (pts.length === 1) return `M${f(x0)},${f(y0)} l0.01,0`
+  let d = `M${f(x0)},${f(y0)}`
+  for (let i = 1; i < pts.length - 1; i += 1) {
+    const [x, y] = pts[i]
+    const [nx, ny] = pts[i + 1]
+    d += ` Q${f(x)},${f(y)} ${f((x + nx) / 2)},${f((y + ny) / 2)}`
+  }
+  const [lx, ly] = pts[pts.length - 1]
+  return `${d} L${f(lx)},${f(ly)}`
+}
+
+export function pencilWidth(item, z) {
+  return Math.max(2, Math.min(14, (item.width || PENCIL.width) * z))
+}
+
+/** A freehand stroke. Its points are map positions, not tile corners. */
+export function Pencil({ item, P, z, color, draft }) {
+  if (!item.points?.length) return null
+  const d = strokePath(item.points.map(([x, y]) => P(x, y)))
+  const w = pencilWidth(item, z)
+  const dash = item.dash ? `${w * 2.2} ${w * 1.8}` : undefined
+  return (
+    <g data-item={draft ? undefined : item.id}>
+      <path d={d} fill="none" stroke="#ffffff" strokeOpacity="0.8" strokeWidth={w + 3}
+            strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash} />
+      <path d={d} fill="none" stroke={color} strokeWidth={w}
+            strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash} />
+      {!draft && <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(18, w + 12)} />}
     </g>
   )
 }
@@ -374,7 +453,7 @@ function Stamp({ item, P, z, color }) {
   )
 }
 
-const ORDER = { note: 0, stamp: 1, arrow: 2, route: 3, sticker: 4, pin: 5 }
+const ORDER = { note: 0, stamp: 1, pencil: 2, line: 2, arrow: 2, route: 3, sticker: 4, pin: 5 }
 
 /** Every item, bottom to top: notes under everything, pins over everything. */
 export function Items({ items, P, z, colorOf }) {
@@ -382,7 +461,8 @@ export function Items({ items, P, z, colorOf }) {
   return sorted.map((item) => {
     const color = colorOf(item)
     switch (item.type) {
-      case 'arrow': return <Arrow key={item.id} item={item} P={P} z={z} color={color} />
+      case 'arrow': case 'line': return <Arrow key={item.id} item={item} P={P} z={z} color={color} />
+      case 'pencil': return <Pencil key={item.id} item={item} P={P} z={z} color={color} />
       case 'pin': return <Pin key={item.id} item={item} P={P} color={color} />
       case 'route': return <Route key={item.id} item={item} P={P} z={z} color={color} />
       case 'sticker': return <Sticker key={item.id} item={item} P={P} z={z} color={color} />
@@ -396,10 +476,16 @@ export function Items({ items, P, z, colorOf }) {
 /** The screen box around an item, for its selection outline. */
 export function bounds(item, P, z) {
   switch (item.type) {
-    case 'arrow': {
+    case 'arrow': case 'line': {
       const pts = [item.a, item.b, item.c].filter(Boolean).map(([x, y]) => center(P, x, y))
       const xs = pts.map((p) => p[0]); const ys = pts.map((p) => p[1])
       return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]
+    }
+    case 'pencil': {
+      const pts = item.points.map(([x, y]) => P(x, y))
+      const xs = pts.map((p) => p[0]); const ys = pts.map((p) => p[1])
+      const r = pencilWidth(item, z) / 2
+      return [Math.min(...xs) - r, Math.min(...ys) - r, Math.max(...xs) + r, Math.max(...ys) + r]
     }
     case 'pin': {
       const [x, y] = center(P, item.x, item.y)
@@ -445,13 +531,14 @@ export function routeHandles(item, P) {
 /** Move an item by whole tiles. */
 export function shifted(item, dx, dy) {
   const mv = ([x, y]) => [x + dx, y + dy]
-  if (item.type === 'arrow') {
+  if (item.type === 'arrow' || item.type === 'line') {
     return { ...item, a: mv(item.a), b: mv(item.b), ...(item.c ? { c: mv(item.c) } : {}) }
   }
-  if (item.type === 'route') return { ...item, points: item.points.map(mv) }
+  if (item.type === 'route' || item.type === 'pencil') return { ...item, points: item.points.map(mv) }
   return { ...item, x: item.x + dx, y: item.y + dy }
 }
 
 export const ITEM_LABEL = {
-  arrow: 'Arrow', pin: 'Pin', route: 'Waypoint route', sticker: 'Sticker', note: 'Note', stamp: 'Stamp',
+  arrow: 'Arrow', line: 'Line', pencil: 'Pencil', pin: 'Pin', route: 'Waypoint route', sticker: 'Sticker',
+  note: 'Note', stamp: 'Stamp',
 }

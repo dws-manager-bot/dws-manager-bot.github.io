@@ -17,6 +17,8 @@ const EDGE = [215, 201, 174]
 const WALL = [232, 224, 206]
 const WALL_EDGE = [176, 158, 126]
 export const OUTSIDE = '#d9cfbb'
+/** The zoom, in px per tile, from which the tile grid is drawn. */
+export const GRID_Z = 7
 
 const mix = (c, a, base = SAND) => [
   base[0] + (c[0] - base[0]) * a,
@@ -100,7 +102,7 @@ export function drawBase(ctx, image, view, W, H, N) {
 
   // A tile grid once a tile is big enough to place something on, with every
   // tenth line heavier so a count can be read off it.
-  if (z >= 7) {
+  if (z >= GRID_Z) {
     ctx.lineWidth = 1
     for (const [every, alpha] of [[1, Math.min(0.1, (z - 7) / 60 + 0.05)], [10, 0.16]]) {
       ctx.strokeStyle = `rgba(60, 48, 30, ${alpha})`
