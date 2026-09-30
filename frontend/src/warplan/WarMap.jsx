@@ -2,7 +2,9 @@ import {
   forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
 import { GRID_Z, drawBase, noStyles, paintBase, zoneStyles } from './base.js'
-import { FONT, Items, Route, arrowHandles, bounds, makeItem, routeHandles, shifted } from './items.jsx'
+import {
+  FONT, Items, PENCIL, Pencil, Route, arrowHandles, bounds, makeItem, routeHandles, shifted, simplify,
+} from './items.jsx'
 import { coords, footprint } from './mapdata.js'
 import { CAMP_COLORS, darker, inkOn } from './palette.js'
 
@@ -15,9 +17,10 @@ import { CAMP_COLORS, darker, inkOn } from './palette.js'
  * and y runs up the screen as it does on the game's minimap.
  *
  * Gestures: drag to pan, pinch or wheel to zoom. With a drawing tool, a drag
- * draws an arrow and a tap places a pin, sticker, note or stamp. A waypoint
- * route is tapped out stop by stop and finished with a double-click, Enter or
- * Esc; Backspace takes the last stop back.
+ * draws an arrow or a straight line, the pencil draws wherever the pointer
+ * goes, and a tap places a pin, sticker, note or stamp. A waypoint route is
+ * tapped out stop by stop and finished with a double-click, Enter or Esc;
+ * Backspace takes the last stop back.
  *
  * Other admins on the same plan show as named cursors, and what they have
  * selected is outlined in their color. None of that goes into the PNG.
@@ -152,7 +155,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const [size, setSize] = useState({ W: 0, H: 0 })
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
-  const [draft, setDraft] = useState(null)       // an arrow being drawn
+  const [draft, setDraft] = useState(null)       // an arrow or line being drawn
+  const [scribble, setScribble] = useState(null) // a pencil stroke being drawn: map points
   const [route, setRoute] = useState(null)       // a route being tapped out: { points, id? }
   const routeRef = useRef(null)
   routeRef.current = route
@@ -333,6 +337,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       // A second finger turns whatever was happening into a pinch.
       if (g.mode === 'move' || g.mode === 'handle') onItem(g.id, g.current || g.orig, 'done')
       setDraft(null)
+      setScribble(null)
       const [[ax, ay], [bx, by]] = [...g.pointers.values()]
       Object.assign(g, { mode: 'pinch', dist: Math.hypot(ax - bx, ay - by), view, mid: [(ax + bx) / 2, (ay + by) / 2] })
       return
@@ -368,9 +373,15 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       Object.assign(g, { mode: 'place', tile: t })
       return
     }
-    if (tool === 'arrow' || tool === 'curve') {
+    if (tool === 'arrow' || tool === 'curve' || tool === 'line') {
       Object.assign(g, { mode: 'draw', a: [t.x, t.y], b: null })
       setDraft({ a: [t.x, t.y], b: [t.x, t.y] })
+      return
+    }
+    if (tool === 'pencil') {
+      onSelectItem(null)
+      Object.assign(g, { mode: 'pencil', pts: [[t.wx, t.wy]] })
+      setScribble(g.pts)
       return
     }
     Object.assign(g, { mode: 'place', tile: t })
@@ -421,7 +432,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       const t = toTile(sx, sy)
       const o = g.orig
       let next = o
-      if (o.type === 'arrow') next = { ...o, [g.key]: [t.x, t.y] }
+      if (o.type === 'arrow' || o.type === 'line') next = { ...o, [g.key]: [t.x, t.y] }
       else if (o.type === 'route') {
         const k = Number(g.key.slice(1))
         next = { ...o, points: o.points.map((p, i) => (i === k ? [t.x, t.y] : p)) }
@@ -439,6 +450,14 @@ const WarMap = forwardRef(function WarMap(props, ref) {
       const t = toTile(sx, sy)
       g.b = [t.x, t.y]
       setDraft({ a: g.a, b: g.b })
+    } else if (g.mode === 'pencil') {
+      // A point every pixel and a half of travel is plenty to follow a hand.
+      const t = toTile(sx, sy)
+      const [lx, ly] = g.pts[g.pts.length - 1]
+      if (Math.hypot(t.wx - lx, t.wy - ly) * g.view.z >= 1.5) {
+        g.pts = [...g.pts, [t.wx, t.wy]]
+        setScribble(g.pts)
+      }
     }
   }
 
@@ -468,9 +487,21 @@ const WarMap = forwardRef(function WarMap(props, ref) {
         const c = tool === 'curve'
           ? [Math.round((ax + b[0]) / 2 - (b[1] - ay) * 0.25), Math.round((ay + b[1]) / 2 + (b[0] - ax) * 0.25)]
           : null
-        onCreate(makeItem('arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
+        onCreate(makeItem(tool === 'line' ? 'line' : 'arrow', { a: [ax, ay], b, c }, toolOpts), { keep: e.shiftKey })
       }
       setDraft(null)
+    } else if (g.mode === 'pencil') {
+      if (g.moved && g.pts.length >= 2) {
+        // Thin it to within about a pixel of what was drawn, and further still
+        // if it is long enough to hit the cap. Kept to the hundredth of a tile.
+        let eps = 1 / g.view.z
+        let pts = simplify(g.pts, eps)
+        while (pts.length > PENCIL.maxPoints) { eps *= 1.6; pts = simplify(g.pts, eps) }
+        const r = (v) => Math.round(v * 100) / 100
+        // The pencil stays in hand: a drawing is usually more than one stroke.
+        onCreate(makeItem('pencil', { points: pts.map(([x, y]) => [r(x), r(y)]) }, toolOpts), { keep: true })
+      }
+      setScribble(null)
     } else if (g.mode === 'place' && !g.moved && tool === 'route') {
       addStop(g.tile)
     } else if (g.mode === 'place' && !g.moved) {
@@ -542,7 +573,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const readout = hover || (view ? { x: Math.floor(view.cx), y: Math.floor(view.cy) } : null)
 
   const draftArrow = draft && (draft.a[0] !== draft.b[0] || draft.a[1] !== draft.b[1])
-    ? { id: '__draft', type: 'arrow', a: draft.a, b: draft.b, width: 1.6, color: toolOpts.color, alliance: toolOpts.alliance }
+    ? { id: '__draft', type: tool === 'line' ? 'line' : 'arrow', a: draft.a, b: draft.b, width: tool === 'line' ? 1.2 : 1.6,
+        color: toolOpts.color, alliance: toolOpts.alliance }
     : null
 
   return (
@@ -601,6 +633,10 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                      P={P} z={z} colorOf={itemColor} />
             )}
             {draftArrow && <Items items={[draftArrow]} P={P} z={z} colorOf={itemColor} />}
+            {scribble && (
+              <Pencil item={{ points: scribble }} P={P} z={z} draft
+                      color={itemColor({ alliance: toolOpts.alliance, color: toolOpts.color })} />
+            )}
           </g>
           {route && (() => {
             const color = route.orig ? itemColor(route.orig) : itemColor({ alliance: toolOpts.alliance, color: toolOpts.color })
@@ -662,7 +698,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
               <g data-noexport="">
                 <rect x={bx0 - pad} y={by0 - pad} width={bx1 - bx0 + pad * 2} height={by1 - by0 + pad * 2}
                       fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 4" pointerEvents="none" />
-                {editable && sel.type === 'arrow' && Object.entries(arrowHandles(sel, P)).map(([k, [hx, hy]]) => (
+                {editable && (sel.type === 'arrow' || sel.type === 'line') && Object.entries(arrowHandles(sel, P)).map(([k, [hx, hy]]) => (
                   <g key={k} data-handle={k}>
                     <circle cx={hx} cy={hy} r="16" fill="transparent" />
                     <circle cx={hx} cy={hy} r={k === 'c' ? 6 : 7} fill={k === 'c' ? '#ffffff' : '#f59e0b'}
