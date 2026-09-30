@@ -116,6 +116,7 @@ export default function WarPlanner({ user }) {
   const [selCity, setSelCity] = useState(null)
   const [query, setQuery] = useState('')
   const [hide, setHide] = useState(() => readJson('wp.hide') || {})
+  const [colorBy, setColorBy] = useState(() => (readJson('wp.colorBy') === 'camp' ? 'camp' : 'alliance'))
   const [extend, setExtend] = useState(null)
   const [posting, setPosting] = useState(false)
   const [targetFor, setTargetFor] = useState(() => readJson('wp.targetFor'))
@@ -463,6 +464,7 @@ export default function WarPlanner({ user }) {
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { writeJson('wp.hide', hide) }, [hide])
+  useEffect(() => { writeJson('wp.colorBy', colorBy) }, [colorBy])
   useEffect(() => { if (targetFor != null) writeJson('wp.targetFor', targetFor) }, [targetFor])
 
   /* ------------------------------------------------------- unsaved guard */
@@ -976,7 +978,7 @@ export default function WarPlanner({ user }) {
                     hide={hide} peers={liveOn ? onScenarioPeers : []}
                     onCursor={liveOn ? sendCursor : undefined}
                     extend={extend} onExtended={() => { setExtend(null); setTool('select') }}
-                    targets={targetRings} />
+                    targets={targetRings} colorBy={colorBy} />
 
             <div className="wp-find">
               <input type="search" value={query} placeholder="Find: Strife, Lv.6, or 876 502"
@@ -1002,7 +1004,8 @@ export default function WarPlanner({ user }) {
               )}
             </div>
 
-            <Legend hide={hide} setHide={setHide} alliances={alliances} />
+            <Legend map={map} hide={hide} setHide={setHide} alliances={alliances}
+                    colorBy={colorBy} setColorBy={setColorBy} />
           </div>
         </div>
 

@@ -12,11 +12,11 @@ GitHub Pages  ──  pou.actuallyplaying.com                  static backoffice
 https://dws-api.xronocore.qzz.io                            Cloudflare tunnel, edge TLS
       │
       ▼
-k3s namespace: dws-manager                                  one pod, replicas: 1
+Google Cloud e2-micro `dws-manager`, Docker Compose         one app container
    FastAPI (REST)  +  discord.py (gateway)  +  APScheduler
       │
       ▼
-PostgreSQL 16 @ 192.168.1.136:5432                          database `dws_manager`
+PostgreSQL 16, compose service `db`                         database `dws_manager`
 ```
 
 ## Why the frontend can live on GitHub Pages
@@ -31,7 +31,7 @@ at the edge with a valid certificate, so the SPA calls an HTTPS origin and the
 problem disappears. No port forwarding, no Let's Encrypt renewals.
 
 The bundle holds **no secrets**. The bot token, database password and OAuth
-client secret exist only in the Kubernetes secret. Login runs server-side:
+client secret exist only in `app.env` on the VM. Login runs server-side:
 Discord redirects to the API, the API verifies the caller actually holds an
 admin role in the guild, and only then issues a JWT.
 
@@ -54,7 +54,8 @@ backend/          FastAPI + discord.py + APScheduler (one process)
 frontend/         Vite + React backoffice → GitHub Pages
   src/lib/tz.js     the only wall-clock <-> instant conversion in the app
   src/passwar/      Pass War map engine (canvas) and its data layer
-deploy/           Kubernetes manifests
+deploy/vm/        the VM's Compose project and tunnel config (production)
+deploy/*.yaml     the retired home k3s manifests
 ```
 
 ---
@@ -79,63 +80,22 @@ At <https://discord.com/developers/applications> → **New Application**.
 `applications.commands`, permissions *Send Messages*, *Embed Links*,
 *Read Message History*, *Mention Everyone*.
 
-### 2. Database
+### 2–4. Run the backend
 
-Already provisioned on `xronocore`:
+The backend, its Postgres and its Cloudflare tunnel run as one Docker Compose
+project on a Google Cloud free-tier VM. `deploy/vm/README.md` covers the machine,
+the files beside `compose.yaml` that are never committed, deploying a new
+image, and the way back.
 
-- database `dws_manager`, owned by role `dws_manager`
-- `pg_hba.conf` allows that role from `10.42.0.0/16` (k3s pods) and
-  `192.168.1.0/24` (LAN), and rejects it from everywhere else
+The container runs `alembic upgrade head` at start-up, which is safe because
+there is only ever one app container.
 
-Apply the schema:
-
-```bash
-cd backend
-alembic upgrade head
-```
-
-The container also runs this at start-up, which is safe because the deployment
-is pinned to a single replica.
-
-### 3. Deploy the bot to k3s
-
-```bash
-cp deploy/secret.example.yaml deploy/secret.yaml   # gitignored
-$EDITOR deploy/secret.yaml                          # fill in every value
-
-kubectl apply -f deploy/namespace.yaml
-kubectl apply -f deploy/secret.yaml
-kubectl apply -f deploy/deployment.yaml
-kubectl apply -f deploy/service.yaml
-```
-
-Copy the GHCR pull secret from an existing namespace:
-
-```bash
-kubectl get secret ghcr-pull-secret -n calorielens-prod -o yaml \
-  | sed 's/namespace: calorielens-prod/namespace: dws-manager/' \
-  | kubectl apply -f -
-```
-
-> **`replicas` must stay at 1.** A second pod opens a second gateway session and
+> **One app container, ever.** A second opens a second gateway session and
 > posts every scheduled announcement twice.
 
-### 4. Expose the API through the existing tunnel
-
-Add one hostname to the `cloudflared-config` ConfigMap in the `cloudflared`
-namespace, above the catch-all:
-
-```yaml
-  - hostname: dws-api.xronocore.qzz.io
-    service: http://dws-api.dws-manager.svc.cluster.local:80
-```
-
-Then restart the tunnel and add the DNS route:
-
-```bash
-kubectl rollout restart deployment/cloudflared -n cloudflared
-cloudflared tunnel route dns <tunnel-name> dws-api.xronocore.qzz.io
-```
+Until 30 Sep 2026 the backend ran on the home k3s cluster. `deploy/*.yaml` are
+those manifests, kept for the way back and scaled to `replicas: 0`; the home
+database is kept, untouched, from the day of the move.
 
 ### 5. Publish the backoffice
 
@@ -237,13 +197,16 @@ cd backend
 ## Operations
 
 ```bash
-kubectl logs -n dws-manager deploy/dws-manager -f
-kubectl get pods -n dws-manager
+gcloud compute ssh dws-manager --project=dws-manager-prod --zone=us-west1-b
+cd /opt/dws-manager
+sudo docker compose logs -f app
+sudo docker compose ps
 curl https://dws-api.xronocore.qzz.io/health
 ```
 
 `/health` reports database connectivity, gateway readiness and the number of
-scheduled jobs. It is unauthenticated, because the Kubernetes probes call it.
+scheduled jobs. It is unauthenticated, because the container's health check
+calls it.
 
 **Announcement did not fire** — check `last_error` on the card in the
 backoffice; a failed send is recorded there rather than being retried silently.
@@ -262,8 +225,8 @@ detect every change.
 
 ## Security notes
 
-- Secrets live only in the Kubernetes secret and your local `.env`. Both are
-  gitignored; `deploy/secret.example.yaml` is the committed template.
+- Secrets live only in `app.env` on the VM and your local `.env`. Neither is
+  committed; `deploy/secret.example.yaml` is the template for the keys.
 - The backoffice JWT lasts 12 hours and carries no privileges beyond the admin
   role check performed at login.
 - Admin status is re-read from live guild roles on every login, so removing

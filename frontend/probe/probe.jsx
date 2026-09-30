@@ -84,9 +84,32 @@ if (which === 'bgb' && act) {
 }
 
 
+/* `act=livepng&data=live&plan=ID&scen=N[&colors=camp]`: open that plan and
+   scenario of the live snapshot and press Download PNG, exactly as an admin
+   would. The file lands wherever the browser saves downloads. */
+if (which === 'warplan' && act === 'livepng') {
+  const q = new URLSearchParams(location.search)
+  const click = (sel, text) => [...document.querySelectorAll(sel)].find((b) => b.textContent.trim() === text)?.click()
+  setTimeout(() => {
+    // The plan picker itself: the war day picker's ids can be the same numbers.
+    const pick = document.querySelector('.wp-planpick select')
+    if (pick) { pick.value = q.get('plan'); pick.dispatchEvent(new Event('change', { bubbles: true })) }
+    setTimeout(() => {
+      ;[...document.querySelectorAll('.wp-scen .chip')][Number(q.get('scen') || 0)]?.click()
+      if (q.get('colors') === 'camp') click('.wp-colorby .chip', 'Camps')
+      setTimeout(() => {
+        document.body.dataset.scenario = document.querySelector('.wp-scen .chip.on')?.textContent.trim() || ''
+        document.body.dataset.plan = document.querySelector('.wp-planpick select')?.selectedOptions[0]?.textContent || ''
+        click('.btn', 'Download PNG')
+        setTimeout(() => { document.title = 'done:livepng' }, 1500)
+      }, 800)
+    }, 600)
+  }, 1200)
+}
+
 /* The War planner opens on the official plan, read only. `act=mine` switches
    to the author's own draft; `act=city` also selects the eastern Strife Pass. */
-if (which === 'warplan' && act) {
+if (which === 'warplan' && act && act !== 'livepng') {
   setTimeout(() => {
     const pick = [...document.querySelectorAll('select')].find((el) => [...el.options].some((o) => o.value === '11'))
     if (pick) { pick.value = '11'; pick.dispatchEvent(new Event('change', { bubbles: true })) }
@@ -182,6 +205,61 @@ if (which === 'warplan' && act) {
         setTimeout(() => { document.body.dataset.before = sizes() }, 400)
         setTimeout(() => { for (let i = 0; i < 3; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click() }, 500)
         setTimeout(() => { document.body.dataset.after = sizes() }, 900)
+      }
+      if (act === 'draw2') {
+        // A straight line, then two pencil strokes — a circle and a zigzag —
+        // then undo the zigzag and select the circle.
+        const map = document.querySelector('.wp-map')
+        const r = map.getBoundingClientRect()
+        const at = (fx, fy) => ({ clientX: r.left + r.width * fx, clientY: r.top + r.height * fy })
+        const fire = (type, p) => map.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, pointerId: 12, pointerType: 'mouse', button: 0, isPrimary: true, ...p }))
+        const tool = (label) => [...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === label)?.click()
+        const onTool = () => document.querySelector('.wp-tool.on')?.textContent.trim()
+        const count = () => document.querySelectorAll('.wp-map [data-item]').length
+        const stroke = (path) => {
+          fire('pointerdown', at(...path[0]))
+          path.slice(1).forEach((p) => fire('pointermove', { ...at(...p), buttons: 1 }))
+          fire('pointerup', at(...path[path.length - 1]))
+        }
+        const circle = Array.from({ length: 49 }, (_, i) => {
+          const a = (i / 48) * Math.PI * 2
+          return [0.62 + 0.09 * Math.cos(a), 0.45 + 0.13 * Math.sin(a)]
+        })
+        const zigzag = Array.from({ length: 13 }, (_, i) => [0.2 + i * 0.02, i % 2 ? 0.25 : 0.32])
+        const d = document.body.dataset
+        const steps = [
+          () => { d.start = count(); tool('Line') },
+          () => stroke([[0.22, 0.72], [0.35, 0.715], [0.5, 0.71]]),
+          () => { d.afterLine = count(); d.toolAfterLine = onTool(); tool('Pencil') },
+          () => stroke(circle),
+          () => { d.afterCircle = count(); d.toolAfterCircle = onTool() },
+          () => stroke(zigzag),
+          () => { d.afterZigzag = count() },
+          () => { document.activeElement?.blur(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true })) },
+          () => { d.afterUndo = count(); tool('Select') },
+          () => {
+            // A tap has to land on what is under it, so the map sees the stroke as its target.
+            const p = at(0.62 + 0.09, 0.45)
+            const el = document.elementFromPoint(p.clientX, p.clientY)
+            const opts = { bubbles: true, pointerId: 13, pointerType: 'mouse', button: 0, isPrimary: true, ...p }
+            el.dispatchEvent(new PointerEvent('pointerdown', opts)); el.dispatchEvent(new PointerEvent('pointerup', opts))
+          },
+          () => { d.selected = document.querySelector('.wp-inspect .card-head strong')?.textContent || ''; d.final = '1' },
+        ]
+        steps.forEach((f, i) => setTimeout(f, 200 * (i + 1)))
+      }
+      if (act === 'camps' || act === 'campzoom') {
+        // The map camp against camp; `campzoom` also steps in twice to see
+        // the passes near their true size.
+        ;[...document.querySelectorAll('.wp-colorby .chip')].find((b) => b.textContent.trim() === 'Camps')?.click()
+        if (act === 'campzoom') {
+          for (let i = 0; i < 2; i += 1) document.querySelector('.wp-zbtn[aria-label="Zoom in"]')?.click()
+        }
+        setTimeout(() => {
+          document.body.dataset.fills = [...new Set([...document.querySelectorAll('.wp-map [data-city] rect, .wp-map [data-city] polygon, .wp-map [data-city] circle')]
+            .map((n) => n.getAttribute('fill')).filter((f) => f && f !== 'transparent'))].join(',')
+        }, 300)
       }
       if (act === 'stronghold') {
         const find = document.querySelector('.wp-find input')

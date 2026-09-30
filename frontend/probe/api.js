@@ -1,3 +1,4 @@
+import season from '../src/warplan/season5.json'
 const now = Date.now()
 const iso = (min) => new Date(now + min * 60000).toISOString()
 const rows = [
@@ -154,6 +155,17 @@ const warBoard = [
   // its area should show Ember Court's color over Iron Wolves' ground.
   hold(322, 4),
 ]
+// `&board=full`: the whole map held, to judge colors at a glance — the top
+// half by the top camp's two alliances, the bottom half by the bottom camp's,
+// every third territory left neutral.
+if (new URLSearchParams(location.search).get('board') === 'full') {
+  const taken = new Set(warBoard.map((h) => h.city_id))
+  for (const c of season.cities) {
+    if (taken.has(c.id) || c.id % 3 === 0 || c.kind === 'oasis') continue
+    if (c.y > 560) warBoard.push(hold(c.id, c.id % 2 ? 1 : 2))
+    else if (c.y < 440) warBoard.push(hold(c.id, c.id % 2 ? 3 : 4))
+  }
+}
 // The board's edits, oldest first, adding up to warBoard above.
 const warHistory = [
   { at: iso(-60 * 24 * 9), by: 'Goba', changes: [{ city: 145, from: null, to: 1 }, { city: 136, from: null, to: 3 }] },
@@ -193,6 +205,24 @@ const warRaw = (path, opts = {}) => {
   if (path === '/war/plans/10/post') {
     return { url: 'https://discord.com/channels/1/222/333', images: opts.body.getAll('images').length, posted_at: iso(0) }
   }
+  return {}
+}
+
+// `&data=live`: the War planner reads a snapshot of the real board, plans and
+// alliances from probe-dist/live.json instead of the invented ones, to see
+// real plans drawn by local code. The snapshot is written by hand, never
+// committed (probe-dist is ignored), and nothing is ever sent back.
+const liveData = new URLSearchParams(location.search).get('data') === 'live'
+  ? fetch('/live.json').then((r) => r.json()) : null
+const liveRaw = (live, path) => {
+  if (path === '/war/alliances') return live.alliances
+  if (path === '/war/board') return live.board
+  if (path === '/war/board/history') return live.history || []
+  if (path === '/war/days') return live.days
+  const plans = path.match(/^\/war\/days\/(\d+)\/plans$/)
+  if (plans) return live.plans[plans[1]] || []
+  const plan = path.match(/^\/war\/plans\/(\d+)$/)
+  if (plan) return live.docs[plan[1]]
   return {}
 }
 
@@ -297,9 +327,11 @@ export const api = {
   me: () => ok({ username: 'Goba', is_admin: true }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.
-  raw: (path, opts) => ok(String(path).startsWith('/war/')
-    ? warRaw(String(path), opts)
-    : String(path).split('/').length > 2 ? {} : []),
+  raw: (path, opts) => (liveData && String(path).startsWith('/war/')
+    ? liveData.then((live) => JSON.parse(JSON.stringify(liveRaw(live, String(path)))))
+    : ok(String(path).startsWith('/war/')
+      ? warRaw(String(path), opts)
+      : String(path).split('/').length > 2 ? {} : [])),
 }
 export const getToken = () => 'x'
 export const clearToken = () => {}

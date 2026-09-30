@@ -7,9 +7,11 @@ metadata:
   labels:
     app: dws-manager
 spec:
-  # Must stay at 1. A second replica would open a second Discord gateway
-  # session and every scheduled announcement would be posted twice.
-  replicas: 1
+  # Retired 30 Sep 2026: the backend runs on the Google Cloud VM (deploy/vm/).
+  # Kept at 0 so re-applying this file cannot start a second bot beside that
+  # one. Two Discord gateway sessions post every scheduled announcement twice,
+  # so this is never above 1, and never 1 while the VM runs.
+  replicas: 0
   strategy:
     type: Recreate          # avoids two gateway sessions overlapping on rollout
   selector:

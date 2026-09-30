@@ -6,10 +6,12 @@ break production quietly.
 
 ## Hard invariants
 
-**`replicas: 1`, `strategy: Recreate`.** One process holds the Discord gateway
-session. A second replica opens a second session and every scheduled
-announcement posts twice. The rolling default would briefly overlap two pods,
-which is the same bug for thirty seconds.
+**One app container, ever.** One process holds the Discord gateway session. A
+second opens a second session and every scheduled announcement posts twice.
+Production is one Compose service on a Google Cloud VM (`deploy/vm/`), where
+`docker compose up -d` stops the old container before starting the new one.
+The home k3s deployment is retired at `replicas: 0` — starting it while the VM
+runs is this same bug.
 
 **Discord snowflakes cross JSON as strings.** They exceed
 `Number.MAX_SAFE_INTEGER`, so `Number(id)` silently rounds to a channel that
@@ -27,7 +29,8 @@ Pages, and `dws-manager-bot.github.io` redirects to it. A browser calls the API
 from wherever the page is, so an address missing from `CORS_ORIGINS` loads the
 page fine and fails every call. The site sat like that from about 21 Sep to
 23 Sep. Changing the Pages domain means changing `CORS_ORIGINS` and
-`FRONTEND_URL` in the `dws-manager-secrets` secret, then restarting.
+`FRONTEND_URL` in `/opt/dws-manager/app.env` on the VM, then
+`docker compose up -d app` — a plain restart does not re-read the file.
 
 **Return 4xx for application errors, not 5xx.** Cloudflare replaces a 5xx body
 with its own error page and drops the CORS headers, so the real message never
@@ -37,9 +40,11 @@ reaches the browser. A conflict the user can act on is a 409.
 Monday as 0; crontab and croniter number Sunday as 0. `cron.py` rewrites the
 field to names, which both agree on. Never call `CronTrigger.from_crontab`.
 
-**Your local `.env` points at the production database.** `alembic upgrade head`
-run locally migrates production. This has happened twice. Both times the change
-was additive and nullable, so nothing broke — do not rely on that a third time.
+**Your local `.env` points at the old home database.** Until 30 Sep that was
+production, and a local `alembic upgrade head` migrated production twice. It is
+now the copy kept from the move to the VM — still do not migrate it. Production's
+database is the `db` service on the VM, reached only through
+`docker compose exec db psql -U dws_manager` there.
 
 **The test suite must run with no `.env`.** Importing
 `dwsbot.discord_bot.bot` constructs the client at module scope, which reads
@@ -104,13 +109,12 @@ Two workflows, both on push to `main`, both path-filtered:
 
 - `frontend/**` → Pages. Live in about a minute.
 - `backend/**` → builds and pushes `ghcr.io/dws-manager-bot/dws-manager-bot:latest`.
-  **Pushing the image does not restart anything.** The rollout is manual:
+  **Pushing the image does not restart anything.** The rollout is manual, on
+  the VM (`deploy/vm/README.md` has the rest):
 
 ```bash
-ssh -f -N xronocore-cf-k8s          # forwards 6443 over the Cloudflare SSH host
-kubectl rollout restart deployment/dws-manager -n dws-manager
-kubectl rollout status  deployment/dws-manager -n dws-manager
-pkill -f 'ssh.*xronocore-cf-k8s'    # close it again afterwards
+gcloud compute ssh dws-manager --project=dws-manager-prod --zone=us-west1-b \
+  --command='cd /opt/dws-manager && sudo docker compose pull app && sudo docker compose up -d app'
 ```
 
 Verify from outside afterwards — no tunnel needed:

@@ -14,6 +14,9 @@ venv/
 # `*.secret.yaml` alone does NOT match a file simply named secret.yaml.
 deploy/secret.yaml
 *.secret.yaml
+# The VM's settings and tunnel key, should a copy ever land in the tree.
+deploy/vm/app.env
+deploy/vm/cloudflared/*.json
 
 # Node / frontend
 node_modules/

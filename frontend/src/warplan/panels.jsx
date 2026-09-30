@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { KIND_LABEL, cityTitle, coords } from './mapdata.js'
-import { INKS, SWATCHES, inkOn, nextColor } from './palette.js'
+import { CAMP_COLORS, INKS, SWATCHES, inkOn, nextColor } from './palette.js'
 import { CAP, CAP_WITH_TECH, SCORED, fullNum, shortNum } from './standing.js'
-import { ITEM_LABEL, NOTE, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
+import { ITEM_LABEL, NOTE, PENCIL, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
 import { DECLARATIONS_PER_DAY } from './targets.js'
 
 /* The War planner's side panels. Each is a plain card; the page owns the data
@@ -25,6 +25,8 @@ const TOOLS = [
   ['select', 'Select', <path key="s" d="M5 3l12 6.5-5.2 1.6L9.4 17z" />],
   ['arrow', 'Arrow', <path key="a" d="M3 17L16 4M9 4h7v7" fill="none" />],
   ['curve', 'Curve', <path key="c" d="M3 17C4 8 10 4 16 4M10.5 3.5l5.5.5-1 5.4" fill="none" />],
+  ['line', 'Line', <path key="l" d="M3.5 16.5L16.5 3.5" fill="none" />],
+  ['pencil', 'Pencil', <path key="e" d="M3.5 16.5l.9-3.6 9.2-9.2 2.7 2.7-9.2 9.2zM11.9 5.4l2.7 2.7" fill="none" />],
   ['pin', 'Pin', <path key="p" d="M10 18s-5.5-5.2-5.5-9.5a5.5 5.5 0 0 1 11 0C15.5 12.8 10 18 10 18zm0-7.3a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />],
   ['route', 'Route', (
     <g key="r">
@@ -206,8 +208,9 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
   const set = (patch, key) => onChange({ ...item, ...patch }, key)
   const ink = { alliance: item.alliance ?? null, color: item.color || '#fbbf24' }
   const shown = alliances.find((a) => a.id === item.alliance)?.color || ink.color
-  const where = item.type === 'arrow' ? `${coords(...item.a)} → ${coords(...item.b)}`
-    : item.type === 'route' ? `${coords(...item.points[0])} → ${coords(...item.points[item.points.length - 1])}`
+  const at = ([x, y]) => coords(Math.floor(x), Math.floor(y))
+  const where = item.type === 'arrow' || item.type === 'line' ? `${coords(...item.a)} → ${coords(...item.b)}`
+    : item.type === 'route' || item.type === 'pencil' ? `${at(item.points[0])} → ${at(item.points[item.points.length - 1])}`
       : coords(item.x, item.y)
   return (
     <div className="card wp-inspect">
@@ -282,7 +285,7 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
               </label>
             </>
           )}
-          {item.type === 'arrow' && (
+          {(item.type === 'arrow' || item.type === 'line') && (
             <>
               <div>
                 <span className="label">Shape</span>
@@ -299,12 +302,29 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
                 <span className="label">Line</span>
                 <div className="row">
                   <button type="button" className={item.dash ? 'chip on' : 'chip'} onClick={() => set({ dash: !item.dash })}>Dashed</button>
-                  <button type="button" className={item.both ? 'chip on' : 'chip'} onClick={() => set({ both: !item.both })}>Both ends</button>
+                  {item.type === 'arrow' && (
+                    <button type="button" className={item.both ? 'chip on' : 'chip'} onClick={() => set({ both: !item.both })}>Both ends</button>
+                  )}
                 </div>
               </div>
               <label className="wide">
                 <span className="pw-slider-label">Width <b>{item.width || 1.6}</b></span>
                 <input type="range" min="0.4" max="6" step="0.2" value={item.width || 1.6}
+                       onChange={(e) => set({ width: +e.target.value }, `width:${item.id}`)} />
+              </label>
+            </>
+          )}
+          {item.type === 'pencil' && (
+            <>
+              <div>
+                <span className="label">Line</span>
+                <div className="row">
+                  <button type="button" className={item.dash ? 'chip on' : 'chip'} onClick={() => set({ dash: !item.dash })}>Dashed</button>
+                </div>
+              </div>
+              <label>
+                <span className="pw-slider-label">Width <b>{item.width || PENCIL.width}</b></span>
+                <input type="range" min="0.2" max="4" step="0.2" value={item.width || PENCIL.width}
                        onChange={(e) => set({ width: +e.target.value }, `width:${item.id}`)} />
               </label>
             </>
@@ -581,10 +601,21 @@ export const LAYERS = [
   ['fills', 'Territory colors'], ['drawings', 'Drawings'], ['names', 'Names'],
 ]
 
-/** The legend is also the layer switch: each entry shows or hides what it names. */
-export function Legend({ hide, setHide, alliances }) {
+/**
+ * The legend is also the layer switch: each entry shows or hides what it names.
+ * Ahead of it, whether held ground is colored by alliance or by camp; the
+ * swatches at the end follow that choice.
+ */
+export function Legend({ map, hide, setHide, alliances, colorBy, setColorBy }) {
+  const camps = colorBy === 'camp'
   return (
-    <div className="wp-legend small" role="group" aria-label="Show or hide">
+    <div className={camps ? 'wp-legend small camps' : 'wp-legend small'} role="group" aria-label="Show or hide">
+      <span className="wp-colorby" role="group" aria-label="Color held ground by">
+        <button type="button" className={camps ? 'chip' : 'chip on'} aria-pressed={!camps}
+                title="Each alliance in its own color" onClick={() => setColorBy('alliance')}>Alliances</button>
+        <button type="button" className={camps ? 'chip on' : 'chip'} aria-pressed={camps}
+                title="Camp against camp: the top camp blue, the bottom red" onClick={() => setColorBy('camp')}>Camps</button>
+      </span>
       {LAYERS.map(([key, label]) => (
         <button key={key} type="button" aria-pressed={!hide[key]}
                 className={hide[key] ? 'wp-layer off' : 'wp-layer'}
@@ -594,7 +625,11 @@ export function Legend({ hide, setHide, alliances }) {
         </button>
       ))}
       <span className="wp-legend-note"><i className="wp-key planned" />Striped: planned change</span>
-      {alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
+      {camps
+        ? [1, 2].map((camp) => (
+          <span key={camp} className="wp-legend-note"><Swatch color={CAMP_COLORS[camp]} size={10} />{campName(map, camp)}</span>
+        ))
+        : alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
     </div>
   )
 }
