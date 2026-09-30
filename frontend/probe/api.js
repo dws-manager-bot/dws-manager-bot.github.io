@@ -208,6 +208,24 @@ const warRaw = (path, opts = {}) => {
   return {}
 }
 
+// `&data=live`: the War planner reads a snapshot of the real board, plans and
+// alliances from probe-dist/live.json instead of the invented ones, to see
+// real plans drawn by local code. The snapshot is written by hand, never
+// committed (probe-dist is ignored), and nothing is ever sent back.
+const liveData = new URLSearchParams(location.search).get('data') === 'live'
+  ? fetch('/live.json').then((r) => r.json()) : null
+const liveRaw = (live, path) => {
+  if (path === '/war/alliances') return live.alliances
+  if (path === '/war/board') return live.board
+  if (path === '/war/board/history') return live.history || []
+  if (path === '/war/days') return live.days
+  const plans = path.match(/^\/war\/days\/(\d+)\/plans$/)
+  if (plans) return live.plans[plans[1]] || []
+  const plan = path.match(/^\/war\/plans\/(\d+)$/)
+  if (plan) return live.docs[plan[1]]
+  return {}
+}
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -309,9 +327,11 @@ export const api = {
   me: () => ok({ username: 'Goba', is_admin: true }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.
-  raw: (path, opts) => ok(String(path).startsWith('/war/')
-    ? warRaw(String(path), opts)
-    : String(path).split('/').length > 2 ? {} : []),
+  raw: (path, opts) => (liveData && String(path).startsWith('/war/')
+    ? liveData.then((live) => JSON.parse(JSON.stringify(liveRaw(live, String(path)))))
+    : ok(String(path).startsWith('/war/')
+      ? warRaw(String(path), opts)
+      : String(path).split('/').length > 2 ? {} : [])),
 }
 export const getToken = () => 'x'
 export const clearToken = () => {}

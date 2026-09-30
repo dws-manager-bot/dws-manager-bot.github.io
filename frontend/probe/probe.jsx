@@ -84,9 +84,32 @@ if (which === 'bgb' && act) {
 }
 
 
+/* `act=livepng&data=live&plan=ID&scen=N[&colors=camp]`: open that plan and
+   scenario of the live snapshot and press Download PNG, exactly as an admin
+   would. The file lands wherever the browser saves downloads. */
+if (which === 'warplan' && act === 'livepng') {
+  const q = new URLSearchParams(location.search)
+  const click = (sel, text) => [...document.querySelectorAll(sel)].find((b) => b.textContent.trim() === text)?.click()
+  setTimeout(() => {
+    // The plan picker itself: the war day picker's ids can be the same numbers.
+    const pick = document.querySelector('.wp-planpick select')
+    if (pick) { pick.value = q.get('plan'); pick.dispatchEvent(new Event('change', { bubbles: true })) }
+    setTimeout(() => {
+      ;[...document.querySelectorAll('.wp-scen .chip')][Number(q.get('scen') || 0)]?.click()
+      if (q.get('colors') === 'camp') click('.wp-colorby .chip', 'Camps')
+      setTimeout(() => {
+        document.body.dataset.scenario = document.querySelector('.wp-scen .chip.on')?.textContent.trim() || ''
+        document.body.dataset.plan = document.querySelector('.wp-planpick select')?.selectedOptions[0]?.textContent || ''
+        click('.btn', 'Download PNG')
+        setTimeout(() => { document.title = 'done:livepng' }, 1500)
+      }, 800)
+    }, 600)
+  }, 1200)
+}
+
 /* The War planner opens on the official plan, read only. `act=mine` switches
    to the author's own draft; `act=city` also selects the eastern Strife Pass. */
-if (which === 'warplan' && act) {
+if (which === 'warplan' && act && act !== 'livepng') {
   setTimeout(() => {
     const pick = [...document.querySelectorAll('select')].find((el) => [...el.options].some((o) => o.value === '11'))
     if (pick) { pick.value = '11'; pick.dispatchEvent(new Event('change', { bubbles: true })) }
