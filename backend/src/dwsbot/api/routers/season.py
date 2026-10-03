@@ -49,9 +49,9 @@ STRIFE_PASS = "strife_pass"
 
 # The game's own bands, and its own numbers. There is one leader and it is
 # the R5. Contributors are not capped here because they are the remainder --
-# an alliance holds a hundred, so the rest is sixty-one at the most.
-CAPS = {"leader": 1, "backbone": 8, "key": 30}
-CONTRIBUTORS = 61
+# an alliance holds a hundred, so the rest is sixty-three at the most.
+CAPS = {"leader": 1, "backbone": 6, "key": 30}
+CONTRIBUTORS = 63
 
 # The war window, 11:00-13:00 ST: the most anyone can be online for in a conquest.
 WAR_MINUTES = 120

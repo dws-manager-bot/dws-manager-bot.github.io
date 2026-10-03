@@ -8,7 +8,7 @@ import { short } from '../lib/cp.js'
  * The season reward board.
  *
  * The game hands rewards out in four fixed bands and the sizes are its, not
- * ours: one leader, eight backbone, thirty key players, and everybody else a
+ * ours: one leader, six backbone, thirty key players, and everybody else a
  * contributor. Only the first three are placed — the fourth is whoever is left,
  * so dragging someone out of a band is how they become a contributor.
  *
@@ -29,7 +29,7 @@ import { short } from '../lib/cp.js'
 
 const TIERS = [
   ['leader', 'Alliance Leader', 'the R5, and only the R5'],
-  ['backbone', 'Backbone', 'the eight the alliance rests on'],
+  ['backbone', 'Backbone', 'the six the alliance rests on'],
   ['key', 'Key Players', 'the thirty who carry the events'],
   ['contributor', 'Contributors', 'everybody else'],
 ]

@@ -303,7 +303,7 @@ class SeasonAward(Base, TimestampMixin):
     """Which reward tier a member falls in for a season.
 
     The game hands seasonal rewards out in four fixed bands, and the sizes are
-    the game's, not ours: one leader, eight backbone, thirty key players, and
+    the game's, not ours: one leader, six backbone, thirty key players, and
     everybody else a contributor. Only the first three are assigned — the
     contributors are whoever is left, so a member with no row here is one.
 

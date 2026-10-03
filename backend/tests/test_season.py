@@ -206,7 +206,7 @@ async def test_a_member_absent_from_a_sheet_counts_as_away(client_factory):
 # --- the reward board -------------------------------------------------------
 #
 # The game hands rewards out in four fixed bands, and the sizes are its: one
-# leader, eight backbone, thirty key players, and the rest contributors. Only
+# leader, six backbone, thirty key players, and the rest contributors. Only
 # the first three are recorded; the fourth is whoever is left.
 
 async def board(client, awards, season="5"):
@@ -219,7 +219,7 @@ async def test_an_empty_board_makes_everyone_a_contributor(client_factory):
     async with client_factory() as c:
         body = (await c.get("/season/awards")).json()
     assert body["awards"] == {}
-    assert body["caps"] == {"leader": 1, "backbone": 8, "key": 30, "contributor": 61}
+    assert body["caps"] == {"leader": 1, "backbone": 6, "key": 30, "contributor": 63}
 
 
 @pytest.mark.asyncio
@@ -248,12 +248,12 @@ async def test_the_game_s_band_sizes_are_enforced(client_factory):
         assert r.status_code == 422 and "leader takes 1, not 2" in r.json()["detail"]
 
         r = await board(c, [{"player_id": str(ids[f"M{i}"]), "tier": "backbone"}
-                            for i in range(9)])
-        assert r.status_code == 422 and "backbone takes 8, not 9" in r.json()["detail"]
+                            for i in range(7)])
+        assert r.status_code == 422 and "backbone takes 6, not 7" in r.json()["detail"]
 
-        # Eight is fine.
+        # Six is fine.
         r = await board(c, [{"player_id": str(ids[f"M{i}"]), "tier": "backbone"}
-                            for i in range(8)])
+                            for i in range(6)])
         assert r.status_code == 200, r.text
 
 
