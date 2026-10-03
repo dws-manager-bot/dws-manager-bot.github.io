@@ -188,7 +188,7 @@ async def test_bgb_is_nowhere_in_the_season(client_factory):
     # The whole shape, so a BGB field cannot creep back in unnoticed.
     assert set(body["Picked"]) == {
         "player_id", "name", "rank", "bgb_cp", "total_cp", "attended", "of", "days",
-        "merit_standing", "merit_days", "online_minutes", "online_days", "first_seen",
+        "merit_standing", "merit_days", "online_minutes", "online_of", "first_seen",
     }
 
 
@@ -310,21 +310,31 @@ async def test_the_standing_carries_what_the_candidates_sort_by(client_factory):
 
 
 @pytest.mark.asyncio
-async def test_online_time_is_averaged_over_the_days_it_was_worked_out(client_factory):
-    """Null is not zero: a day nobody timed must not drag the average down."""
+async def test_online_time_adds_up_over_the_season(client_factory):
+    """120 a conquest at most, over the conquests that were timed at all."""
     await seed(client_factory.maker, {
         "AllWar": [(True, 100, 120), (True, 100, 120), (True, 100, None), (True, 100, 90)],
-        "LeftEarly": [(True, 900, 20), (False, None, 0), (True, 900, None), (True, 900, 40)],
-        "Untimed": [(True, 500)] * 4,
+        "Merited": [(True, 900, 10), (True, 900, 10), (True, 900, None), (True, 900, 10)],
+        # Not on the first sheet at all: away, so that conquest adds nothing.
+        "Joined": [(None, None), (True, 500, 120), (True, 500, None), (True, 500, 120)],
     })
     async with client_factory() as c:
         body = (await c.get("/season")).json()
     m = {x["name"]: x for x in body["members"]}
-    assert (m["AllWar"]["online_minutes"], m["AllWar"]["online_days"]) == (110, 3)
-    assert (m["LeftEarly"]["online_minutes"], m["LeftEarly"]["online_days"]) == (20, 3)
-    assert (m["Untimed"]["online_minutes"], m["Untimed"]["online_days"]) == (None, 0)
-    assert [d["online_minutes"] for d in m["LeftEarly"]["days"]] == [20, 0, None, 40]
+    # The third conquest was never timed, so the most there is is 3 x 120.
+    assert (m["AllWar"]["online_minutes"], m["AllWar"]["online_of"]) == (330, 360)
+    assert (m["Merited"]["online_minutes"], m["Merited"]["online_of"]) == (30, 360)
+    assert (m["Joined"]["online_minutes"], m["Joined"]["online_of"]) == (240, 360)
+    assert [d["online_minutes"] for d in m["Joined"]["days"]] == [None, 120, None, 120]
     assert [e["has_minutes"] for e in body["events"]] == [True, True, False, True]
-    # It is shown, not counted: Untimed outranks AllWar on merits alone, however
+    # It is shown, not counted: Merited outranks AllWar on merits alone, however
     # much longer AllWar was online.
-    assert [x["name"] for x in body["members"]] == ["Untimed", "AllWar", "LeftEarly"]
+    assert [x["name"] for x in body["members"]] == ["Merited", "AllWar", "Joined"]
+
+
+@pytest.mark.asyncio
+async def test_a_season_never_timed_has_no_online_total(client_factory):
+    await seed(client_factory.maker, {"Someone": [(True, 100)] * 4})
+    async with client_factory() as c:
+        member = (await c.get("/season")).json()["members"][0]
+    assert (member["online_minutes"], member["online_of"]) == (None, 0)

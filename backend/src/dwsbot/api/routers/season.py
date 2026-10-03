@@ -13,9 +13,11 @@ Merits are averaged only over the days they were recorded. One conquest mattered
 less than the others and its ranking was never captured; counting that as a zero
 would punish everyone who turned up to it.
 
-Online time is reported beside them and decides nothing. It is averaged the same
-way, over the days it was worked out, and it is a best case: a screenshot shows
-when a member was last seen, never when they arrived.
+Online time is reported beside them and decides nothing. It is a season total,
+120 minutes a conquest at most, over the conquests it was worked out for; a
+member missing from one of those sheets was away, so it adds nothing. It is a
+best case: a screenshot shows when a member was last seen, never when they
+arrived.
 
 BGB is deliberately absent. Only twenty of a hundred get a seat, so it cannot
 be counted here without punishing a member who was never picked -- and it has
@@ -50,6 +52,9 @@ STRIFE_PASS = "strife_pass"
 # an alliance holds a hundred, so the rest is sixty-one at the most.
 CAPS = {"leader": 1, "backbone": 8, "key": 30}
 CONTRIBUTORS = 61
+
+# The war window, 11:00-13:00 ST: the most anyone can be online for in a conquest.
+WAR_MINUTES = 120
 
 
 def _percentiles(merits: dict) -> dict:
@@ -89,6 +94,10 @@ async def season(
         for pid, place in _percentiles(merits).items():
             standing[pid].append(place)
 
+    # Conquests whose online time was worked out at all.
+    timed = {e.id for e in events
+             if any(r.online_minutes is not None for r in by_event[e.id])}
+
     seen: dict = defaultdict(dict)
     for record in records:
         seen[record.player_id][record.event_id] = record
@@ -113,15 +122,15 @@ async def season(
             for e in events
         ]
         places = standing.get(player.id, [])
-        minutes = [d.online_minutes for d in days if d.online_minutes is not None]
         members.append(SeasonMemberOut(
             player_id=str(player.id), name=player.name, rank=player.rank,
             bgb_cp=player.bgb_cp, total_cp=player.total_cp,
             attended=sum(1 for d in days if d.present), of=len(events), days=days,
             merit_standing=(sum(places) / len(places)) if places else None,
             merit_days=len(places),
-            online_minutes=round(sum(minutes) / len(minutes)) if minutes else None,
-            online_days=len(minutes),
+            online_minutes=(sum(d.online_minutes or 0 for d in days if d.event_id in timed)
+                            if timed else None),
+            online_of=WAR_MINUTES * len(timed),
             first_seen=first_seen.get(player.id),
         ))
 
