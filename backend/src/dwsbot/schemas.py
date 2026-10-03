@@ -569,6 +569,7 @@ class SeasonEventOut(BaseModel):
     present: int = 0
     recorded: int = 0
     has_merits: bool = False     # false where the ranking was never captured
+    has_minutes: bool = False    # false where online time was never worked out
 
 
 class SeasonDayOut(BaseModel):
@@ -577,6 +578,7 @@ class SeasonDayOut(BaseModel):
     present: bool = False
     recorded: bool = False       # false if they were not on that day's sheet at all
     merits: int | None = None
+    online_minutes: int | None = None  # of the 120-minute war window; null if not worked out
 
 
 class SeasonMemberOut(BaseModel):
@@ -591,6 +593,9 @@ class SeasonMemberOut(BaseModel):
     # Averaged over the days a ranking was captured, 1.0 best. Null when none were.
     merit_standing: float | None = None
     merit_days: int = 0
+    # Minutes online per conquest, averaged over the days it was worked out.
+    online_minutes: int | None = None
+    online_days: int = 0
     first_seen: date | None = None
 
 
