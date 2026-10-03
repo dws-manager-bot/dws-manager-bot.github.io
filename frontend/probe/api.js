@@ -252,12 +252,12 @@ export const api = {
   listPlayers: () => ok(players),
   seasonAwards: () => ok({
     season: '5', awards: probeAwards,
-    caps: { leader: 1, backbone: 8, key: 30, contributor: 61 },
+    caps: { leader: 1, backbone: 6, key: 30, contributor: 63 },
   }),
   setSeasonAwards: (data) => {
     probeAwards = Object.fromEntries(data.awards.map((a) => [a.player_id, a.tier]))
     return ok({ season: data.season, awards: probeAwards,
-      caps: { leader: 1, backbone: 8, key: 30, contributor: 61 } })
+      caps: { leader: 1, backbone: 6, key: 30, contributor: 63 } })
   },
   season: () => ok({
     kind: 'strife_pass',
