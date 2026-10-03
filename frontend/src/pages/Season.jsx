@@ -18,8 +18,9 @@ import { short } from '../lib/cp.js'
  * which is the whole reason the bands are filled by hand.
  *
  * Online time sits beside them as one more thing to judge by, not a third
- * tiebreak. It is the average minutes of the two-hour war a member was online,
- * and a best case: the screenshots show when someone left, never when they came.
+ * tiebreak. It is the minutes of each two-hour war a member was online, added
+ * up over the season, and a best case: the screenshots show when someone left,
+ * never when they came.
  *
  * Dragging is not the only way in. A touch screen has no HTML5 drag, and this
  * is read on a phone, so a member can be picked with a tap and the bands become
@@ -49,7 +50,7 @@ const fmtDay = (d) =>
 /* A standing is a place in a field, so it reads as a number out of a hundred. */
 const standing = (v) => (v == null ? '—' : String(Math.round(v * 100)))
 
-/* Minutes of the 120-minute war window. */
+/* Minutes online: 120 a conquest at most. */
 const minutes = (v) => (v == null ? '—' : `${v}m`)
 
 const csv = (rows) =>
@@ -166,12 +167,12 @@ export default function Season() {
 
   function exportCsv() {
     const head = ['Tier', 'Member', 'Rank', 'Days attended', 'Of', 'Merit standing',
-      'Merit days', 'Avg online minutes', 'Online days', 'BGB CP', 'Total CP']
+      'Merit days', 'Online minutes', 'Online of', 'BGB CP', 'Total CP']
     const rows = [head]
     for (const [id, label] of TIERS) {
       for (const m of byTier[id]) {
         rows.push([label, m.name, m.rank ?? '', m.attended, m.of,
-          standing(m.merit_standing), m.merit_days, m.online_minutes ?? '', m.online_days ?? 0,
+          standing(m.merit_standing), m.merit_days, m.online_minutes ?? '', m.online_of ?? 0,
           m.bgb_cp ?? '', m.total_cp ?? ''])
       }
     }
@@ -206,8 +207,8 @@ export default function Season() {
       </span>
       <span className="season-online muted"
             title={m.online_minutes == null ? 'Online time not worked out'
-              : `Online ${m.online_minutes} of 120 min on average, over ${m.online_days} conquest${
-                m.online_days === 1 ? '' : 's'}`}>
+              : `Online ${m.online_minutes} of ${m.online_of} min, over ${m.online_of / 120} conquest${
+                m.online_of === 120 ? '' : 's'}`}>
         {minutes(m.online_minutes)}
       </span>
       <span className="season-merit">{standing(m.merit_standing)}</span>
@@ -237,7 +238,8 @@ export default function Season() {
         Four bands, and the sizes are the game's. Only the first three are filled — everybody
         left over is a contributor. Candidates are ordered by how many of the {events.length}{' '}
         conquests they attended, ties broken on merit standing, but the placing is yours.
-        The minutes are how long of the two-hour war each was online, on average.
+        The minutes are how long each was online, added up over the conquests — 120 a war,{' '}
+        {120 * events.filter((e) => e.has_minutes).length} at most.
         {held && <b> Holding {held.name} — choose a band.</b>}
       </p>
 

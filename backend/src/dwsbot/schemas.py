@@ -593,9 +593,10 @@ class SeasonMemberOut(BaseModel):
     # Averaged over the days a ranking was captured, 1.0 best. Null when none were.
     merit_standing: float | None = None
     merit_days: int = 0
-    # Minutes online per conquest, averaged over the days it was worked out.
+    # Minutes online over the season, out of `online_of`: 120 for every conquest
+    # whose online time was worked out. Null when none was.
     online_minutes: int | None = None
-    online_days: int = 0
+    online_of: int = 0
     first_seen: date | None = None
 
 

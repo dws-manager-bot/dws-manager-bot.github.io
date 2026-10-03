@@ -139,9 +139,8 @@ const seasonMembers = NAMES.map((name, i) => {
   }
 })
 for (const m of seasonMembers) {
-  const timed = m.days.map((d) => d.online_minutes).filter((v) => v != null)
-  m.online_days = timed.length
-  m.online_minutes = timed.length ? Math.round(timed.reduce((a, b) => a + b, 0) / timed.length) : null
+  m.online_minutes = m.days.reduce((n, d) => n + (d.online_minutes ?? 0), 0)
+  m.online_of = 120 * SEASON_DAYS.length
 }
 let probeAwards = { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }
 
@@ -264,7 +263,7 @@ export const api = {
     kind: 'strife_pass',
     events: SEASON_DAYS.map((d, i) => ({
       id: i + 1, held_on: d, title: `Declare war on Lv.${i === 3 ? 6 : 4} Strife Pass (East)`,
-      present: [86, 88, 86, 83][i], recorded: [101, 91, 89, 95][i], has_merits: i < 3,
+      present: [86, 88, 86, 83][i], recorded: [101, 91, 89, 95][i], has_merits: i < 3, has_minutes: true,
     })),
     members: seasonMembers,
   }),
