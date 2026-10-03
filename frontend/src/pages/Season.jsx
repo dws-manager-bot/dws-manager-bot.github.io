@@ -17,6 +17,10 @@ import { short } from '../lib/cp.js'
  * equally present members deserves more is a judgement the page cannot make,
  * which is the whole reason the bands are filled by hand.
  *
+ * Online time sits beside them as one more thing to judge by, not a third
+ * tiebreak. It is the average minutes of the two-hour war a member was online,
+ * and a best case: the screenshots show when someone left, never when they came.
+ *
  * Dragging is not the only way in. A touch screen has no HTML5 drag, and this
  * is read on a phone, so a member can be picked with a tap and the bands become
  * buttons — the same two steps, without the pointer.
@@ -33,6 +37,7 @@ const SORTS = [
   ['standing', 'Standing'],
   ['rank', 'Rank'],
   ['attended', 'Attendance'],
+  ['online', 'Online time'],
   ['bgb_cp', 'BGB CP'],
   ['total_cp', 'Total CP'],
 ]
@@ -43,6 +48,9 @@ const fmtDay = (d) =>
 
 /* A standing is a place in a field, so it reads as a number out of a hundred. */
 const standing = (v) => (v == null ? '—' : String(Math.round(v * 100)))
+
+/* Minutes of the 120-minute war window. */
+const minutes = (v) => (v == null ? '—' : `${v}m`)
 
 const csv = (rows) =>
   rows.map((r) => r.map((c) => {
@@ -86,6 +94,7 @@ export default function Season() {
       standing: (m) => [-m.attended, -(m.merit_standing ?? -1)],
       rank: (m) => [-(m.rank ?? 0), -m.attended],
       attended: (m) => [-m.attended, -(m.merit_standing ?? -1)],
+      online: (m) => [-(m.online_minutes ?? -1), -m.attended],
       bgb_cp: (m) => [-(m.bgb_cp ?? -1)],
       total_cp: (m) => [-(m.total_cp ?? -1)],
     }[sort]
@@ -157,12 +166,13 @@ export default function Season() {
 
   function exportCsv() {
     const head = ['Tier', 'Member', 'Rank', 'Days attended', 'Of', 'Merit standing',
-      'Merit days', 'BGB CP', 'Total CP']
+      'Merit days', 'Avg online minutes', 'Online days', 'BGB CP', 'Total CP']
     const rows = [head]
     for (const [id, label] of TIERS) {
       for (const m of byTier[id]) {
         rows.push([label, m.name, m.rank ?? '', m.attended, m.of,
-          standing(m.merit_standing), m.merit_days, m.bgb_cp ?? '', m.total_cp ?? ''])
+          standing(m.merit_standing), m.merit_days, m.online_minutes ?? '', m.online_days ?? 0,
+          m.bgb_cp ?? '', m.total_cp ?? ''])
       }
     }
     save(new Blob([csv(rows)], { type: 'text/csv;charset=utf-8' }),
@@ -189,9 +199,16 @@ export default function Season() {
       <span className="season-days">
         {m.days.map((d) => (
           <i key={d.event_id} className={d.present ? 'on' : 'off'}
-             title={`${fmtDay(d.held_on)}: ${d.present ? 'there' : 'away'}`} />
+             title={`${fmtDay(d.held_on)}: ${d.present ? 'there' : 'away'}${
+               d.online_minutes == null ? '' : `, online ${d.online_minutes} of 120 min`}`} />
         ))}
         {m.attended}/{m.of}
+      </span>
+      <span className="season-online muted"
+            title={m.online_minutes == null ? 'Online time not worked out'
+              : `Online ${m.online_minutes} of 120 min on average, over ${m.online_days} conquest${
+                m.online_days === 1 ? '' : 's'}`}>
+        {minutes(m.online_minutes)}
       </span>
       <span className="season-merit">{standing(m.merit_standing)}</span>
       <span className="season-cp muted">{short(sort === 'total_cp' ? m.total_cp : m.bgb_cp)}</span>
@@ -220,6 +237,7 @@ export default function Season() {
         Four bands, and the sizes are the game's. Only the first three are filled — everybody
         left over is a contributor. Candidates are ordered by how many of the {events.length}{' '}
         conquests they attended, ties broken on merit standing, but the placing is yours.
+        The minutes are how long of the two-hour war each was online, on average.
         {held && <b> Holding {held.name} — choose a band.</b>}
       </p>
 

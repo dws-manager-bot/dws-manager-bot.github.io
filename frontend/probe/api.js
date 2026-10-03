@@ -133,10 +133,16 @@ const seasonMembers = NAMES.map((name, i) => {
     days: SEASON_DAYS.map((d, j) => ({
       event_id: j + 1, held_on: d, present: j < attended, recorded: true,
       merits: j === 3 || merit == null ? null : Math.round(merit * 1_500_000),
+      online_minutes: i === 27 ? null : j < attended ? 120 - ((i * 7 + j * 13) % 5) * 23 : 0,
     })),
     merit_standing: merit, merit_days: merit == null ? 0 : 3,
   }
 })
+for (const m of seasonMembers) {
+  const timed = m.days.map((d) => d.online_minutes).filter((v) => v != null)
+  m.online_days = timed.length
+  m.online_minutes = timed.length ? Math.round(timed.reduce((a, b) => a + b, 0) / timed.length) : null
+}
 let probeAwards = { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }
 
 /* The War planner. Invented alliances, real map ids: a Saturday around the
