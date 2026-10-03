@@ -13,6 +13,10 @@ Merits are averaged only over the days they were recorded. One conquest mattered
 less than the others and its ranking was never captured; counting that as a zero
 would punish everyone who turned up to it.
 
+Online time is reported beside them and decides nothing. It is averaged the same
+way, over the days it was worked out, and it is a best case: a screenshot shows
+when a member was last seen, never when they arrived.
+
 BGB is deliberately absent. Only twenty of a hundred get a seat, so it cannot
 be counted here without punishing a member who was never picked -- and it has
 seats, roles, scores and missed starts of its own, which a single column beside
@@ -103,16 +107,21 @@ async def season(
                 present=bool(seen[player.id].get(e.id) and seen[player.id][e.id].present),
                 recorded=e.id in seen[player.id],
                 merits=(seen[player.id][e.id].merits if e.id in seen[player.id] else None),
+                online_minutes=(seen[player.id][e.id].online_minutes
+                                if e.id in seen[player.id] else None),
             )
             for e in events
         ]
         places = standing.get(player.id, [])
+        minutes = [d.online_minutes for d in days if d.online_minutes is not None]
         members.append(SeasonMemberOut(
             player_id=str(player.id), name=player.name, rank=player.rank,
             bgb_cp=player.bgb_cp, total_cp=player.total_cp,
             attended=sum(1 for d in days if d.present), of=len(events), days=days,
             merit_standing=(sum(places) / len(places)) if places else None,
             merit_days=len(places),
+            online_minutes=round(sum(minutes) / len(minutes)) if minutes else None,
+            online_days=len(minutes),
             first_seen=first_seen.get(player.id),
         ))
 
@@ -128,6 +137,7 @@ async def season(
             present=sum(1 for r in by_event[e.id] if r.present),
             recorded=len(by_event[e.id]),
             has_merits=any(r.merits is not None for r in by_event[e.id]),
+            has_minutes=any(r.online_minutes is not None for r in by_event[e.id]),
         ) for e in events],
         members=members,
     )
