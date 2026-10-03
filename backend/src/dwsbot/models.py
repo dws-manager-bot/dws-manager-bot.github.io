@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -265,6 +266,12 @@ class AttendanceRecord(Base, TimestampMixin):
     `merits` is the game's own contribution figure where it was captured, and
     null where it was not -- which is not the same as zero, and is why turning
     up and contributing are two separate columns.
+
+    `online_minutes` is how much of the two-hour war window (11:00-13:00 ST) the
+    member was online, 0 to 120. The Members-list screenshots show when someone
+    was last seen but never when they arrived, so it counts every minute they
+    were not shown to be offline: a best case, not a stopwatch. Null where it
+    was never worked out.
     """
 
     __tablename__ = "attendance_records"
@@ -281,6 +288,7 @@ class AttendanceRecord(Base, TimestampMixin):
     present: Mapped[bool] = mapped_column(Boolean, nullable=False)
     merits: Mapped[int | None] = mapped_column(BigInteger)
     rank: Mapped[int | None] = mapped_column(Integer)
+    online_minutes: Mapped[int | None] = mapped_column(SmallInteger)
 
     event: Mapped[AttendanceEvent] = relationship(back_populates="records")
     player: Mapped[Player] = relationship()
