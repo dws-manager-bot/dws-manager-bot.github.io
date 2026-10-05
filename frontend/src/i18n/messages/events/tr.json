@@ -1,0 +1,14 @@
+{
+  "title": "Yaklaşan Etkinlikler",
+  "caption": "Önümüzdeki {days} günün ittifak etkinlikleri.",
+  "zone": "Saatler {zone} saatine göre.",
+  "next": "Sıradaki Etkinlik",
+  "today": "Bugün",
+  "tomorrow": "Yarın",
+  "none": "Planlanmış etkinlik yok",
+  "on_now": "Şu an sürüyor",
+  "server_at": "Sunucu saatiyle {time}",
+  "moved": "Ertelendi",
+  "failed": "Etkinlikler yüklenemedi.",
+  "retry": "Tekrar dene"
+}

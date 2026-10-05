@@ -236,6 +236,12 @@ const liveRaw = (live, path) => {
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
+  upcomingEvents: () => ok([
+    { event_id: 1, key: 'frankenstein-round1', name: 'Frankenstein Round 1', starts_at: iso(-20), duration_minutes: 60, moved: false },
+    { event_id: 2, key: 'blackgold-battlefield-team-a', name: 'BlackGold Battlefield Team A', starts_at: iso(60 * 5), duration_minutes: 90, moved: false },
+    { event_id: 3, key: 'strife-pass-conquest', name: 'Strife Pass Conquest', starts_at: iso(60 * 30), duration_minutes: 60, moved: true, note: 'clashes with SvS' },
+    { event_id: 1, key: 'frankenstein-round1', name: 'Frankenstein Round 1', starts_at: iso(60 * 72), duration_minutes: 60, moved: false },
+  ]),
   channels: () => ok(channels),
   createAnnouncement: (p) => ok({ ...p, id: 99 }),
   updateAnnouncement: (id, p) => ok({ ...p, id }),

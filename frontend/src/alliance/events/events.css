@@ -1,0 +1,43 @@
+.ev-caption { margin: -6px 0 16px; }
+.ev-none { padding: 24px 0; text-align: center; }
+
+.ev-next { border-color: var(--accent); margin-bottom: 20px; }
+.ev-label { color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.ev-next-name { font-size: 20px; font-weight: 700; margin-top: 4px; overflow-wrap: break-word; }
+.ev-next-when { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ev-next-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 8px; font-size: 13px; }
+
+.ev-on {
+  flex: none;
+  align-self: center;
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--ok);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ev-soon { color: var(--accent); font-weight: 600; }
+
+.ev-day { margin-top: 18px; }
+.ev-day h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.ev-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ev-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  min-height: 44px;
+}
+.ev-row.on { border-color: rgba(74, 222, 128, 0.5); }
+.ev-time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.ev-body { display: grid; gap: 3px; min-width: 0; }
+.ev-name { font-weight: 600; overflow-wrap: break-word; }
+.ev-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12.5px; }
+.ev-moved { color: var(--warn); }

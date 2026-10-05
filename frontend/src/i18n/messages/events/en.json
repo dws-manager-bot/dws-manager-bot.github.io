@@ -1,0 +1,14 @@
+{
+  "title": "Upcoming Events",
+  "caption": "Alliance events over the next {days} days.",
+  "zone": "Times in {zone}.",
+  "next": "Next Event",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "none": "No events scheduled",
+  "on_now": "On now",
+  "server_at": "{time} server time",
+  "moved": "Moved",
+  "failed": "Could not load the events.",
+  "retry": "Try again"
+}
