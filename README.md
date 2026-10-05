@@ -3,7 +3,9 @@
 A Discord bot and web backoffice for running a **Dark War Survival** alliance:
 scheduled announcements, a recurring event calendar with signups, and a Pass
 Occupation War map planner — all configurable from a browser instead of by
-editing code.
+editing code. Its alliance pages — the Survival Preparedness planner, the
+coming events, the upgrade calculators and the hive map, which came from
+pou-rocks.github.io — are for every member, in the game's sixteen languages.
 
 ```
 GitHub Pages  ──  pou.actuallyplaying.com                  static backoffice (HTTPS)
@@ -54,6 +56,8 @@ backend/          FastAPI + discord.py + APScheduler (one process)
 frontend/         Vite + React backoffice → GitHub Pages
   src/lib/tz.js     the only wall-clock <-> instant conversion in the app
   src/passwar/      Pass War map engine (canvas) and its data layer
+  src/alliance/     the members' pages: planner, events, calculators, hive map
+  src/i18n/         the members' pages' languages; messages/<page>/<code>.json
 deploy/vm/        the VM's Compose project and tunnel config (production)
 deploy/*.yaml     the retired home k3s manifests
 ```
@@ -127,9 +131,33 @@ Sign in with Discord. Who gets in depends on the account's roles in the guild:
 | Member | `MEMBER_ROLES` (default `Members`) | Alliance pages |
 | Anyone else | a Guest, or no role | nothing: the login is refused |
 
-Alliance pages live at the root (`/pass-war`), admin pages under `/admin/`.
-Every page has its own address, so a link can be shared, and signing in comes
-back to the page that was opened.
+Alliance pages live at the root (`/planner`, `/pass-war`), admin pages under
+`/admin/`. Every page has its own address, so a link can be shared, and signing
+in comes back to the page that was opened. The alliance pages keep
+pou-rocks.github.io's addresses, which now redirects here.
+
+**Alliance pages**, for every member, in the reader's language and time zone
+(the globe button in the header; the language starts from `?lang=` in a link,
+then the last choice, then the device):
+
+- **Planner** — which Survival Preparedness theme runs in each four-hour slot,
+  the day's Alliance Duel theme, the slots where one action scores in both, and
+  the capital officials worth asking for.
+- **Events** — the next fourteen days of the calendar the admins keep below,
+  moves and skips applied, with a countdown to the next one.
+- **Calculators** — upgrade costs from the game's own tables: precision parts,
+  mod vehicle level, parts and chips, hero stars, exclusive weapons and
+  equipment.
+- **Hive Map** — the hive formation applied in game, and a generator that
+  draws new layouts from the alliance roster sheet.
+- **Pass War map** — below.
+
+Their words live in `frontend/src/i18n/messages/<page>/<code>.json`, one file
+per language; a test fails if any language is missing a key or a placeholder.
+Game words are the game's own and are not retranslated. The admin pages stay
+in English.
+
+**Admin pages:**
 
 - **Set up** — a three-step wizard: define an event, attach an announcement to
   it, review and create both. The fastest path from nothing to a working post.
@@ -200,6 +228,9 @@ Tests and lint:
 cd backend
 ./.venv/bin/pytest -q
 ./.venv/bin/ruff check src tests
+
+cd ../frontend
+npm test                 # Vitest; the Pages deploy runs it before building
 ```
 
 ---
