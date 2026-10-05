@@ -119,8 +119,17 @@ the address the site is actually served from — the custom domain — and
 
 ### Backoffice
 
-Sign in with a Discord account holding a role listed in `ADMIN_ROLES` (default
-`R5,R4`); the guild owner always qualifies.
+Sign in with Discord. Who gets in depends on the account's roles in the guild:
+
+| | Roles | Sees |
+| --- | --- | --- |
+| Admin | `ADMIN_ROLES` (default `Beasts,R5`), or the guild owner | Alliance and Admin pages |
+| Member | `MEMBER_ROLES` (default `Members`) | Alliance pages |
+| Anyone else | a Guest, or no role | nothing: the login is refused |
+
+Alliance pages live at the root (`/pass-war`), admin pages under `/admin/`.
+Every page has its own address, so a link can be shared, and signing in comes
+back to the page that was opened.
 
 - **Set up** — a three-step wizard: define an event, attach an announcement to
   it, review and create both. The fastest path from nothing to a working post.
@@ -136,8 +145,9 @@ Sign in with a Discord account holding a role listed in `ADMIN_ROLES` (default
 - **History** — who created or last changed each announcement and event.
 - **Pass War map** — plan the Pass Occupation War formation: shelter grid,
   portal count, gate position, camp size, and a drag-ordered line-up that
-  decides who holds the slots nearest the pass. Readable by any guild member;
-  only admins can save a draft or publish the official plan. Exports a PNG.
+  decides who holds the slots nearest the pass. An Alliance page, readable by
+  every member; only admins can save a draft or publish the official plan.
+  Exports a PNG.
 
 Every time entered anywhere in the backoffice is a wall-clock time read against
 a timezone you pick on the same form — `Etc/GMT+2` is game server time.

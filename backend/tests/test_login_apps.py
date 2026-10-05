@@ -1,23 +1,28 @@
-"""One Discord redirect URI serving two frontends, with different entry rules.
+"""One Discord redirect URI serving two frontends, and who either lets in.
 
-The backoffice stays officers-only. The Pass War map admits any member of the
-alliance guild and lets the token's is_admin decide who may save the shared
-line-up — so the two apps must not be able to borrow each other's rules.
+Both admit members only: the Members role, an admin role, or the server owner.
+The token's is_admin then decides who may open the admin pages and save.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 
-from dwsbot import security
+from dwsbot import permissions, security
+from dwsbot.api import deps
 
 
 @pytest.fixture(autouse=True)
 def signing_key(monkeypatch):
     monkeypatch.setattr(
-        security, "get_settings", lambda: SimpleNamespace(jwt_secret="k" * 40)
+        security,
+        "get_settings",
+        lambda: SimpleNamespace(jwt_secret="k" * 40, jwt_ttl_hours=12),
     )
 
 
@@ -50,22 +55,71 @@ def test_garbage_and_old_states_are_rejected():
     assert security.verify_state(f"{nonce}.{app}.{old}.{_sig}") is None
 
 
+# ------------------------------- who is let in -------------------------------
+
+@pytest.fixture
+def live_roles(monkeypatch):
+    """The live server's rule: Beasts and R5 are admins, Members are members."""
+    monkeypatch.setattr(
+        permissions,
+        "get_settings",
+        lambda: SimpleNamespace(admin_roles=["Beasts", "R5"], member_roles=["Members"]),
+    )
+
+
 @pytest.mark.parametrize(
-    "app, is_admin, in_guild, expected",
+    "roles, is_owner, expected",
     [
-        ("backoffice", True, True, True),
-        ("backoffice", False, True, False),    # plain member: no backoffice
-        ("passwar", False, True, True),        # plain member: may read the plan
-        ("passwar", True, True, True),
-        ("passwar", False, False, False),      # outsider: nothing
-        ("passwar", True, False, False),       # officer who left the guild
+        (["Members"], False, "member"),
+        (["Members", "Beasts"], False, "admin"),
+        (["Beasts"], False, "admin"),          # an admin role implies membership
+        (["R5"], False, "admin"),
+        (["members"], False, "member"),        # case does not matter
+        (["Guest"], False, None),              # in the server, but not a member
+        (["Helpers"], False, None),
+        (["Server Booster"], False, None),
+        ([], False, None),                     # no role, or not in the server
+        ([], True, "admin"),                   # the owner, whatever their roles
+        (["Guest"], True, "admin"),
     ],
 )
-def test_entry_rule(app, is_admin, in_guild, expected):
-    """Mirrors the rule in auth.callback: officers for the backoffice, guild
-    membership for the map."""
-    permitted = is_admin if app == "backoffice" else in_guild
-    assert permitted is expected
+def test_access_level(live_roles, roles, is_owner, expected):
+    assert permissions.access_level(roles, is_owner=is_owner) == expected
+
+
+def test_tokens_are_marked_as_minted_for_members():
+    token = security.issue_token(discord_id=1, username="x", is_admin=False)
+    assert security.decode_token(token)["mem"] is True
+
+
+def _bearer(payload):
+    import jwt
+
+    return HTTPAuthorizationCredentials(
+        scheme="Bearer", credentials=jwt.encode(payload, "k" * 40, algorithm="HS256")
+    )
+
+
+def test_a_token_from_before_the_members_rule_must_sign_in_again():
+    """It was issued to anyone in the server, Guests included."""
+    old = {"sub": "1", "name": "x", "adm": False, "exp": int(time.time()) + 600}
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(deps.current_user(_bearer(old)))
+    assert caught.value.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "claims, is_admin",
+    [
+        ({"mem": True, "adm": False}, False),
+        ({"mem": True, "adm": True}, True),
+        ({"adm": True}, True),     # an old admin token: admins were always members
+    ],
+)
+def test_member_and_admin_tokens_are_accepted(claims, is_admin):
+    payload = {"sub": "1", "name": "x", "exp": int(time.time()) + 600, **claims}
+    user = asyncio.run(deps.current_user(_bearer(payload)))
+    assert user.is_admin is is_admin
 
 
 # ----------------------------- what to call someone --------------------------

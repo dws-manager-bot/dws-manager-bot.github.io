@@ -12,6 +12,7 @@ from sqlalchemy import select
 from ...config import get_settings
 from ...models import AppUser
 from ...names import guild_display_name
+from ...permissions import access_level
 from ...schemas import MeOut
 from ...security import (
     authorize_url,
@@ -48,25 +49,20 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     back = settings.frontend_url if app == "backoffice" else settings.passwar_url
 
     access_token = await exchange_code(code)
-    user, role_ids, in_guild, nick = await fetch_identity(access_token)
+    user, role_ids, _in_guild, nick = await fetch_identity(access_token)
 
     # OAuth gives role IDs; the config names roles. Resolve via the live guild
-    # so officers can rename roles without editing environment variables.
+    # so admins can rename roles without editing environment variables.
     from ...discord_bot.bot import bot
 
-    is_admin = False
+    level = None
     guild = bot.get_guild(settings.guild_id)
     if guild is not None:
-        allowed = {r.casefold() for r in settings.admin_roles}
-        for rid in role_ids:
-            role = guild.get_role(int(rid))
-            if role and role.name.casefold() in allowed:
-                is_admin = True
-                break
-        if not is_admin and guild.owner_id == int(user["id"]):
-            is_admin = True
+        names = [role.name for rid in role_ids if (role := guild.get_role(int(rid)))]
+        level = access_level(names, is_owner=guild.owner_id == int(user["id"]))
     else:
         log.warning("guild %s not in cache; cannot verify roles", settings.guild_id)
+    is_admin = level == "admin"
 
     discord_id = int(user["id"])
     row = await session.scalar(select(AppUser).where(AppUser.discord_id == discord_id))
@@ -79,11 +75,11 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     row.last_login_at = datetime.now(UTC)
     await session.commit()
 
-    # The backoffice is officers-only. The map generator admits any member of the
-    # guild and lets the token's is_admin decide who may save the shared plan.
-    permitted = is_admin if app == "backoffice" else in_guild
-    if not permitted:
-        # Bounce back with a reason rather than handing out a useless token.
+    # Both frontends admit members only. The admin pages and every write that
+    # needs one check the token's is_admin on top of that.
+    if level is None:
+        # Bounce back with a reason rather than handing out a useless token. The
+        # codes predate the Members rule; the old Pass War site still reads its own.
         reason = "not_authorised" if app == "backoffice" else "not_in_guild"
         return RedirectResponse(f"{back}/#" + urlencode({"error": reason}))
 

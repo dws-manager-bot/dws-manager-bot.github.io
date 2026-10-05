@@ -16,7 +16,9 @@ from dwsbot import permissions
 @pytest.fixture(autouse=True)
 def officer_role_is_beasts(monkeypatch):
     monkeypatch.setattr(
-        permissions, "get_settings", lambda: SimpleNamespace(admin_roles=["Beasts"])
+        permissions,
+        "get_settings",
+        lambda: SimpleNamespace(admin_roles=["Beasts"], member_roles=["Members"]),
     )
 
 

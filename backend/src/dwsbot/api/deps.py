@@ -27,6 +27,14 @@ async def current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     payload = decode_token(creds.credentials)
+    if not (payload.get("mem") or payload.get("adm")):
+        # Minted before the Members role was required. A fresh sign-in checks the
+        # roles again, and the frontend treats a 401 as "sign in again".
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Sign in again",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return MeOut(
         discord_id=int(payload["sub"]),
         username=payload.get("name", "unknown"),

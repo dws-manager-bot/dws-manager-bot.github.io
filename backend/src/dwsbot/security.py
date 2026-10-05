@@ -3,7 +3,7 @@
 The frontend is a static bundle on GitHub Pages, so it can hold no client
 secret and no bot token. Login therefore runs entirely server-side: Discord
 redirects back to *this* API, the API exchanges the code, verifies the user
-actually holds an admin role in the alliance guild, and only then mints a
+holds a member or admin role in the alliance guild, and only then mints a
 short-lived JWT for the SPA to carry.
 """
 from __future__ import annotations
@@ -124,8 +124,7 @@ async def fetch_identity(access_token: str) -> tuple[dict, list[str], bool, str 
     are in that guild at all, and their nickname there.
 
     A member with no roles and a non-member both yield an empty role list, so
-    membership has to be reported separately -- the map generator admits any
-    member, while the backoffice still needs an officer role.
+    membership is reported separately.
     """
     settings = get_settings()
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -153,6 +152,9 @@ def issue_token(*, discord_id: int, username: str, is_admin: bool) -> str:
     payload = {
         "sub": str(discord_id),
         "name": username,
+        # Only members are issued a token. The claim marks one minted under that
+        # rule; tokens from before it admitted any guild member, Guests included.
+        "mem": True,
         "adm": is_admin,
         "iat": now,
         "exp": now + timedelta(hours=settings.jwt_ttl_hours),
