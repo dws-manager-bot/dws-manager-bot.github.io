@@ -3,8 +3,7 @@
     "planner": "Planificador",
     "events": "Eventos",
     "calculators": "Calculadoras",
-    "hive_map": "Mapa de la colmena",
-    "pass_war": "Mapa de la guerra del paso"
+    "hive_map": "Mapa de la colmena"
   },
   "group": {
     "alliance": "Alianza"

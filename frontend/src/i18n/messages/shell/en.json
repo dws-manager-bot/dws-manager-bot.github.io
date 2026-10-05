@@ -3,8 +3,7 @@
     "planner": "Planner",
     "events": "Events",
     "calculators": "Calculators",
-    "hive_map": "Hive Map",
-    "pass_war": "Pass War map"
+    "hive_map": "Hive Map"
   },
   "group": {
     "alliance": "Alliance"

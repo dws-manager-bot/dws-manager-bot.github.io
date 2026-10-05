@@ -76,26 +76,36 @@ PLAN = {
 
 @pytest.mark.asyncio
 async def test_missing_plan_reads_as_empty(client_factory):
-    async with client_factory(MEMBER) as c:
+    async with client_factory(OFFICER) as c:
         r = await c.get(f"/lineups/{OFFICIAL}")
     assert r.status_code == 200
     assert r.json()["order"] == []
 
 
 @pytest.mark.asyncio
-async def test_officer_saves_and_anyone_reads_it_back(client_factory):
+async def test_officer_saves_and_another_reads_it_back(client_factory):
     async with client_factory(OFFICER) as c:
         put = await c.put(f"/lineups/{OFFICIAL}", json=PLAN)
     assert put.status_code == 200, put.text
     assert put.json()["updated_by_name"] == "Officer"
 
-    async with client_factory(MEMBER) as c:
+    async with client_factory(OFFICER2) as c:
         got = await c.get(f"/lineups/{OFFICIAL}")
     body = got.json()
     assert body["order"] == PLAN["order"]                 # hand-tuned order survives
     assert body["mercs"] == PLAN["mercs"]                 # mercenaries survive
     assert body["opts"]["portalOwners"] == 24
     assert body["updated_by_name"] == "Officer"
+
+
+@pytest.mark.asyncio
+async def test_plain_member_cannot_read_any_plan(client_factory):
+    """The formation is the alliance's strategy: admins only, like the War planner."""
+    async with client_factory(OFFICER) as c:
+        await c.put(f"/lineups/{OFFICIAL}", json=PLAN)
+    async with client_factory(MEMBER) as c:
+        assert (await c.get(f"/lineups/{OFFICIAL}")).status_code == 403
+        assert (await c.get("/lineups")).status_code == 403
 
 
 @pytest.mark.asyncio

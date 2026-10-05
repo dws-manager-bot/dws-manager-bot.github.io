@@ -3,8 +3,7 @@
     "planner": "플래너",
     "events": "이벤트",
     "calculators": "계산기",
-    "hive_map": "군집 지도",
-    "pass_war": "관문전 지도"
+    "hive_map": "군집 지도"
   },
   "group": {
     "alliance": "연맹"

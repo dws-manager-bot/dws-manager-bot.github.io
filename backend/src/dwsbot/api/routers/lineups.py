@@ -4,7 +4,8 @@ Every officer keeps a draft nobody else can overwrite. Publishing copies a draft
 into the shared "official" plan, so picking a final does not consume anyone's
 work — the draft it came from is left exactly where it was.
 
-Any member of the guild may read. Only officers write, and only their own draft.
+Admins only, reading included: it is the alliance's strategy, like the War
+planner. Each admin writes only their own draft.
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ from sqlalchemy import select
 
 from ...models import AppUser, WarLineup
 from ...schemas import LineupIn, LineupOut, LineupSummary
-from ..deps import AdminUser, CurrentUser, DbSession, write_audit
+from ..deps import AdminUser, DbSession, write_audit
 
 router = APIRouter(prefix="/lineups", tags=["lineups"])
 
@@ -60,7 +61,7 @@ def _empty(slug: str) -> WarLineup:
 
 
 @router.get("", response_model=list[LineupSummary], summary="List the published plan and every draft")
-async def list_lineups(session: DbSession, _: CurrentUser) -> list[LineupSummary]:
+async def list_lineups(session: DbSession, _: AdminUser) -> list[LineupSummary]:
     rows = (await session.scalars(select(WarLineup))).all()
     names = await _names(session, *[r.owner_id for r in rows], *[r.updated_by_id for r in rows])
     out = [
@@ -79,7 +80,7 @@ async def list_lineups(session: DbSession, _: CurrentUser) -> list[LineupSummary
 
 
 @router.get("/{slug}", response_model=LineupOut, summary="Read one plan")
-async def get_lineup(slug: str, session: DbSession, _: CurrentUser) -> LineupOut:
+async def get_lineup(slug: str, session: DbSession, _: AdminUser) -> LineupOut:
     row = await session.get(WarLineup, slug) or _empty(slug)
     return _out(row, await _names(session, row.owner_id, row.updated_by_id))
 
