@@ -46,7 +46,7 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     app = verify_state(state)
     if app is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Login state expired or invalid")
-    back = settings.frontend_url if app == "backoffice" else settings.passwar_url
+    back = settings.frontend_url
 
     access_token = await exchange_code(code)
     user, role_ids, _in_guild, nick = await fetch_identity(access_token)
@@ -75,13 +75,11 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     row.last_login_at = datetime.now(UTC)
     await session.commit()
 
-    # Both frontends admit members only. The admin pages and every write that
-    # needs one check the token's is_admin on top of that.
+    # The site admits members only. The admin pages and every write that needs
+    # one check the token's is_admin on top of that.
     if level is None:
-        # Bounce back with a reason rather than handing out a useless token. The
-        # codes predate the Members rule; the old Pass War site still reads its own.
-        reason = "not_authorised" if app == "backoffice" else "not_in_guild"
-        return RedirectResponse(f"{back}/#" + urlencode({"error": reason}))
+        # Bounce back with a reason rather than handing out a useless token.
+        return RedirectResponse(f"{back}/#" + urlencode({"error": "not_authorised"}))
 
     token = issue_token(
         discord_id=discord_id, username=row.username or "?", is_admin=is_admin

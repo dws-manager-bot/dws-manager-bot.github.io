@@ -1,0 +1,14 @@
+{
+  "title": "Event Mendatang",
+  "caption": "Event aliansi untuk {days} hari ke depan.",
+  "zone": "Waktu dalam {zone}.",
+  "next": "Event Berikutnya",
+  "today": "Hari ini",
+  "tomorrow": "Besok",
+  "none": "Tidak ada event terjadwal",
+  "on_now": "Sedang berlangsung",
+  "server_at": "{time} waktu server",
+  "moved": "Dipindah",
+  "failed": "Gagal memuat event.",
+  "retry": "Coba lagi"
+}

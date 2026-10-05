@@ -1,0 +1,49 @@
+{
+  "calculators": "เครื่องคำนวณ",
+  "titles": {
+    "precision_parts": "อะไหล่แม่นยำ",
+    "vehicle_level": "เลเวลรถดัดแปลง",
+    "vehicle_parts": "ชิ้นส่วนรถดัดแปลง",
+    "hero_weapon": "อาวุธเฉพาะฮีโร่",
+    "hero_stars": "ระดับดาวฮีโร่",
+    "hero_equipment": "อุปกรณ์ฮีโร่",
+    "vehicle_chips": "ชิปรถดัดแปลง"
+  },
+  "note": "ค่าตามคอนฟิกก่อนบัฟ — ราคาในเกมอาจต่ำกว่า",
+  "source": "Dark War Survival {build}",
+  "per_press": "คิดค่าใช้จ่ายต่อการกดปุ่ม ไม่ใช่ต่อเลเวล",
+  "error": "โหลดข้อมูลไม่สำเร็จ",
+  "empty": "ยังไม่ได้เลือก",
+  "from": "จาก",
+  "to": "ถึง",
+  "add_row": "เพิ่มแถว",
+  "remove_row": "ลบแถว",
+  "reset": "รีเซ็ต",
+  "owned": "มีแล้ว",
+  "covered": "เพียงพอ",
+  "short": "ขาด {amount}",
+  "total_needed": "ยอดที่ต้องใช้",
+  "details": "รายละเอียด",
+  "total": "รวม",
+  "level": "Lv.",
+  "lv": "Lv.{level}",
+  "tick": "{star} ดาว ขั้น {rank}",
+  "red": "แดง",
+  "max": "อัปดาวเต็มแล้ว",
+  "fragment": "ชิ้นส่วน",
+  "building": "สิ่งก่อสร้าง",
+  "part": "ชิ้นส่วน",
+  "select_weapon": "เลือกอาวุธ",
+  "chip": "ชิป",
+  "equip_breakthrough": "ข้ามขั้นอุปกรณ์",
+  "purple": "ม่วง",
+  "orange": "ส้ม",
+  "per_level": "เลเวลละ {amount}",
+  "chip_exp": "EXP ชิป {amount}",
+  "presses": {
+    "other": "{amount} ครั้ง"
+  },
+  "presses_total": {
+    "other": "กดปุ่มทั้งหมด {amount} ครั้ง"
+  }
+}

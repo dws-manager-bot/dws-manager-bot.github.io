@@ -1,0 +1,86 @@
+{
+  "title": "Hayatta kalma hazırlığı ve İttifak Düello Yarışması",
+  "caption": "Hayatta kalma hazırlığı temalarını ve İttifak Düello Yarışması harcamalarını planla; aynı eşyalar mümkün olduğunca iki kez puan kazandırsın.",
+  "zone": "Saatler: {zone}",
+  "now": {
+    "current": "Geçerli tema",
+    "left": "{time} kaldı",
+    "next": "Sıradaki",
+    "starts": "Başlangıç {time}",
+    "next_dual": "Sonraki çift puan"
+  },
+  "days": "Sunucu günü",
+  "today": "Bugün",
+  "ad": {
+    "label": "İttifak Düello Yarışması teması",
+    "break": "İttifak Düello Yarışması pazar günleri yapılmaz. Tamamen Hayatta kalma hazırlığı aralıklarına odaklan."
+  },
+  "timeline": {
+    "title": "Zaman çizelgesi",
+    "slot": "{number}. dilim",
+    "dual": "Çift puan: aynı eylemler iki etkinlikte de puan kazandırır"
+  },
+  "matrix": {
+    "title": "Eylem tablosu",
+    "dual": "Çift puan",
+    "sp_only": "Yalnızca Hayatta kalma hazırlığı",
+    "ad_only": "Yalnızca İttifak Düello Yarışması"
+  },
+  "officials": {
+    "label": "Önerilen makamlar",
+    "best": "En iyisi",
+    "also": "Bu da işe yarar",
+    "none": "Kayda değer başkent bonusu yok"
+  },
+  "themes": {
+    "shelter_expansion": "Barınak İnşa Etmek",
+    "hero_initiative": "Kahraman Geliştirme",
+    "unit_training": "Askerleri Eğit",
+    "age_of_science": "Teknoloji Araştır",
+    "arms_expert": "Savaş Ustası",
+    "keep_progressing": "Günlük İyileştirme",
+    "holistic_growth": "Genel Gelişim",
+    "enemy_buster": "Düşmanı Yenmek"
+  },
+  "titles": {
+    "vice_president": "Başkan Yardımcısı",
+    "scale_of_law": "Düzen Terazisi",
+    "supreme_general": "Üstün Genel",
+    "secretary_of_construction": "İnşaat Bakanı",
+    "secretary_of_science": "Araştırma Bakanı",
+    "secretary_of_security": "Savunma Bakanı"
+  },
+  "actions": {
+    "construction_speed_ups": "İnşaat hızlandırmaları",
+    "finish_building_upgrades": "Bina yükseltmelerini tamamla",
+    "recruitment_tickets": "İşe alım kuponları",
+    "hero_fragments": "Kahraman parçaları",
+    "exclusive_equipment_fragments": "Özel ekipman parçaları",
+    "training_speed_ups": "Eğitim hızlandırmaları",
+    "complete_new_unit_batches": "Yeni asker eğitimlerini tamamla",
+    "promote_units_to_higher_tiers": "Askerleri terfi ettir",
+    "consume_advanced_tactical_rations": "Gelişmiş Taktik Azığı tüket",
+    "consume_nutrient_potions": "Besin İksiri tüket",
+    "consume_potential_chips": "Potansiyel Çipi tüket",
+    "consume_special_ops_honor_medals": "Özel Hizmet Onur Madalyası tüket",
+    "consume_standard_training_protocols": "Sıradan Özel Eğitim Yönetmeliği tüket",
+    "consume_advanced_training_protocols": "Gelişmiş Özel Eğitim Yönetmeliği tüket",
+    "research_speed_ups": "Araştırma hızlandırmaları",
+    "finish_science_tech_research": "Teknoloji araştırmalarını tamamla",
+    "wisdom_medals": "Bilgelik Madalyaları",
+    "gears": "Dişliler",
+    "titaniums": "Titanyum",
+    "design_blueprints": "Çizimler",
+    "power_cores": "Enerji çekirdekleri",
+    "hero_equipment_lucky_chests": "Kahraman ekipman şans kutuları",
+    "open_chip_chests": "Çip Sandıklarını aç",
+    "field_resource_gathering": "Haritada kaynak topla",
+    "complete_radar_missions": "Radar etkinliklerini tamamla",
+    "s_class_truck_escorts": "S-Kalite Kara Altın Kamyonlarını koru",
+    "orange_shadow_call_missions": "Turuncu Gölge Görevi görevleri",
+    "kill_roamer_zombies": "Gezici zombileri öldür",
+    "kill_boomer_zombies": "Dev zombileri öldür",
+    "kill_enemy_units": "Düşman askerlerini öldür",
+    "lose_units_in_battle": "Savaşta asker kaybet"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Lập kế hoạch",
+    "events": "Sự kiện",
+    "calculators": "Máy tính",
+    "hive_map": "Bản đồ tổ",
+    "pass_war": "Bản đồ chiến ải"
+  },
+  "group": {
+    "alliance": "Liên Minh"
+  },
+  "sign_out": "Đăng xuất",
+  "loading": "Đang tải…",
+  "prefs": {
+    "open": "Ngôn ngữ và múi giờ",
+    "language": "Ngôn ngữ",
+    "zone": "Múi giờ",
+    "server_time": "Giờ máy chủ (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Thường dùng",
+    "africa": "Châu Phi",
+    "america": "Châu Mỹ",
+    "antarctica": "Nam Cực",
+    "arctic": "Bắc Cực",
+    "asia": "Châu Á",
+    "atlantic": "Đại Tây Dương",
+    "australia": "Úc",
+    "europe": "Châu Âu",
+    "indian": "Ấn Độ Dương",
+    "pacific": "Thái Bình Dương"
+  },
+  "login": {
+    "prompt": "Đăng nhập bằng tài khoản Discord bạn dùng trong máy chủ PoU.",
+    "button": "Đăng nhập bằng Discord",
+    "refused": "Tài khoản Discord này không có vai trò Members trong máy chủ PoU. Hãy xin admin cấp."
+  }
+}

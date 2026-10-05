@@ -1,0 +1,14 @@
+{
+  "title": "Anstehende Events",
+  "caption": "Allianz-Events der nächsten {days} Tage.",
+  "zone": "Zeiten in {zone}.",
+  "next": "Nächstes Event",
+  "today": "Heute",
+  "tomorrow": "Morgen",
+  "none": "Keine Events geplant",
+  "on_now": "Läuft gerade",
+  "server_at": "{time} Serverzeit",
+  "moved": "Verschoben",
+  "failed": "Die Events konnten nicht geladen werden.",
+  "retry": "Erneut versuchen"
+}

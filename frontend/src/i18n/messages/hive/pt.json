@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Páginas do mapa da colmeia",
+    "current": "Mapa atual",
+    "generator": "Gerador"
+  },
+  "current": {
+    "title": "Mapa da colmeia atual",
+    "subtitle": "A formação de abrigos aplicada agora no jogo.",
+    "applied": "Esta é a disposição da colmeia que a Aliança tem aplicada agora.",
+    "snapshot": "Com base nos dados dos membros coletados em {date}.",
+    "snapshot_unknown": "Um instantâneo congelado da lista de membros.",
+    "to_generator": "Planejando uma nova disposição? Abra o gerador →",
+    "loading": "Carregando o mapa aplicado…",
+    "load_failed": "Não foi possível carregar o instantâneo: {reason}"
+  },
+  "generator": {
+    "title": "Gerador do mapa da colmeia",
+    "subtitle": "Prévia ao vivo com a lista atual da Aliança — para planejar a próxima disposição.",
+    "to_current": "Ver o mapa aplicado agora →",
+    "hint": "Os dados vêm ao vivo da Google Sheet — toque em ↻ Atualizar depois de editá-la. Faça pinça ou toque em “Tamanho real” para ampliar · Baixar PNG para a resolução completa.",
+    "layout": "Disposição",
+    "stick_groups": "Grupos unidos",
+    "spread_top10": "Espalhar Top 10",
+    "spread_lv8": "Espalhar Lv8",
+    "refresh": "Atualizar",
+    "fetching": "Buscando o mais recente da Google Sheet…",
+    "load_failed": "Não foi possível carregar a lista de membros: {reason}"
+  },
+  "fit_width": "Ajustar à largura",
+  "actual_size": "Tamanho real",
+  "download_png": "Baixar PNG",
+  "render_error": "Erro ao desenhar: {reason}",
+  "reason": {
+    "http": "a planilha respondeu HTTP {status}",
+    "not_public": "a planilha não está publicada na web",
+    "empty": "nenhum membro na planilha",
+    "network": "não foi possível acessar o Google Sheets"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} membro · mais distante ≈ {d} casas",
+    "other": "v{v} · {shape} · {count} membros · mais distante ≈ {d} casas"
+  },
+  "shape": {
+    "square": "Quadrado",
+    "gap_square": "Quadrado com vãos",
+    "diamond": "Losango",
+    "circle": "Círculo",
+    "heart": "Coração",
+    "cat_face": "Cara de gato",
+    "middle_finger": "Dedo do meio",
+    "skull": "Caveira",
+    "snowflake": "Floco de neve"
+  },
+  "canvas": {
+    "title": "Mapa da colmeia PoU",
+    "shelters": {
+      "one": "abrigo",
+      "other": "abrigos"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Nível Industrial",
+    "lv": "Lv",
+    "one_tile": "1 casa",
+    "shelter_3x3": "abrigo 3×3",
+    "lane": "corredor",
+    "tiles": "casas",
+    "gap_every_2": "1 casa de vão a cada 2 abrigos",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

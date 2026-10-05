@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "Các trang bản đồ tổ",
+    "current": "Bản đồ hiện tại",
+    "generator": "Trình tạo"
+  },
+  "current": {
+    "title": "Bản đồ tổ hiện tại",
+    "subtitle": "Đội hình Nơi Trú Ẩn đang áp dụng trong game.",
+    "applied": "Đây là cách bố trí tổ mà Liên Minh đang áp dụng.",
+    "snapshot": "Theo dữ liệu thành viên thu thập ngày {date}.",
+    "snapshot_unknown": "Một bản chụp cố định của danh sách thành viên.",
+    "to_generator": "Đang lên kế hoạch bố trí mới? Mở trình tạo →",
+    "loading": "Đang tải bản đồ đang áp dụng…",
+    "load_failed": "Không tải được bản chụp: {reason}"
+  },
+  "generator": {
+    "title": "Trình tạo bản đồ tổ",
+    "subtitle": "Xem trước trực tiếp từ danh sách Liên Minh hiện tại — để lên kế hoạch bố trí tiếp theo.",
+    "to_current": "Xem bản đồ đang áp dụng →",
+    "hint": "Dữ liệu tải trực tiếp từ Google Sheet — chạm ↻ Làm mới sau khi chỉnh sửa. Chụm hai ngón hoặc chạm “Kích thước thật” để phóng to · Tải PNG để có độ phân giải đầy đủ.",
+    "layout": "Bố trí",
+    "stick_groups": "Nhóm đi cùng",
+    "spread_top10": "Rải Top 10",
+    "spread_lv8": "Rải Lv8",
+    "refresh": "Làm mới",
+    "fetching": "Đang lấy dữ liệu mới nhất từ Google Sheet…",
+    "load_failed": "Không tải được danh sách thành viên: {reason}"
+  },
+  "fit_width": "Vừa chiều rộng",
+  "actual_size": "Kích thước thật",
+  "download_png": "Tải PNG",
+  "render_error": "Lỗi vẽ: {reason}",
+  "reason": {
+    "http": "bảng tính trả về HTTP {status}",
+    "not_public": "bảng tính chưa được xuất bản lên web",
+    "empty": "không có thành viên nào trong bảng tính",
+    "network": "không kết nối được Google Sheets"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count} thành viên · xa nhất ≈ {d} ô"
+  },
+  "shape": {
+    "square": "Hình vuông",
+    "gap_square": "Hình vuông có khe",
+    "diamond": "Hình thoi",
+    "circle": "Hình tròn",
+    "heart": "Trái tim",
+    "cat_face": "Mặt mèo",
+    "middle_finger": "Ngón giữa",
+    "skull": "Đầu lâu",
+    "snowflake": "Bông tuyết"
+  },
+  "canvas": {
+    "title": "Bản đồ tổ PoU",
+    "shelters": {
+      "other": "Nơi Trú Ẩn"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Công nghiệp Lv",
+    "lv": "Lv",
+    "one_tile": "1 ô",
+    "shelter_3x3": "Nơi Trú Ẩn 3×3",
+    "lane": "lối đi",
+    "tiles": "ô",
+    "gap_every_2": "cách 1 ô sau mỗi 2 Nơi Trú Ẩn",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

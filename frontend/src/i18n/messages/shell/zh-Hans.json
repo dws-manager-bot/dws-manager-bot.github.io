@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "规划器",
+    "events": "活动",
+    "calculators": "计算器",
+    "hive_map": "蜂巢地图",
+    "pass_war": "关卡战地图"
+  },
+  "group": {
+    "alliance": "联盟"
+  },
+  "sign_out": "退出登录",
+  "loading": "加载中…",
+  "prefs": {
+    "open": "语言和时区",
+    "language": "语言",
+    "zone": "时区",
+    "server_time": "服务器时间 (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "常用",
+    "africa": "非洲",
+    "america": "美洲",
+    "antarctica": "南极洲",
+    "arctic": "北极",
+    "asia": "亚洲",
+    "atlantic": "大西洋",
+    "australia": "澳大利亚",
+    "europe": "欧洲",
+    "indian": "印度洋",
+    "pacific": "太平洋"
+  },
+  "login": {
+    "prompt": "请使用你在 PoU 服务器中使用的 Discord 账号登录。",
+    "button": "使用 Discord 登录",
+    "refused": "该 Discord 账号在 PoU 服务器中没有 Members 身份组，请联系管理员。"
+  }
+}

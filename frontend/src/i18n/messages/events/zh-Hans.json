@@ -1,0 +1,14 @@
+{
+  "title": "即将开始的活动",
+  "caption": "未来 {days} 天的联盟活动。",
+  "zone": "时间以 {zone} 显示。",
+  "next": "下一个活动",
+  "today": "今天",
+  "tomorrow": "明天",
+  "none": "暂无活动安排",
+  "on_now": "进行中",
+  "server_at": "服务器时间 {time}",
+  "moved": "已改期",
+  "failed": "无法加载活动。",
+  "retry": "重试"
+}

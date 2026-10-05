@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Perencana",
+    "events": "Event",
+    "calculators": "Kalkulator",
+    "hive_map": "Peta Hive",
+    "pass_war": "Peta Perang Celah"
+  },
+  "group": {
+    "alliance": "Aliansi"
+  },
+  "sign_out": "Keluar",
+  "loading": "Memuat…",
+  "prefs": {
+    "open": "Bahasa dan zona waktu",
+    "language": "Bahasa",
+    "zone": "Zona waktu",
+    "server_time": "Waktu server (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Umum",
+    "africa": "Afrika",
+    "america": "Amerika",
+    "antarctica": "Antarktika",
+    "arctic": "Arktik",
+    "asia": "Asia",
+    "atlantic": "Samudra Atlantik",
+    "australia": "Australia",
+    "europe": "Eropa",
+    "indian": "Samudra Hindia",
+    "pacific": "Samudra Pasifik"
+  },
+  "login": {
+    "prompt": "Masuk dengan akun Discord yang kamu pakai di server PoU.",
+    "button": "Masuk dengan Discord",
+    "refused": "Akun Discord ini tidak punya peran Members di server PoU. Minta ke admin."
+  }
+}

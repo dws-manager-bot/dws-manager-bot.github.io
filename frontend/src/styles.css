@@ -148,6 +148,11 @@ nav.tabs::-webkit-scrollbar { display: none; }
 /* Tabs are links, so they can be shared and opened in a new tab. */
 a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 
+/* Language and time zone, folded under the header until asked for. */
+.prefs-toggle.on { color: var(--accent); border-color: var(--accent); }
+.prefs-panel { display: grid; gap: 10px; padding: 0 16px 12px; min-width: 0; }
+.prefs-panel select { min-width: 0; }
+
 /* Alliance pages, then Admin pages, each under its name. */
 .tab-group { display: flex; align-items: center; gap: 4px; flex: none; }
 .tab-group + .tab-group {
@@ -583,6 +588,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 }
 
 @media (min-width: 640px) {
+  .prefs-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 640px; margin-inline-start: auto; }
   main { padding: 24px; }
   .grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .panel { padding: 20px; }

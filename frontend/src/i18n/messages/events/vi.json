@@ -1,0 +1,14 @@
+{
+  "title": "Sự kiện sắp tới",
+  "caption": "Các sự kiện của liên minh trong {days} ngày tới.",
+  "zone": "Giờ theo {zone}.",
+  "next": "Sự kiện tiếp theo",
+  "today": "Hôm nay",
+  "tomorrow": "Ngày mai",
+  "none": "Chưa có sự kiện nào",
+  "on_now": "Đang diễn ra",
+  "server_at": "{time} giờ máy chủ",
+  "moved": "Đã dời lịch",
+  "failed": "Không tải được sự kiện.",
+  "retry": "Thử lại"
+}

@@ -1,0 +1,86 @@
+{
+  "title": "เตรียมสงครามอยู่รอดและชิงแชมป์ศึกกิลด์",
+  "caption": "วางแผนธีมเตรียมสงครามอยู่รอดและช่วงใช้ไอเทมในชิงแชมป์ศึกกิลด์ ให้ไอเทมเดียวกันได้คะแนนสองทางมากที่สุด",
+  "zone": "เวลาตาม {zone}",
+  "now": {
+    "current": "ธีมปัจจุบัน",
+    "left": "เหลือ {time}",
+    "next": "ถัดไป",
+    "starts": "เริ่ม {time}",
+    "next_dual": "ช่วงคะแนนคู่ถัดไป"
+  },
+  "days": "วันของเซิร์ฟเวอร์",
+  "today": "วันนี้",
+  "ad": {
+    "label": "ธีมชิงแชมป์ศึกกิลด์",
+    "break": "ชิงแชมป์ศึกกิลด์หยุดทุกวันอาทิตย์ ให้โฟกัสที่ช่วงเตรียมสงครามอยู่รอดอย่างเดียว"
+  },
+  "timeline": {
+    "title": "ไทม์ไลน์",
+    "slot": "ช่วงที่ {number}",
+    "dual": "คะแนนคู่: แอ็กชันเดียวกันได้คะแนนในทั้งสองกิจกรรม"
+  },
+  "matrix": {
+    "title": "ตารางแอ็กชัน",
+    "dual": "คะแนนคู่",
+    "sp_only": "เฉพาะเตรียมสงครามอยู่รอด",
+    "ad_only": "เฉพาะชิงแชมป์ศึกกิลด์"
+  },
+  "officials": {
+    "label": "ตำแหน่งที่แนะนำ",
+    "best": "ดีที่สุด",
+    "also": "ช่วยได้เช่นกัน",
+    "none": "ไม่มีบัฟเมืองหลวงที่สำคัญ"
+  },
+  "themes": {
+    "shelter_expansion": "สร้างที่หลบภัย",
+    "hero_initiative": "พัฒนาฮีโร่",
+    "unit_training": "ฝึกฝนทหาร",
+    "age_of_science": "วิจัยเทคโนโลยี",
+    "arms_expert": "คนดังเตรียมสงคราม",
+    "keep_progressing": "พัฒนายิ่งขึ้น",
+    "holistic_growth": "พัฒนาครบด้าน",
+    "enemy_buster": "เอาชนะศัตรู"
+  },
+  "titles": {
+    "vice_president": "รองประธานาธิบดี",
+    "scale_of_law": "ตาชั่งลำดับ",
+    "supreme_general": "จอมพลสูงสุด",
+    "secretary_of_construction": "รัฐมนตรีอาคาร",
+    "secretary_of_science": "รัฐมนตรีวิจัย",
+    "secretary_of_security": "รัฐมนตรีคุ้มครองประเทศ"
+  },
+  "actions": {
+    "construction_speed_ups": "เร่งสปีดสิ่งก่อสร้าง",
+    "finish_building_upgrades": "อัปเกรดสิ่งก่อสร้างให้เสร็จ",
+    "recruitment_tickets": "ตั๋วรับสมัคร",
+    "hero_fragments": "ชิ้นส่วนฮีโร่",
+    "exclusive_equipment_fragments": "ชิ้นส่วนอุปกรณ์เฉพาะ",
+    "training_speed_ups": "เร่งสปีดฝึกฝน",
+    "complete_new_unit_batches": "ฝึกฝนทหารใหม่ให้เสร็จ",
+    "promote_units_to_higher_tiers": "เลื่อนขั้นทหาร",
+    "consume_advanced_tactical_rations": "ใช้อาหารกลยุทธ์ขั้นสูง",
+    "consume_nutrient_potions": "ใช้ยาวิตามิน",
+    "consume_potential_chips": "ใช้ชิปศักยภาพ",
+    "consume_special_ops_honor_medals": "ใช้ตราเกียรติยศพิเศษ",
+    "consume_standard_training_protocols": "ใช้กฏฝึกพิเศษทั่วไป",
+    "consume_advanced_training_protocols": "ใช้กฏฝึกพิเศษขั้นสูง",
+    "research_speed_ups": "เร่งสปีดวิจัย",
+    "finish_science_tech_research": "วิจัยเทคโนโลยีให้เสร็จ",
+    "wisdom_medals": "ตราปัญญา",
+    "gears": "เฟือง",
+    "titaniums": "อัลลอยไทเทเนียม",
+    "design_blueprints": "แผนภาพดีไซน์",
+    "power_cores": "คอร์พลังงาน",
+    "hero_equipment_lucky_chests": "หีบโชคดีอุปกรณ์ฮีโร่",
+    "open_chip_chests": "เปิดหีบชิป",
+    "field_resource_gathering": "รวบรวมทรัพยากรในแผนที่",
+    "complete_radar_missions": "ทำเหตุการณ์เรดาร์ให้สำเร็จ",
+    "s_class_truck_escorts": "คุ้มกันรถขนของแบล็คโกลด์คุณภาพ S",
+    "orange_shadow_call_missions": "ภารกิจเคลื่อนที่ดั่งเงาสีส้ม",
+    "kill_roamer_zombies": "กำจัดซอมบี้เร่ร่อน",
+    "kill_boomer_zombies": "กำจัดซอมบี้ขนาดยักษ์",
+    "kill_enemy_units": "กำจัดทหารศัตรู",
+    "lose_units_in_battle": "สูญเสียทหารในการรบ"
+  }
+}

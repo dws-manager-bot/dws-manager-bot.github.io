@@ -1,0 +1,49 @@
+{
+  "calculators": "計算機",
+  "titles": {
+    "precision_parts": "精密部品",
+    "vehicle_level": "改造車レベル",
+    "vehicle_parts": "改造車部品",
+    "hero_weapon": "ヒーロー専属武器",
+    "hero_stars": "ヒーロー星",
+    "hero_equipment": "ヒーロー装備",
+    "vehicle_chips": "改造車チップ"
+  },
+  "note": "バフ適用前の設定値です。ゲーム内の実際の消費はこれより少ない場合があります。",
+  "source": "Dark War Survival {build}",
+  "per_press": "レベルごとではなく、ボタンを押すたびに消費します。",
+  "error": "データを読み込めませんでした",
+  "empty": "まだ選択されていません",
+  "from": "開始",
+  "to": "目標",
+  "add_row": "行を追加",
+  "remove_row": "行を削除",
+  "reset": "リセット",
+  "owned": "所持済み",
+  "covered": "充足",
+  "short": "{amount} 不足",
+  "total_needed": "必要総量",
+  "details": "詳細",
+  "total": "合計",
+  "level": "Lv.",
+  "lv": "Lv.{level}",
+  "tick": "星{star}ランク{rank}",
+  "red": "レッド",
+  "max": "星MAXに到達しました",
+  "fragment": "フラグメント",
+  "building": "建物",
+  "part": "部品",
+  "select_weapon": "武器を選ぶ",
+  "chip": "チップ",
+  "equip_breakthrough": "装備突破",
+  "purple": "パープル",
+  "orange": "オレンジ",
+  "per_level": "1レベルあたり {amount}",
+  "chip_exp": "チップEXP {amount}",
+  "presses": {
+    "other": "{amount}回"
+  },
+  "presses_total": {
+    "other": "ボタンを合計 {amount} 回押します"
+  }
+}

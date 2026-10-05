@@ -1,0 +1,49 @@
+{
+  "calculators": "Hesaplayıcılar",
+  "titles": {
+    "precision_parts": "Hassas Parçalar",
+    "vehicle_level": "Modifiye Edilmiş Araç Seviyesi",
+    "vehicle_parts": "Modifiye Araç Aksesuarları",
+    "hero_weapon": "Kahramanlara Özel Ekipmanlar",
+    "hero_stars": "Kahraman Yıldız Derecesi",
+    "hero_equipment": "Kahraman Ekipmanı",
+    "vehicle_chips": "Modifiye Araba Çip"
+  },
+  "note": "Buff öncesi yapılandırma maliyeti — oyun içi fiyatlar daha düşük olabilir.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Her seviye başına değil, her düğmeye basışta ücretlendirilir.",
+  "error": "Veriler yüklenemedi",
+  "empty": "Henüz seçim yok",
+  "from": "Başlangıç",
+  "to": "Hedef",
+  "add_row": "Satır ekle",
+  "remove_row": "Satırı kaldır",
+  "reset": "Sıfırla",
+  "owned": "Mevcut",
+  "covered": "Yeterli",
+  "short": "{amount} eksik",
+  "total_needed": "Gereken toplam",
+  "details": "Detaylar",
+  "total": "Toplam",
+  "level": "Seviye",
+  "lv": "Lv.{level}",
+  "tick": "{star} Yıldızlar - Aşama {rank}",
+  "red": "Kırmızı",
+  "max": "Maksimum yıldıza yükseldi",
+  "fragment": "Parça",
+  "building": "Bina",
+  "part": "Aksesuarlar",
+  "select_weapon": "Silah Seç",
+  "chip": "Çip",
+  "equip_breakthrough": "Ekipman Atılım",
+  "purple": "Mor",
+  "orange": "Turuncu",
+  "per_level": "Seviye başına {amount}",
+  "chip_exp": "{amount} çip EXP",
+  "presses": {
+    "other": "{amount} basış"
+  },
+  "presses_total": {
+    "other": "Toplam {amount} kez basılır"
+  }
+}

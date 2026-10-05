@@ -1,0 +1,51 @@
+{
+  "calculators": "Calculators",
+  "titles": {
+    "precision_parts": "Precision Part",
+    "vehicle_level": "Mod Vehicle Level",
+    "vehicle_parts": "Mod Vehicle Parts",
+    "hero_weapon": "Hero Exclusive Equipment",
+    "hero_stars": "Hero Star Level",
+    "hero_equipment": "Hero Equipment",
+    "vehicle_chips": "Mod Vehicle Chip"
+  },
+  "note": "Config cost before buffs — in-game prices can be lower.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Charged per button press, not per level.",
+  "error": "Could not load the data",
+  "empty": "Nothing selected yet",
+  "from": "From",
+  "to": "To",
+  "add_row": "Add row",
+  "remove_row": "Remove row",
+  "reset": "Reset",
+  "owned": "Owned",
+  "covered": "Covered",
+  "short": "Short {amount}",
+  "total_needed": "Total needed",
+  "details": "Details",
+  "total": "Total",
+  "level": "Level",
+  "lv": "Lv.{level}",
+  "tick": "Star {star} Rank {rank}",
+  "red": "Red",
+  "max": "Max Star Level reached",
+  "fragment": "Fragment",
+  "building": "Building",
+  "part": "Parts",
+  "select_weapon": "Select Weapon",
+  "chip": "Chip",
+  "equip_breakthrough": "Equipment Breakthrough",
+  "purple": "Purple",
+  "orange": "Orange",
+  "per_level": "{amount} per level",
+  "chip_exp": "{amount} chip EXP",
+  "presses": {
+    "one": "{amount} press",
+    "other": "{amount} presses"
+  },
+  "presses_total": {
+    "one": "{amount} button press in total",
+    "other": "{amount} button presses in total"
+  }
+}

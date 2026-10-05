@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Pages de la carte de la ruche",
+    "current": "Carte actuelle",
+    "generator": "Générateur"
+  },
+  "current": {
+    "title": "Carte de la ruche actuelle",
+    "subtitle": "La formation de refuges appliquée en ce moment dans le jeu.",
+    "applied": "Voici la disposition de ruche que l’Alliance applique en ce moment.",
+    "snapshot": "D’après les données des membres relevées le {date}.",
+    "snapshot_unknown": "Un instantané figé de la liste des membres.",
+    "to_generator": "Vous préparez une nouvelle disposition ? Ouvrir le générateur →",
+    "loading": "Chargement de la carte appliquée…",
+    "load_failed": "Impossible de charger l’instantané : {reason}"
+  },
+  "generator": {
+    "title": "Générateur de carte de la ruche",
+    "subtitle": "Aperçu en direct à partir de la liste actuelle de l’Alliance — pour préparer la prochaine disposition.",
+    "to_current": "Voir la carte appliquée en ce moment →",
+    "hint": "Les données viennent en direct du Google Sheet — touchez ↻ Actualiser après l’avoir modifié. Pincez ou touchez « Taille réelle » pour zoomer · Télécharger le PNG pour la pleine résolution.",
+    "layout": "Disposition",
+    "stick_groups": "Groupes liés",
+    "spread_top10": "Répartir le Top 10",
+    "spread_lv8": "Répartir les Lv8",
+    "refresh": "Actualiser",
+    "fetching": "Récupération des dernières données du Google Sheet…",
+    "load_failed": "Impossible de charger la liste des membres : {reason}"
+  },
+  "fit_width": "Ajuster à la largeur",
+  "actual_size": "Taille réelle",
+  "download_png": "Télécharger le PNG",
+  "render_error": "Erreur d’affichage : {reason}",
+  "reason": {
+    "http": "la feuille a répondu HTTP {status}",
+    "not_public": "la feuille n’est pas publiée sur le web",
+    "empty": "aucun membre dans la feuille",
+    "network": "impossible de joindre Google Sheets"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} membre · le plus loin ≈ {d} cases",
+    "other": "v{v} · {shape} · {count} membres · le plus loin ≈ {d} cases"
+  },
+  "shape": {
+    "square": "Carré",
+    "gap_square": "Carré espacé",
+    "diamond": "Losange",
+    "circle": "Cercle",
+    "heart": "Cœur",
+    "cat_face": "Tête de chat",
+    "middle_finger": "Doigt d’honneur",
+    "skull": "Crâne",
+    "snowflake": "Flocon de neige"
+  },
+  "canvas": {
+    "title": "Carte de la ruche PoU",
+    "shelters": {
+      "one": "refuge",
+      "other": "refuges"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Qualité industriel",
+    "lv": "Lv",
+    "one_tile": "1 case",
+    "shelter_3x3": "refuge 3×3",
+    "lane": "allée",
+    "tiles": "cases",
+    "gap_every_2": "1 case d’écart tous les 2 refuges",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}
