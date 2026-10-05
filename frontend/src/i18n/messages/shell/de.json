@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Planer",
+    "events": "Events",
+    "calculators": "Rechner",
+    "hive_map": "Hive-Karte",
+    "pass_war": "Passkrieg-Karte"
+  },
+  "group": {
+    "alliance": "Allianz"
+  },
+  "sign_out": "Abmelden",
+  "loading": "Wird geladen…",
+  "prefs": {
+    "open": "Sprache und Zeitzone",
+    "language": "Sprache",
+    "zone": "Zeitzone",
+    "server_time": "Serverzeit (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Häufig verwendet",
+    "africa": "Afrika",
+    "america": "Amerika",
+    "antarctica": "Antarktis",
+    "arctic": "Arktis",
+    "asia": "Asien",
+    "atlantic": "Atlantik",
+    "australia": "Australien",
+    "europe": "Europa",
+    "indian": "Indischer Ozean",
+    "pacific": "Pazifik"
+  },
+  "login": {
+    "prompt": "Melde dich mit dem Discord-Konto an, das du auf dem PoU-Server nutzt.",
+    "button": "Mit Discord anmelden",
+    "refused": "Dieses Discord-Konto hat auf dem PoU-Server keine Members-Rolle. Bitte einen Admin darum."
+  }
+}

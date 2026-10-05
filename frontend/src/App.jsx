@@ -1,4 +1,6 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { PrefsButton, PrefsPanel } from './components/Prefs.jsx'
+import { useI18n } from './i18n/I18n.jsx'
 import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/api.js'
 import { navigate, onLinkClick, rememberReturn, takeReturn, usePath } from './lib/route.js'
 
@@ -13,12 +15,23 @@ const PassWar = lazy(() => import('./pages/PassWar.jsx'))
 const Season = lazy(() => import('./pages/Season.jsx'))
 const Setup = lazy(() => import('./pages/Setup.jsx'))
 const WarPlanner = lazy(() => import('./pages/WarPlanner.jsx'))
+const Planner = lazy(() => import('./alliance/planner/Planner.jsx'))
+const AllianceEvents = lazy(() => import('./alliance/events/Events.jsx'))
+const Calculators = lazy(() => import('./alliance/calculators/Calculators.jsx'))
+const HiveMap = lazy(() => import('./alliance/hive/HiveMap.jsx'))
 
 /* Alliance pages are for everyone who can sign in: the Members role, an admin
-   role, or the server owner. Admin pages are hidden from members, and the API
-   refuses them anyway. */
+   role, or the server owner. They are in the reader's language; `nav` names
+   their label in messages/shell. Admin pages are hidden from members, the API
+   refuses them anyway, and they stay in English. A `prefix` page also owns
+   the addresses under its own, like /calculator/hero-stars.
+   The alliance addresses are pou-rocks.github.io's, so its old links land. */
 const PAGES = [
-  { id: 'passwar', path: '/pass-war', label: 'Pass War map', Component: PassWar },
+  { id: 'planner', path: '/planner', nav: 'planner', Component: Planner },
+  { id: 'alliance-events', path: '/events', nav: 'events', Component: AllianceEvents },
+  { id: 'calculators', path: '/calculator', nav: 'calculators', Component: Calculators, prefix: true },
+  { id: 'hive', path: '/hive-map', nav: 'hive_map', Component: HiveMap, prefix: true },
+  { id: 'passwar', path: '/pass-war', nav: 'pass_war', Component: PassWar },
   { id: 'setup', path: '/admin/setup', label: 'Set up', Component: Setup, admin: true },
   { id: 'announcements', path: '/admin/announcements', label: 'Announcements', Component: Announcements, admin: true },
   { id: 'events', path: '/admin/events', label: 'Events', Component: Events, admin: true },
@@ -31,24 +44,27 @@ const PAGES = [
 ]
 
 const GROUPS = [
-  { name: 'Alliance', pages: PAGES.filter((p) => !p.admin) },
-  { name: 'Admin', pages: PAGES.filter((p) => p.admin), admin: true },
+  { name: 'alliance', pages: PAGES.filter((p) => !p.admin) },
+  { name: 'admin', pages: PAGES.filter((p) => p.admin), admin: true },
 ]
+
+const owns = (page, path) => page.path === path || (page.prefix && path.startsWith(`${page.path}/`))
 
 export default function App() {
   const [user, setUser] = useState(null)
   const [status, setStatus] = useState('loading')
-  const [authError, setAuthError] = useState(null)
+  const [authError, setAuthError] = useState(false)
   const [health, setHealth] = useState(null)
-  const path = usePath()
+  const [prefsOpen, setPrefsOpen] = useState(false)
+  // pou-rocks wrote its addresses with a trailing slash.
+  const path = usePath().replace(/(.)\/+$/, '$1')
   const nav = useRef(null)
+  const { t, lang, dir } = useI18n()
 
   useEffect(() => {
     const result = consumeTokenFromUrl()
     if (result?.error === 'not_authorised') {
-      setAuthError(
-        'That Discord account does not have the Members role in the PoU server. Ask an admin for it.',
-      )
+      setAuthError(true)
       setStatus('anonymous')
       return
     }
@@ -71,13 +87,20 @@ export default function App() {
 
   const groups = user ? GROUPS.filter((g) => !g.admin || user.is_admin) : []
   const visible = groups.flatMap((g) => g.pages)
-  const current = visible.find((p) => p.path === path)
+  const current = visible.find((p) => owns(p, path))
   // The root, an old link, or an admin page opened by a member: land on the
   // first page this person can see.
   const landing = user?.is_admin ? PAGES.find((p) => p.admin) : visible[0]
   useEffect(() => {
     if (user && !current) navigate(landing.path, { replace: true })
   }, [user, current, landing])
+
+  // Admin pages are English whatever the reader picked, so the document says so.
+  const reading = current && !current.admin
+  useEffect(() => {
+    document.documentElement.lang = reading ? lang : 'en'
+    document.documentElement.dir = reading ? dir : 'ltr'
+  }, [reading, lang, dir])
 
   // On a phone the admin tabs start off-screen; bring the open one into view.
   useEffect(() => {
@@ -98,7 +121,7 @@ export default function App() {
   }, [status])
 
   if (status === 'loading') {
-    return <div className="centered muted">Loading…</div>
+    return <div className="centered muted">{t('shell.loading')}</div>
   }
 
   if (status === 'anonymous') {
@@ -109,12 +132,10 @@ export default function App() {
             <span className="brand-tag">[PoU]</span> Path of Unity
           </h1>
           <p className="brand-sub muted">Alliance Manager</p>
-          <p className="muted">
-            Sign in with the Discord account you use in the PoU server.
-          </p>
-          {authError && <p className="error">{authError}</p>}
+          <p className="muted">{t('shell.login.prompt')}</p>
+          {authError && <p className="error">{t('shell.login.refused')}</p>}
           <a className="btn primary" href={loginUrl()} onClick={rememberReturn}>
-            Sign in with Discord
+            {t('shell.login.button')}
           </a>
         </div>
       </div>
@@ -144,6 +165,7 @@ export default function App() {
               </span>
             )}
             <span className="who muted small">{user.username}</span>
+            <PrefsButton open={prefsOpen} onToggle={() => setPrefsOpen((o) => !o)} />
             <button
               className="btn ghost small"
               onClick={() => {
@@ -151,16 +173,21 @@ export default function App() {
                 window.location.reload()
               }}
             >
-              Sign out
+              {t('shell.sign_out')}
             </button>
           </div>
         </div>
+        {prefsOpen && <PrefsPanel />}
         {/* Scrolls sideways rather than wrapping, which would double the
             header height on a narrow phone. */}
         <nav className="tabs" ref={nav}>
           {groups.map((group) => (
             <div className="tab-group" key={group.name}>
-              {groups.length > 1 && <span className="tab-group-name">{group.name}</span>}
+              {groups.length > 1 && (
+                <span className="tab-group-name">
+                  {group.admin ? 'Admin' : t('shell.group.alliance')}
+                </span>
+              )}
               {group.pages.map((p) => (
                 <a
                   key={p.id}
@@ -169,7 +196,7 @@ export default function App() {
                   aria-current={p.id === current.id ? 'page' : undefined}
                   onClick={(e) => onLinkClick(e, p.path)}
                 >
-                  {p.label}
+                  {p.nav ? t(`shell.nav.${p.nav}`) : p.label}
                 </a>
               ))}
             </div>
@@ -177,7 +204,7 @@ export default function App() {
         </nav>
       </header>
       <main>
-        <Suspense fallback={<div className="muted">Loading…</div>}>
+        <Suspense fallback={<div className="muted">{t('shell.loading')}</div>}>
           <Active onDone={goTo} user={user} />
         </Suspense>
       </main>

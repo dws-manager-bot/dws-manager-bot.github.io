@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Planlayıcı",
+    "events": "Etkinlikler",
+    "calculators": "Hesaplayıcılar",
+    "hive_map": "Kovan Haritası",
+    "pass_war": "Geçit Savaşı haritası"
+  },
+  "group": {
+    "alliance": "İttifak"
+  },
+  "sign_out": "Çıkış yap",
+  "loading": "Yükleniyor…",
+  "prefs": {
+    "open": "Dil ve saat dilimi",
+    "language": "Dil",
+    "zone": "Saat dilimi",
+    "server_time": "Sunucu saati (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Sık kullanılan",
+    "africa": "Afrika",
+    "america": "Amerika",
+    "antarctica": "Antarktika",
+    "arctic": "Arktik",
+    "asia": "Asya",
+    "atlantic": "Atlas Okyanusu",
+    "australia": "Avustralya",
+    "europe": "Avrupa",
+    "indian": "Hint Okyanusu",
+    "pacific": "Pasifik Okyanusu"
+  },
+  "login": {
+    "prompt": "PoU sunucusunda kullandığın Discord hesabıyla giriş yap.",
+    "button": "Discord ile giriş yap",
+    "refused": "Bu Discord hesabının PoU sunucusunda Members rolü yok. Bir yöneticiden iste."
+  }
+}
