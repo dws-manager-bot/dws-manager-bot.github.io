@@ -1,0 +1,86 @@
+{
+  "title": "生存戰備與聯盟對決賽",
+  "caption": "規劃生存戰備的輪替與聯盟對決賽的消耗時段，讓同樣的道具盡可能在兩邊都拿到分數。",
+  "zone": "{zone} 時間",
+  "now": {
+    "current": "目前主題",
+    "left": "剩餘 {time}",
+    "next": "下一個",
+    "starts": "{time} 開始",
+    "next_dual": "下一個雙重計分"
+  },
+  "days": "伺服器日",
+  "today": "今天",
+  "ad": {
+    "label": "聯盟對決賽主題",
+    "break": "聯盟對決賽週日休息。請專心於生存戰備時段。"
+  },
+  "timeline": {
+    "title": "時間軸",
+    "slot": "第{number}時段",
+    "dual": "雙重計分：同樣的行動在兩個活動中都會計分"
+  },
+  "matrix": {
+    "title": "行動矩陣",
+    "dual": "雙重計分",
+    "sp_only": "僅生存戰備",
+    "ad_only": "僅聯盟對決賽"
+  },
+  "officials": {
+    "label": "推薦官職",
+    "best": "最佳",
+    "also": "也有幫助",
+    "none": "無明顯首都增益"
+  },
+  "themes": {
+    "shelter_expansion": "建設避難所",
+    "hero_initiative": "培養英雄",
+    "unit_training": "訓練士兵",
+    "age_of_science": "研究科技",
+    "arms_expert": "戰備達人",
+    "keep_progressing": "與日俱進",
+    "holistic_growth": "全面發展",
+    "enemy_buster": "擊敗敵軍"
+  },
+  "titles": {
+    "vice_president": "副總統",
+    "scale_of_law": "秩序天平",
+    "supreme_general": "至高將軍",
+    "secretary_of_construction": "建設部長",
+    "secretary_of_science": "科研部長",
+    "secretary_of_security": "國防部長"
+  },
+  "actions": {
+    "construction_speed_ups": "建築加速",
+    "finish_building_upgrades": "完成建築升級",
+    "recruitment_tickets": "招募券",
+    "hero_fragments": "英雄碎片",
+    "exclusive_equipment_fragments": "專屬裝備碎片",
+    "training_speed_ups": "訓練加速",
+    "complete_new_unit_batches": "完成新士兵訓練",
+    "promote_units_to_higher_tiers": "士兵晉升",
+    "consume_advanced_tactical_rations": "消耗高級戰術口糧",
+    "consume_nutrient_potions": "消耗營養藥劑",
+    "consume_potential_chips": "消耗潛能晶片",
+    "consume_special_ops_honor_medals": "消耗特勤榮譽勳章",
+    "consume_standard_training_protocols": "消耗普通特訓條例",
+    "consume_advanced_training_protocols": "消耗高級特訓條例",
+    "research_speed_ups": "研究加速",
+    "finish_science_tech_research": "完成科技研究",
+    "wisdom_medals": "智慧勳章",
+    "gears": "齒輪",
+    "titaniums": "鈦合金",
+    "design_blueprints": "設計圖紙",
+    "power_cores": "能源核心",
+    "hero_equipment_lucky_chests": "英雄裝備幸運寶箱",
+    "open_chip_chests": "開啟晶片寶箱",
+    "field_resource_gathering": "野外資源採集",
+    "complete_radar_missions": "完成雷達事件",
+    "s_class_truck_escorts": "護送S品質黑金貨車",
+    "orange_shadow_call_missions": "橙色暗影行動任務",
+    "kill_roamer_zombies": "擊殺遊蕩喪屍",
+    "kill_boomer_zombies": "擊殺巨型喪屍",
+    "kill_enemy_units": "擊殺敵方部隊",
+    "lose_units_in_battle": "戰鬥中損失部隊"
+  }
+}

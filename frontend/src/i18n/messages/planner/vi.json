@@ -1,0 +1,86 @@
+{
+  "title": "Chiến Bị Sinh Tồn và Quyết Đấu Liên Minh",
+  "caption": "Lên kế hoạch cho các chủ đề Chiến Bị Sinh Tồn và thời điểm tiêu hao trong Quyết Đấu Liên Minh để cùng một vật phẩm được tính điểm hai lần khi có thể.",
+  "zone": "Giờ theo {zone}",
+  "now": {
+    "current": "Chủ đề hiện tại",
+    "left": "Còn {time}",
+    "next": "Tiếp theo",
+    "starts": "Bắt đầu lúc {time}",
+    "next_dual": "Khung điểm kép tiếp theo"
+  },
+  "days": "Ngày máy chủ",
+  "today": "Hôm nay",
+  "ad": {
+    "label": "Chủ đề Quyết Đấu Liên Minh",
+    "break": "Quyết Đấu Liên Minh nghỉ vào Chủ Nhật. Hãy tập trung hoàn toàn vào các khung Chiến Bị Sinh Tồn."
+  },
+  "timeline": {
+    "title": "Dòng thời gian",
+    "slot": "Khung {number}",
+    "dual": "Điểm kép: cùng một hành động được tính điểm ở cả hai sự kiện"
+  },
+  "matrix": {
+    "title": "Bảng hành động",
+    "dual": "Điểm kép",
+    "sp_only": "Chỉ Chiến Bị Sinh Tồn",
+    "ad_only": "Chỉ Quyết Đấu Liên Minh"
+  },
+  "officials": {
+    "label": "Chức vụ đề xuất",
+    "best": "Tốt nhất",
+    "also": "Cũng hữu ích",
+    "none": "Không có buff thủ đô đáng kể"
+  },
+  "themes": {
+    "shelter_expansion": "Xây Dựng Nơi Trú Ẩn",
+    "hero_initiative": "Bồi Dưỡng Tướng",
+    "unit_training": "Huấn Luyện Lính",
+    "age_of_science": "Nghiên cứu Công Nghệ",
+    "arms_expert": "Cao Thủ Chiến Bị",
+    "keep_progressing": "Tiến Bộ Không Ngừng",
+    "holistic_growth": "Phát Triển Toàn Diện",
+    "enemy_buster": "Đánh bại quân địch"
+  },
+  "titles": {
+    "vice_president": "Phó Tổng Thống",
+    "scale_of_law": "Cân Bằng Trật Tự",
+    "supreme_general": "Tướng Quân Tối Cao",
+    "secretary_of_construction": "Bộ Trưởng Xây Dựng",
+    "secretary_of_science": "Bộ Trưởng Khoa Học",
+    "secretary_of_security": "Bộ Trưởng Quốc Phòng"
+  },
+  "actions": {
+    "construction_speed_ups": "Tăng Tốc Kiến Trúc",
+    "finish_building_upgrades": "Hoàn thành tăng cấp Kiến Trúc",
+    "recruitment_tickets": "Vé Chiêu Mộ",
+    "hero_fragments": "Mảnh Tướng",
+    "exclusive_equipment_fragments": "Mảnh Trang Bị Độc Quyền",
+    "training_speed_ups": "Tăng Tốc Huấn Luyện",
+    "complete_new_unit_batches": "Hoàn thành huấn luyện Lính mới",
+    "promote_units_to_higher_tiers": "Thăng cấp Lính",
+    "consume_advanced_tactical_rations": "Tiêu hao Khẩu Phần Chiến Thuật-Cao",
+    "consume_nutrient_potions": "Tiêu hao Thuốc Dinh Dưỡng",
+    "consume_potential_chips": "Tiêu hao Chip Tiềm Năng",
+    "consume_special_ops_honor_medals": "Tiêu hao Huân Chương Vinh Dự Đặc Nhiệm",
+    "consume_standard_training_protocols": "Tiêu hao Lệnh Huấn Luyện-Thường",
+    "consume_advanced_training_protocols": "Tiêu hao Lệnh Huấn Luyện-Cao",
+    "research_speed_ups": "Tăng Tốc Nghiên Cứu",
+    "finish_science_tech_research": "Hoàn thành nghiên cứu Công Nghệ",
+    "wisdom_medals": "Huân Chương Trí Tuệ",
+    "gears": "Bánh Răng",
+    "titaniums": "Hợp Kim Titan",
+    "design_blueprints": "Bản Thiết Kế",
+    "power_cores": "Lõi Năng Lượng",
+    "hero_equipment_lucky_chests": "Rương Trang Bị Tướng May Mắn",
+    "open_chip_chests": "Mở Rương Chip",
+    "field_resource_gathering": "Thu thập tài nguyên ngoài bản đồ",
+    "complete_radar_missions": "Hoàn thành Sự Kiện Radar",
+    "s_class_truck_escorts": "Hộ tống Xe Tải Hắc Kim S",
+    "orange_shadow_call_missions": "Nhiệm vụ Hành Động Bóng Đêm cam",
+    "kill_roamer_zombies": "Diệt Zombie Lang Thang",
+    "kill_boomer_zombies": "Diệt Zombie Khổng Lồ",
+    "kill_enemy_units": "Tiêu diệt Lính địch",
+    "lose_units_in_battle": "Mất Lính trong trận"
+  }
+}

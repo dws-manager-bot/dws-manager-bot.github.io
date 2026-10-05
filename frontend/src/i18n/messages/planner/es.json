@@ -1,0 +1,86 @@
+{
+  "title": "Preparación de Supervivencia y Competencia de Alianzas",
+  "caption": "Planifica los temas de Preparación de Supervivencia y tus gastos en la Competencia de Alianzas para que los mismos objetos puntúen dos veces siempre que sea posible.",
+  "zone": "Horarios en {zone}",
+  "now": {
+    "current": "Tema actual",
+    "left": "Quedan {time}",
+    "next": "Siguiente",
+    "starts": "Empieza a las {time}",
+    "next_dual": "Próxima doble puntuación"
+  },
+  "days": "Día del servidor",
+  "today": "Hoy",
+  "ad": {
+    "label": "Tema de la Competencia de Alianzas",
+    "break": "La Competencia de Alianzas descansa los domingos. Concéntrate en las ventanas de Preparación de Supervivencia."
+  },
+  "timeline": {
+    "title": "Cronología",
+    "slot": "Franja {number}",
+    "dual": "Doble puntuación: las mismas acciones cuentan en ambos eventos"
+  },
+  "matrix": {
+    "title": "Matriz de acciones",
+    "dual": "Doble puntuación",
+    "sp_only": "Solo Preparación de Supervivencia",
+    "ad_only": "Solo Competencia de Alianzas"
+  },
+  "officials": {
+    "label": "Cargos recomendados",
+    "best": "Mejor",
+    "also": "También ayuda",
+    "none": "Sin bonificaciones notables de la capital"
+  },
+  "themes": {
+    "shelter_expansion": "Construir el Refugio",
+    "hero_initiative": "Cultivar héroes",
+    "unit_training": "Entrenamiento de Unidad",
+    "age_of_science": "Investigar Tecnologías",
+    "arms_expert": "Experto en Armamento",
+    "keep_progressing": "Seguir Progresando",
+    "holistic_growth": "Desarrollo integral",
+    "enemy_buster": "Derrotar Enemigos"
+  },
+  "titles": {
+    "vice_president": "Vicepresidente",
+    "scale_of_law": "Balanza del Orden",
+    "supreme_general": "General Supremo",
+    "secretary_of_construction": "Ministro de Construcción",
+    "secretary_of_science": "Ministro de Investigación",
+    "secretary_of_security": "Ministro de Defensa"
+  },
+  "actions": {
+    "construction_speed_ups": "Aceleraciones de construcción",
+    "finish_building_upgrades": "Completar mejoras de edificios",
+    "recruitment_tickets": "Cartas de recluta",
+    "hero_fragments": "Fragmentos de héroe",
+    "exclusive_equipment_fragments": "Fragmentos de equipo exclusivo",
+    "training_speed_ups": "Aceleraciones de entrenamiento",
+    "complete_new_unit_batches": "Completar entrenamientos de unidades",
+    "promote_units_to_higher_tiers": "Promover unidades",
+    "consume_advanced_tactical_rations": "Consumir raciones tácticas avanzadas",
+    "consume_nutrient_potions": "Consumir pociones nutricionales",
+    "consume_potential_chips": "Consumir chips de potencial",
+    "consume_special_ops_honor_medals": "Consumir medallas de honor de servicio especial",
+    "consume_standard_training_protocols": "Consumir reglamentos de entrenamiento especial normales",
+    "consume_advanced_training_protocols": "Consumir reglamentos de entrenamiento especial avanzados",
+    "research_speed_ups": "Aceleraciones de investigación",
+    "finish_science_tech_research": "Completar investigaciones de tecnología",
+    "wisdom_medals": "Medallas de Sabiduría",
+    "gears": "Engranajes",
+    "titaniums": "Aleación de Titanio",
+    "design_blueprints": "Planos",
+    "power_cores": "Núcleos de Energía",
+    "hero_equipment_lucky_chests": "Cofres de Suerte de Equipo de Héroe",
+    "open_chip_chests": "Abrir cajas de chips",
+    "field_resource_gathering": "Recolectar recursos en el mapa",
+    "complete_radar_missions": "Completar tareas de radar",
+    "s_class_truck_escorts": "Escoltar camiones de Oro Negro de calidad S",
+    "orange_shadow_call_missions": "Misiones naranjas de Acción Sombra",
+    "kill_roamer_zombies": "Matar zombis errantes",
+    "kill_boomer_zombies": "Matar zombis gigantes",
+    "kill_enemy_units": "Matar unidades enemigas",
+    "lose_units_in_battle": "Perder unidades en batalla"
+  }
+}

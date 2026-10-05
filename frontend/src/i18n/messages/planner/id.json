@@ -1,0 +1,86 @@
+{
+  "title": "Persiapan Bertahan Hidup dan Duel Aliansi",
+  "caption": "Perencanaan rotasi Persiapan Bertahan Hidup dan waktu penyelesaian Duel Aliansi agar item yang sama dapat mencetak skor ganda.",
+  "zone": "Waktu dalam {zone}",
+  "now": {
+    "current": "Tema Saat Ini",
+    "left": "{time} tersisa",
+    "next": "Berikutnya",
+    "starts": "Mulai {time}",
+    "next_dual": "Skor Ganda Berikutnya"
+  },
+  "days": "Hari server",
+  "today": "Hari Ini",
+  "ad": {
+    "label": "Tema Duel Aliansi",
+    "break": "Duel Aliansi libur setiap Minggu. Fokus ke jendela SP saja."
+  },
+  "timeline": {
+    "title": "Lini masa",
+    "slot": "Slot {number}",
+    "dual": "Skor ganda: aksi yang sama dihitung di kedua event"
+  },
+  "matrix": {
+    "title": "Matriks aksi",
+    "dual": "Skor ganda",
+    "sp_only": "Khusus SP",
+    "ad_only": "Khusus Duel Aliansi"
+  },
+  "officials": {
+    "label": "Pejabat Rekomendasi",
+    "best": "Terbaik",
+    "also": "Juga membantu",
+    "none": "Tidak ada buff ibu kota yang berarti"
+  },
+  "themes": {
+    "shelter_expansion": "Bangun Shelter",
+    "hero_initiative": "Upgrade Hero",
+    "unit_training": "Latih Prajurit",
+    "age_of_science": "Teliti Teknologi",
+    "arms_expert": "Ahli Persenjataan",
+    "keep_progressing": "Terus Maju",
+    "holistic_growth": "Perkembangan Total",
+    "enemy_buster": "Kalahkan Pasukan Musuh"
+  },
+  "titles": {
+    "vice_president": "Wakil Presiden",
+    "scale_of_law": "Scales of Order",
+    "supreme_general": "Jenderal Supreme",
+    "secretary_of_construction": "Menteri Pembangunan",
+    "secretary_of_science": "Menteri Penelitian",
+    "secretary_of_security": "Menteri Pertahanan"
+  },
+  "actions": {
+    "construction_speed_ups": "Speed-up konstruksi",
+    "finish_building_upgrades": "Selesaikan upgrade bangunan",
+    "recruitment_tickets": "Tiket rekrutmen",
+    "hero_fragments": "Pecahan hero",
+    "exclusive_equipment_fragments": "Pecahan equipment eksklusif",
+    "training_speed_ups": "Speed-up pelatihan",
+    "complete_new_unit_batches": "Selesaikan batch unit baru",
+    "promote_units_to_higher_tiers": "Promosikan unit ke tier lebih tinggi",
+    "consume_advanced_tactical_rations": "Habiskan ransum taktis tingkat lanjut",
+    "consume_nutrient_potions": "Habiskan potion nutrisi",
+    "consume_potential_chips": "Habiskan chip potensi",
+    "consume_special_ops_honor_medals": "Habiskan medali kehormatan operasi khusus",
+    "consume_standard_training_protocols": "Habiskan protokol pelatihan standar",
+    "consume_advanced_training_protocols": "Habiskan protokol pelatihan tingkat lanjut",
+    "research_speed_ups": "Speed-up riset",
+    "finish_science_tech_research": "Selesaikan riset teknologi",
+    "wisdom_medals": "Medali kebijaksanaan",
+    "gears": "Gear",
+    "titaniums": "Titanium",
+    "design_blueprints": "Blueprint desain",
+    "power_cores": "Power core",
+    "hero_equipment_lucky_chests": "Peti keberuntungan equipment hero",
+    "open_chip_chests": "Buka chip chests",
+    "field_resource_gathering": "Pengumpulan resource lapangan",
+    "complete_radar_missions": "Selesaikan misi radar",
+    "s_class_truck_escorts": "Kawal truk kelas-S",
+    "orange_shadow_call_missions": "Misi panggilan shadow oranye",
+    "kill_roamer_zombies": "Bunuh zombie roamer",
+    "kill_boomer_zombies": "Bunuh zombie boomer",
+    "kill_enemy_units": "Bunuh unit musuh",
+    "lose_units_in_battle": "Kehilangan unit dalam pertempuran"
+  }
+}

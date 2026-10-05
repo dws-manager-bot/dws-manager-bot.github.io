@@ -1,0 +1,86 @@
+{
+  "title": "生存战备与联盟对决",
+  "caption": "规划你的生存战备轮换和联盟对决消耗窗口，让相同物品尽可能获得双倍积分。",
+  "zone": "{zone} 时间",
+  "now": {
+    "current": "当前主题",
+    "left": "剩余 {time}",
+    "next": "下一个",
+    "starts": "{time} 开始",
+    "next_dual": "下一个双倍积分"
+  },
+  "days": "服务器日",
+  "today": "今天",
+  "ad": {
+    "label": "联盟对决主题",
+    "break": "联盟对决周日休息。请专注于生存战备窗口。"
+  },
+  "timeline": {
+    "title": "时间轴",
+    "slot": "第{number}时段",
+    "dual": "双倍积分：同样的行动在两个活动中都计分"
+  },
+  "matrix": {
+    "title": "行动矩阵",
+    "dual": "双倍积分",
+    "sp_only": "仅生存战备",
+    "ad_only": "仅联盟对决"
+  },
+  "officials": {
+    "label": "推荐官职",
+    "best": "最优",
+    "also": "可选",
+    "none": "无显著首都增益"
+  },
+  "themes": {
+    "shelter_expansion": "建设避难所",
+    "hero_initiative": "培养英雄",
+    "unit_training": "训练士兵",
+    "age_of_science": "研究科技",
+    "arms_expert": "战备达人",
+    "keep_progressing": "与日俱进",
+    "holistic_growth": "全面发展",
+    "enemy_buster": "击败敌军"
+  },
+  "titles": {
+    "vice_president": "副总统",
+    "scale_of_law": "秩序天平",
+    "supreme_general": "至高将军",
+    "secretary_of_construction": "建设部长",
+    "secretary_of_science": "科研部长",
+    "secretary_of_security": "国防部长"
+  },
+  "actions": {
+    "construction_speed_ups": "建设加速",
+    "finish_building_upgrades": "完成建筑升级",
+    "recruitment_tickets": "招募券",
+    "hero_fragments": "英雄碎片",
+    "exclusive_equipment_fragments": "专属装备碎片",
+    "training_speed_ups": "训练加速",
+    "complete_new_unit_batches": "完成新部队训练",
+    "promote_units_to_higher_tiers": "部队晋升",
+    "consume_advanced_tactical_rations": "消耗高级战术口粮",
+    "consume_nutrient_potions": "消耗营养药剂",
+    "consume_potential_chips": "消耗潜力芯片",
+    "consume_special_ops_honor_medals": "消耗特种任务荣誉勋章",
+    "consume_standard_training_protocols": "消耗普通特训条例",
+    "consume_advanced_training_protocols": "消耗高级特训条例",
+    "research_speed_ups": "研究加速",
+    "finish_science_tech_research": "完成科技研究",
+    "wisdom_medals": "智慧勋章",
+    "gears": "齿轮",
+    "titaniums": "钛金",
+    "design_blueprints": "设计图纸",
+    "power_cores": "能量核心",
+    "hero_equipment_lucky_chests": "英雄装备幸运宝箱",
+    "open_chip_chests": "开启芯片箱",
+    "field_resource_gathering": "野外资源采集",
+    "complete_radar_missions": "完成雷达任务",
+    "s_class_truck_escorts": "S级卡车护送",
+    "orange_shadow_call_missions": "橙色暗影召唤任务",
+    "kill_roamer_zombies": "击杀游荡僵尸",
+    "kill_boomer_zombies": "击杀巨型僵尸",
+    "kill_enemy_units": "击杀敌方部队",
+    "lose_units_in_battle": "战斗损失部队"
+  }
+}
