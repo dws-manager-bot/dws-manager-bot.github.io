@@ -1,6 +1,6 @@
-"""One Discord redirect URI serving two frontends, and who either lets in.
+"""Signing in: the login state, and who the site lets in.
 
-Both admit members only: the Members role, an admin role, or the server owner.
+It admits members only: the Members role, an admin role, or the server owner.
 The token's is_admin then decides who may open the admin pages and save.
 """
 from __future__ import annotations
@@ -42,14 +42,14 @@ def test_default_is_backoffice():
 
 def test_tampered_app_is_rejected():
     nonce, _app, issued, sig = security.make_state("backoffice").split(".")
-    forged = f"{nonce}.passwar.{issued}.{sig}"
+    forged = f"{nonce}.elsewhere.{issued}.{sig}"
     assert security.verify_state(forged) is None
 
 
 def test_garbage_and_old_states_are_rejected():
     assert security.verify_state("nope") is None
     assert security.verify_state("") is None
-    stale = security.make_state("passwar")
+    stale = security.make_state("backoffice")
     nonce, app, _issued, _sig = stale.split(".")
     old = str(int(time.time()) - 4000)
     assert security.verify_state(f"{nonce}.{app}.{old}.{_sig}") is None

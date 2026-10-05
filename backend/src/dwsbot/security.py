@@ -28,7 +28,7 @@ _ALGORITHM = "HS256"
 
 # --------------------------------------------------------------------- state
 
-APPS = ("backoffice", "passwar")
+APPS = ("backoffice",)
 
 
 def make_state(app: str = "backoffice") -> str:
