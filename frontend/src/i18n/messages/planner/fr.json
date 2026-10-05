@@ -1,0 +1,86 @@
+{
+  "title": "Armement de la survie et Duel d'alliances",
+  "caption": "Planifiez les thèmes de l'Armement de la survie et vos dépenses du Duel d'alliances pour que les mêmes objets rapportent des points deux fois, autant que possible.",
+  "zone": "Heures : {zone}",
+  "now": {
+    "current": "Thème actuel",
+    "left": "Encore {time}",
+    "next": "Ensuite",
+    "starts": "Début à {time}",
+    "next_dual": "Prochain double score"
+  },
+  "days": "Jour du serveur",
+  "today": "Aujourd'hui",
+  "ad": {
+    "label": "Thème du Duel d'alliances",
+    "break": "Le Duel d'alliances fait relâche le dimanche. Concentrez-vous sur les créneaux de l'Armement de la survie."
+  },
+  "timeline": {
+    "title": "Chronologie",
+    "slot": "Créneau {number}",
+    "dual": "Double score : les mêmes actions comptent dans les deux événements"
+  },
+  "matrix": {
+    "title": "Matrice des actions",
+    "dual": "Double score",
+    "sp_only": "Armement de la survie seul",
+    "ad_only": "Duel d'alliances seul"
+  },
+  "officials": {
+    "label": "Postes recommandés",
+    "best": "Idéal",
+    "also": "Utile aussi",
+    "none": "Aucun bonus notable de la capitale"
+  },
+  "themes": {
+    "shelter_expansion": "Construire le refuge",
+    "hero_initiative": "Cultiver des héros",
+    "unit_training": "Former des soldats",
+    "age_of_science": "Recherche de la technologie",
+    "arms_expert": "Maître d'armements",
+    "keep_progressing": "évoluer avec le temps",
+    "holistic_growth": "Développement complet",
+    "enemy_buster": "Vaincre l'ennemi"
+  },
+  "titles": {
+    "vice_president": "Vice-Président",
+    "scale_of_law": "Solde de la Commande",
+    "supreme_general": "Général",
+    "secretary_of_construction": "Ministre de la construction",
+    "secretary_of_science": "Ministre Recherche",
+    "secretary_of_security": "Ministre de la défense"
+  },
+  "actions": {
+    "construction_speed_ups": "Accélérations de construction",
+    "finish_building_upgrades": "Terminer des améliorations de bâtiments",
+    "recruitment_tickets": "Tickets de recrutement",
+    "hero_fragments": "Fragments de héros",
+    "exclusive_equipment_fragments": "Fragments d'équipement exclusif",
+    "training_speed_ups": "Accélérations d'entraînement",
+    "complete_new_unit_batches": "Terminer des entraînements de soldats",
+    "promote_units_to_higher_tiers": "Promouvoir des soldats",
+    "consume_advanced_tactical_rations": "Consommer des rations tactiques avancées",
+    "consume_nutrient_potions": "Consommer des potions nutritives",
+    "consume_potential_chips": "Consommer des puces de potentiel",
+    "consume_special_ops_honor_medals": "Consommer des médailles d'honneur des services spéciaux",
+    "consume_standard_training_protocols": "Consommer des règlements d'entraînement spécial ordinaires",
+    "consume_advanced_training_protocols": "Consommer des règlements d'entraînement spécial avancés",
+    "research_speed_ups": "Accélérations de recherche",
+    "finish_science_tech_research": "Terminer des recherches technologiques",
+    "wisdom_medals": "Médailles de la sagesse",
+    "gears": "Engrenages",
+    "titaniums": "Alliage de titane",
+    "design_blueprints": "Plans de conception",
+    "power_cores": "Noyaux énergétiques",
+    "hero_equipment_lucky_chests": "Coffres chance d'équipement de héros",
+    "open_chip_chests": "Ouvrir des coffres de puces",
+    "field_resource_gathering": "Collecter des ressources sur la carte",
+    "complete_radar_missions": "Terminer des événements radar",
+    "s_class_truck_escorts": "Escorter des camions en or noir de qualité S",
+    "orange_shadow_call_missions": "Missions orange de l'Opération de l'ombre",
+    "kill_roamer_zombies": "Éliminer des zombies errants",
+    "kill_boomer_zombies": "Éliminer des zombies géants",
+    "kill_enemy_units": "Éliminer des unités ennemies",
+    "lose_units_in_battle": "Perdre des unités au combat"
+  }
+}

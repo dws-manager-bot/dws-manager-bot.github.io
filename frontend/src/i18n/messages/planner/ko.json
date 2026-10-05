@@ -1,0 +1,86 @@
+{
+  "title": "생존전비와 연맹 대결",
+  "caption": "생존전비와 연맹 대결 테마 시간을 맞춰 같은 아이템으로 양쪽 모두 중복 보상을 노려보세요.",
+  "zone": "{zone} 기준 시간",
+  "now": {
+    "current": "현재 테마",
+    "left": "{time} 남음",
+    "next": "다음 테마",
+    "starts": "{time} 시작",
+    "next_dual": "다음 중복 보상"
+  },
+  "days": "서버 요일",
+  "today": "오늘",
+  "ad": {
+    "label": "연맹 대결 테마",
+    "break": "일요일은 연맹 대결 휴식일입니다. 생존전비 창에 집중하세요."
+  },
+  "timeline": {
+    "title": "타임라인",
+    "slot": "{number}번 슬롯",
+    "dual": "중복 구간: 같은 액션이 두 이벤트 모두에서 점수가 됩니다"
+  },
+  "matrix": {
+    "title": "액션 매트릭스",
+    "dual": "중복",
+    "sp_only": "생존전비 전용",
+    "ad_only": "연맹 대결 전용"
+  },
+  "officials": {
+    "label": "추천 관직",
+    "best": "최우선",
+    "also": "추가 선택",
+    "none": "해당 관직 버프 없음"
+  },
+  "themes": {
+    "shelter_expansion": "셸터 건설",
+    "hero_initiative": "영웅 육성",
+    "unit_training": "유닛 훈련",
+    "age_of_science": "과학기술 연구",
+    "arms_expert": "전쟁 대비 달인",
+    "keep_progressing": "매일 향상",
+    "holistic_growth": "전면적 발전",
+    "enemy_buster": "적군 격퇴"
+  },
+  "titles": {
+    "vice_president": "부통령",
+    "scale_of_law": "질서의 저울",
+    "supreme_general": "대장군",
+    "secretary_of_construction": "건설부장",
+    "secretary_of_science": "과학연구부장",
+    "secretary_of_security": "국방부장"
+  },
+  "actions": {
+    "construction_speed_ups": "건설 가속",
+    "finish_building_upgrades": "건물 업그레이드 완료",
+    "recruitment_tickets": "모집권",
+    "hero_fragments": "영웅 조각",
+    "exclusive_equipment_fragments": "전용무기 조각",
+    "training_speed_ups": "훈련 가속",
+    "complete_new_unit_batches": "신규 유닛 훈련 완료",
+    "promote_units_to_higher_tiers": "유닛 승급",
+    "consume_advanced_tactical_rations": "고급 전술 식량 소모",
+    "consume_nutrient_potions": "영양 약제 소모",
+    "consume_potential_chips": "잠재 칩 소모",
+    "consume_special_ops_honor_medals": "특수 임무 명예 훈장 소모",
+    "consume_standard_training_protocols": "일반 특훈 조례 소모",
+    "consume_advanced_training_protocols": "고급 특훈 조례 소모",
+    "research_speed_ups": "연구 가속",
+    "finish_science_tech_research": "연구 완료",
+    "wisdom_medals": "지혜의 훈장",
+    "gears": "기어",
+    "titaniums": "티타늄",
+    "design_blueprints": "설계도면",
+    "power_cores": "에너지 코어",
+    "hero_equipment_lucky_chests": "영웅 장비 행운 상자",
+    "open_chip_chests": "칩 상자 열기",
+    "field_resource_gathering": "필드 자원 채집",
+    "complete_radar_missions": "레이더 임무 완료",
+    "s_class_truck_escorts": "S급 트럭 호송",
+    "orange_shadow_call_missions": "주황 암영 작전",
+    "kill_roamer_zombies": "유랑좀비 처치",
+    "kill_boomer_zombies": "거대좀비 처치",
+    "kill_enemy_units": "적 유닛 처치",
+    "lose_units_in_battle": "본인 유닛 패배"
+  }
+}
