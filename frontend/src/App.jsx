@@ -31,7 +31,6 @@ const PAGES = [
   { id: 'alliance-events', path: '/events', nav: 'events', Component: AllianceEvents },
   { id: 'calculators', path: '/calculator', nav: 'calculators', Component: Calculators, prefix: true },
   { id: 'hive', path: '/hive-map', nav: 'hive_map', Component: HiveMap, prefix: true },
-  { id: 'passwar', path: '/pass-war', nav: 'pass_war', Component: PassWar },
   { id: 'setup', path: '/admin/setup', label: 'Set up', Component: Setup, admin: true },
   { id: 'announcements', path: '/admin/announcements', label: 'Announcements', Component: Announcements, admin: true },
   { id: 'events', path: '/admin/events', label: 'Events', Component: Events, admin: true },
@@ -39,9 +38,14 @@ const PAGES = [
   { id: 'bgb', path: '/admin/bgb', label: 'BGB', Component: Bgb, admin: true },
   { id: 'season', path: '/admin/season', label: 'Season', Component: Season, admin: true },
   { id: 'history', path: '/admin/history', label: 'History', Component: History, admin: true },
-  // Admin-only, reading included: it is the alliance's strategy.
+  // Admin-only, reading included: they are the alliance's strategy.
   { id: 'warplan', path: '/admin/war-planner', label: 'War planner', Component: WarPlanner, admin: true },
+  { id: 'passwar', path: '/admin/pass-war', label: 'Pass War map', Component: PassWar, admin: true },
 ]
+
+/* Addresses a page used to have. /pass-war was an alliance page for a day, and
+   the retired pou-pass-war site still redirects there. */
+const MOVED = { '/pass-war': '/admin/pass-war' }
 
 const GROUPS = [
   { name: 'alliance', pages: PAGES.filter((p) => !p.admin) },
@@ -92,8 +96,8 @@ export default function App() {
   // first page this person can see.
   const landing = user?.is_admin ? PAGES.find((p) => p.admin) : visible[0]
   useEffect(() => {
-    if (user && !current) navigate(landing.path, { replace: true })
-  }, [user, current, landing])
+    if (user && !current) navigate(MOVED[path] ?? landing.path, { replace: true })
+  }, [user, current, landing, path])
 
   // Admin pages are English whatever the reader picked, so the document says so.
   const reading = current && !current.admin

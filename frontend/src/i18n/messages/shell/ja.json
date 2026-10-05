@@ -3,8 +3,7 @@
     "planner": "プランナー",
     "events": "イベント",
     "calculators": "計算機",
-    "hive_map": "ハイブマップ",
-    "pass_war": "関門戦マップ"
+    "hive_map": "ハイブマップ"
   },
   "group": {
     "alliance": "同盟"

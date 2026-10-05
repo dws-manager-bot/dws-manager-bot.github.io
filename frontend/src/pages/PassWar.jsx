@@ -264,7 +264,7 @@ export default function PassWar({ user }) {
     try {
       const r = await api.raw(`/lineups/${slug}/publish`, { method: 'POST' })
       setServer(r); setSlug(OFFICIAL); setDirty(false)
-      setNotice('Published. Everyone sees this now.')
+      setNotice('Published. This is now the official plan.')
       await fetchPlans()
     } catch (err) { setError(err.message) } finally { setBusy('') }
   }
@@ -421,7 +421,7 @@ export default function PassWar({ user }) {
 
             <p className="card-body">
               {slug === OFFICIAL
-                ? `The plan everyone sees${server?.owner_name ? `, published by ${server.owner_name}` : ''}.`
+                ? `The official plan${server?.owner_name ? `, published by ${server.owner_name}` : ''}.`
                 : slug === mySlug
                   ? 'Your own draft. No other admin can overwrite it.'
                   : `${server?.owner_name || 'Another admin'}'s draft — open it to copy, but you cannot save over it.`}

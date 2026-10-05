@@ -3,8 +3,7 @@
     "planner": "Planer",
     "events": "Events",
     "calculators": "Rechner",
-    "hive_map": "Hive-Karte",
-    "pass_war": "Passkrieg-Karte"
+    "hive_map": "Hive-Karte"
   },
   "group": {
     "alliance": "Allianz"

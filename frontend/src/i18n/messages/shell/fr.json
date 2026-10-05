@@ -3,8 +3,7 @@
     "planner": "Planificateur",
     "events": "Événements",
     "calculators": "Calculatrices",
-    "hive_map": "Carte de la ruche",
-    "pass_war": "Carte de la guerre du col"
+    "hive_map": "Carte de la ruche"
   },
   "group": {
     "alliance": "Alliance"

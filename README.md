@@ -131,7 +131,7 @@ Sign in with Discord. Who gets in depends on the account's roles in the guild:
 | Member | `MEMBER_ROLES` (default `Members`) | Alliance pages |
 | Anyone else | a Guest, or no role | nothing: the login is refused |
 
-Alliance pages live at the root (`/planner`, `/pass-war`), admin pages under
+Alliance pages live at the root (`/planner`, `/events`), admin pages under
 `/admin/`. Every page has its own address, so a link can be shared, and signing
 in comes back to the page that was opened. The alliance pages keep
 pou-rocks.github.io's addresses, which now redirects here.
@@ -150,7 +150,6 @@ then the last choice, then the device):
   equipment.
 - **Hive Map** — the hive formation applied in game, and a generator that
   draws new layouts from the alliance roster sheet.
-- **Pass War map** — below.
 
 Their words live in `frontend/src/i18n/messages/<page>/<code>.json`, one file
 per language; a test fails if any language is missing a key or a placeholder.
@@ -173,9 +172,9 @@ in English.
 - **History** — who created or last changed each announcement and event.
 - **Pass War map** — plan the Pass Occupation War formation: shelter grid,
   portal count, gate position, camp size, and a drag-ordered line-up that
-  decides who holds the slots nearest the pass. An Alliance page, readable by
-  every member; only admins can save a draft or publish the official plan.
-  Exports a PNG.
+  decides who holds the slots nearest the pass. Admins only, reading included,
+  like the War planner: it is the alliance's strategy. Each admin keeps a draft
+  and any admin can publish one as the official plan. Exports a PNG.
 
 Every time entered anywhere in the backoffice is a wall-clock time read against
 a timezone you pick on the same form — `Etc/GMT+2` is game server time.
