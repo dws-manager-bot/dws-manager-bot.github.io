@@ -1,21 +1,21 @@
-"""Backoffice CRUD for recurring in-game event definitions."""
+"""Backoffice CRUD for recurring in-game event definitions, and what is on for members."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from ...models import EventDefinition, EventInstance
 from ...names import guild_display_name
-from ...occurrences import resolve_occurrences
+from ...occurrences import happening, resolve_occurrences
 
 # preview() runs on an unsaved definition, which has no overrides to apply,
 # so it stays on the pure rule.
 from ...recurrence import next_occurrences
-from ...schemas import EventCreate, EventOut, OccurrenceOut, OccurrenceOverrideIn
-from ..deps import AdminUser, DbSession, write_audit
+from ...schemas import EventCreate, EventOut, OccurrenceOut, OccurrenceOverrideIn, UpcomingOut
+from ..deps import AdminUser, CurrentUser, DbSession, write_audit
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -27,6 +27,34 @@ async def _out(session, defn: EventDefinition) -> EventOut:
     # What will actually happen, with any moved or skipped dates applied.
     out.upcoming = [o.starts_at for o in await resolve_occurrences(session, defn, count=5)]
     return out
+
+
+@router.get("/upcoming", response_model=list[UpcomingOut], summary="What is on, for any member")
+async def upcoming(session: DbSession, _: CurrentUser, days: int = Query(14, ge=1, le=31)):
+    """Every enabled event's dates over the next `days`, soonest first.
+
+    The calendar the admins keep, read-only: a moved date shows where it went,
+    a skipped one is gone, and one under way is still listed.
+    """
+    now = datetime.now(UTC)
+    until = now + timedelta(days=days)
+    rows = (
+        await session.scalars(select(EventDefinition).where(EventDefinition.enabled.is_(True)))
+    ).all()
+    found = [
+        UpcomingOut(
+            event_id=defn.id,
+            key=defn.key,
+            name=defn.name,
+            starts_at=o.starts_at,
+            duration_minutes=defn.duration_minutes,
+            moved=o.moved,
+            note=o.note,
+        )
+        for defn in rows
+        for o in await happening(session, defn, now=now, until=until)
+    ]
+    return sorted(found, key=lambda u: u.starts_at)
 
 
 @router.get("", response_model=list[EventOut])
