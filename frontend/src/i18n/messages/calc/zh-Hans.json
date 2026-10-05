@@ -1,0 +1,49 @@
+{
+  "calculators": "计算器",
+  "titles": {
+    "precision_parts": "精密零件",
+    "vehicle_level": "改装车等级",
+    "vehicle_parts": "改装车配件",
+    "hero_weapon": "英雄专武",
+    "hero_stars": "英雄星级",
+    "hero_equipment": "英雄装备",
+    "vehicle_chips": "改装车芯片"
+  },
+  "note": "为增益前的配置数值，游戏内实际消耗可能更低。",
+  "source": "Dark War Survival {build}",
+  "per_press": "按每次点击结算，而非每级。",
+  "error": "无法加载数据",
+  "empty": "尚未选择",
+  "from": "起始",
+  "to": "目标",
+  "add_row": "添加一行",
+  "remove_row": "删除此行",
+  "reset": "重置",
+  "owned": "已拥有",
+  "covered": "已足够",
+  "short": "缺少 {amount}",
+  "total_needed": "所需总量",
+  "details": "详情",
+  "total": "总计",
+  "level": "等级",
+  "lv": "Lv.{level}",
+  "tick": "{star}星{rank}阶",
+  "red": "红色",
+  "max": "已升至满星",
+  "fragment": "碎片",
+  "building": "建筑",
+  "part": "配件",
+  "select_weapon": "选择武器",
+  "chip": "芯片",
+  "equip_breakthrough": "装备突破",
+  "purple": "紫色",
+  "orange": "橙色",
+  "per_level": "每级 {amount}",
+  "chip_exp": "芯片经验 {amount}",
+  "presses": {
+    "other": "{amount} 次"
+  },
+  "presses_total": {
+    "other": "共需点击 {amount} 次"
+  }
+}

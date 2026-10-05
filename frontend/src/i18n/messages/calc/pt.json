@@ -1,0 +1,51 @@
+{
+  "calculators": "Calculadoras",
+  "titles": {
+    "precision_parts": "Peças de Precisão",
+    "vehicle_level": "Nível do veículo modificado",
+    "vehicle_parts": "Acessórios do veículo modificado",
+    "hero_weapon": "Arma exclusiva do herói",
+    "hero_stars": "Estrelas do herói",
+    "hero_equipment": "Equipamento do herói",
+    "vehicle_chips": "Chips do veículo modificado"
+  },
+  "note": "Custo de configuração antes de bônus — os preços no jogo podem ser menores.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Cobrado por toque no botão, não por nível.",
+  "error": "Não foi possível carregar os dados",
+  "empty": "Nada selecionado",
+  "from": "De",
+  "to": "Até",
+  "add_row": "Adicionar linha",
+  "remove_row": "Remover linha",
+  "reset": "Redefinir",
+  "owned": "Possuído",
+  "covered": "Suficiente",
+  "short": "Faltam {amount}",
+  "total_needed": "Total necessário",
+  "details": "Detalhes",
+  "total": "Total",
+  "level": "Nível",
+  "lv": "Lv.{level}",
+  "tick": "{star} Estrelas Nv.{rank}",
+  "red": "Verm.",
+  "max": "Aprimorado ao nível máximo",
+  "fragment": "Fragmento(s)",
+  "building": "Edifícios",
+  "part": "Acessórios",
+  "select_weapon": "Escolher arma",
+  "chip": "Chips",
+  "equip_breakthrough": "Evolução de Equipamento",
+  "purple": "Roxo",
+  "orange": "Laranja",
+  "per_level": "{amount} por nível",
+  "chip_exp": "{amount} EXP de chip",
+  "presses": {
+    "one": "{amount} toque",
+    "other": "{amount} toques"
+  },
+  "presses_total": {
+    "one": "{amount} toque no total",
+    "other": "{amount} toques no total"
+  }
+}

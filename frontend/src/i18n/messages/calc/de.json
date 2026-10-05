@@ -1,0 +1,51 @@
+{
+  "calculators": "Rechner",
+  "titles": {
+    "precision_parts": "Präzisionsteil",
+    "vehicle_level": "Modifizierungsfahrzeug-Level",
+    "vehicle_parts": "Fahrzeug-Teile",
+    "hero_weapon": "Helden-Spezialwaffe",
+    "hero_stars": "Helden-Sternlevel",
+    "hero_equipment": "Heldenrüstung",
+    "vehicle_chips": "Modifizierungsfahrzeug-Chips"
+  },
+  "note": "Konfigurationskosten vor Buffs – Preise im Spiel können niedriger sein.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Kosten fallen pro Tastendruck an, nicht pro Stufe.",
+  "error": "Daten konnten nicht geladen werden",
+  "empty": "Noch nichts ausgewählt",
+  "from": "Von",
+  "to": "Bis",
+  "add_row": "Zeile hinzufügen",
+  "remove_row": "Zeile entfernen",
+  "reset": "Rückstellung",
+  "owned": "Im Besitz",
+  "covered": "Gedeckt",
+  "short": "Es fehlen {amount}",
+  "total_needed": "Benötigt gesamt",
+  "details": "Details",
+  "total": "Insgesamt",
+  "level": "Level",
+  "lv": "Lv.{level}",
+  "tick": "{star} Sterne - Phase {rank}",
+  "red": "Rot",
+  "max": "Volle Sterne erreicht",
+  "fragment": "Fragment",
+  "building": "Gebäude",
+  "part": "Teile",
+  "select_weapon": "Waffe wählen",
+  "chip": "Chip",
+  "equip_breakthrough": "Rüstungsdurchbruch",
+  "purple": "Lila",
+  "orange": "Orange",
+  "per_level": "{amount} pro Stufe",
+  "chip_exp": "{amount} Chip-EXP",
+  "presses": {
+    "one": "{amount} Tastendruck",
+    "other": "{amount} Tastendrücke"
+  },
+  "presses_total": {
+    "one": "{amount} Tastendruck insgesamt",
+    "other": "{amount} Tastendrücke insgesamt"
+  }
+}

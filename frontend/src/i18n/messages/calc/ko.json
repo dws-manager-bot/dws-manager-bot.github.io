@@ -1,0 +1,49 @@
+{
+  "calculators": "계산기",
+  "titles": {
+    "precision_parts": "정밀 부품",
+    "vehicle_level": "개조차 레벨",
+    "vehicle_parts": "개조차 부품",
+    "hero_weapon": "영웅 전용 무기",
+    "hero_stars": "영웅 성급",
+    "hero_equipment": "영웅 장비",
+    "vehicle_chips": "개조차 칩"
+  },
+  "note": "버프 적용 전 기준값입니다. 실제 게임 내 비용은 더 낮을 수 있습니다.",
+  "source": "Dark War Survival {build}",
+  "per_press": "레벨이 아니라 버튼을 누를 때마다 소모됩니다.",
+  "error": "데이터를 불러오지 못했습니다",
+  "empty": "아직 선택된 항목이 없습니다",
+  "from": "시작",
+  "to": "목표",
+  "add_row": "항목 추가",
+  "remove_row": "항목 삭제",
+  "reset": "초기화",
+  "owned": "보유 중",
+  "covered": "충분",
+  "short": "{amount} 부족",
+  "total_needed": "필요 총량",
+  "details": "상세",
+  "total": "총계",
+  "level": "레벨",
+  "lv": "Lv.{level}",
+  "tick": "{star}스타 {rank}급",
+  "red": "빨강",
+  "max": "최대 성급 달성",
+  "fragment": "조각",
+  "building": "건축",
+  "part": "부품",
+  "select_weapon": "무기 선택",
+  "chip": "칩",
+  "equip_breakthrough": "장비 돌파",
+  "purple": "보라",
+  "orange": "주황",
+  "per_level": "레벨당 {amount}",
+  "chip_exp": "칩 경험치 {amount}",
+  "presses": {
+    "other": "{amount}회"
+  },
+  "presses_total": {
+    "other": "버튼을 모두 {amount}회 눌러야 합니다"
+  }
+}
