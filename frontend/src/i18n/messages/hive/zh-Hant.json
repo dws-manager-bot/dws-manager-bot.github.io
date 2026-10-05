@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "蜂巢地圖頁面",
+    "current": "目前地圖",
+    "generator": "產生器"
+  },
+  "current": {
+    "title": "目前蜂巢地圖",
+    "subtitle": "目前遊戲中已套用的避難所佈局。",
+    "applied": "這是聯盟目前套用的蜂巢佈局。",
+    "snapshot": "依據 {date} 收集的名單資料。",
+    "snapshot_unknown": "名單的固定快照。",
+    "to_generator": "要規劃新佈局？開啟產生器 →",
+    "loading": "正在載入已套用的地圖…",
+    "load_failed": "無法載入快照：{reason}"
+  },
+  "generator": {
+    "title": "蜂巢地圖產生器",
+    "subtitle": "依據目前聯盟名單的即時預覽——用於規劃下次佈局。",
+    "to_current": "查看目前套用的地圖 →",
+    "hint": "資料即時從 Google 試算表載入——編輯後請點 ↻ 重新整理。雙指縮放或「實際尺寸」放大 · 下載 PNG 取得完整解析度。",
+    "layout": "佈局",
+    "stick_groups": "組隊相鄰",
+    "spread_top10": "分散前10名",
+    "spread_lv8": "分散8級",
+    "refresh": "重新整理",
+    "fetching": "正在從 Google 試算表取得最新資料…",
+    "load_failed": "無法載入名單：{reason}"
+  },
+  "fit_width": "符合寬度",
+  "actual_size": "實際尺寸",
+  "download_png": "下載 PNG",
+  "render_error": "繪製錯誤：{reason}",
+  "reason": {
+    "http": "試算表回應了 HTTP {status}",
+    "not_public": "試算表未發佈到網路",
+    "empty": "試算表中沒有成員",
+    "network": "無法連線至 Google 試算表"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count}名成員 · 最遠 ≈ {d} 格"
+  },
+  "shape": {
+    "square": "正方形",
+    "gap_square": "間隔正方形",
+    "diamond": "菱形",
+    "circle": "圓形",
+    "heart": "心形",
+    "cat_face": "貓臉",
+    "middle_finger": "比中指",
+    "skull": "骷髏",
+    "snowflake": "雪花"
+  },
+  "canvas": {
+    "title": "PoU 蜂巢地圖",
+    "shelters": {
+      "other": "避難所"
+    },
+    "frankenstein": "弗蘭肯斯坦",
+    "industry_lv": "工業等級",
+    "lv": "Lv",
+    "one_tile": "1格",
+    "shelter_3x3": "避難所 3×3",
+    "lane": "通道",
+    "tiles": "格",
+    "gap_every_2": "每2個避難所留1格間隔",
+    "frank1": "弗蘭肯",
+    "frank2": "斯坦"
+  }
+}

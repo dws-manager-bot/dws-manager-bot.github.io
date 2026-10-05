@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "蜂巢地图页面",
+    "current": "当前地图",
+    "generator": "生成器"
+  },
+  "current": {
+    "title": "当前蜂巢地图",
+    "subtitle": "当前游戏中已应用的避难所布局。",
+    "applied": "这是联盟当前应用的蜂巢布局。",
+    "snapshot": "基于 {date} 收集的名单数据。",
+    "snapshot_unknown": "名单的固定快照。",
+    "to_generator": "要规划新布局？打开生成器 →",
+    "loading": "正在加载已应用的地图…",
+    "load_failed": "无法加载快照：{reason}"
+  },
+  "generator": {
+    "title": "蜂巢地图生成器",
+    "subtitle": "基于当前联盟名单的实时预览——用于规划下次布局。",
+    "to_current": "查看当前应用的地图 →",
+    "hint": "数据从 Google 表格实时加载——编辑后点击 ↻ 刷新。双指缩放或“实际尺寸”放大 · 下载 PNG 获取全分辨率。",
+    "layout": "布局",
+    "stick_groups": "组队相邻",
+    "spread_top10": "分散前10名",
+    "spread_lv8": "分散8级",
+    "refresh": "刷新",
+    "fetching": "正在从 Google 表格获取最新数据…",
+    "load_failed": "无法加载名单：{reason}"
+  },
+  "fit_width": "适应宽度",
+  "actual_size": "实际尺寸",
+  "download_png": "下载 PNG",
+  "render_error": "渲染错误：{reason}",
+  "reason": {
+    "http": "表格返回了 HTTP {status}",
+    "not_public": "表格未发布到网络",
+    "empty": "表格中没有成员",
+    "network": "无法连接 Google 表格"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count}名成员 · 最远 ≈ {d} 格"
+  },
+  "shape": {
+    "square": "正方形",
+    "gap_square": "间隔正方形",
+    "diamond": "菱形",
+    "circle": "圆形",
+    "heart": "心形",
+    "cat_face": "猫脸",
+    "middle_finger": "竖中指",
+    "skull": "骷髅",
+    "snowflake": "雪花"
+  },
+  "canvas": {
+    "title": "PoU 蜂巢地图",
+    "shelters": {
+      "other": "避难所"
+    },
+    "frankenstein": "弗兰肯斯坦",
+    "industry_lv": "工业等级",
+    "lv": "Lv",
+    "one_tile": "1格",
+    "shelter_3x3": "避难所 3×3",
+    "lane": "通道",
+    "tiles": "格",
+    "gap_every_2": "每2个避难所留1格间隔",
+    "frank1": "弗兰肯",
+    "frank2": "斯坦"
+  }
+}

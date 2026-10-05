@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "군집 지도 페이지",
+    "current": "현재 지도",
+    "generator": "생성기"
+  },
+  "current": {
+    "title": "현재 군집 지도",
+    "subtitle": "현재 게임에 적용되어 있는 셸터 배치입니다.",
+    "applied": "현재 연맹에 적용된 군집 배치입니다.",
+    "snapshot": "{date}에 수집된 명단 데이터를 기준으로 합니다.",
+    "snapshot_unknown": "명단의 고정 스냅샷입니다.",
+    "to_generator": "새 배치를 계획하시나요? 생성기 열기 →",
+    "loading": "적용된 지도를 불러오는 중…",
+    "load_failed": "스냅샷을 불러오지 못했습니다: {reason}"
+  },
+  "generator": {
+    "title": "군집 지도 생성기",
+    "subtitle": "현재 연맹 명단 기반 실시간 미리보기 — 다음 배치 계획용입니다.",
+    "to_current": "현재 적용된 지도 보기 →",
+    "hint": "데이터는 구글 시트에서 실시간으로 불러옵니다 — 편집 후 ↻ 새로고침을 누르세요. 확대하려면 핀치 또는 ‘실제 크기’ · 고해상도는 PNG 내려받기.",
+    "layout": "레이아웃",
+    "stick_groups": "그룹화",
+    "spread_top10": "상위 10 분산",
+    "spread_lv8": "8레벨 분산",
+    "refresh": "새로고침",
+    "fetching": "구글 시트에서 최신 데이터를 불러오는 중…",
+    "load_failed": "명단을 불러오지 못했습니다: {reason}"
+  },
+  "fit_width": "너비 맞춤",
+  "actual_size": "실제 크기",
+  "download_png": "PNG 내려받기",
+  "render_error": "렌더 오류: {reason}",
+  "reason": {
+    "http": "시트가 HTTP {status}로 응답했습니다",
+    "not_public": "시트가 웹에 게시되어 있지 않습니다",
+    "empty": "시트에 멤버가 없습니다",
+    "network": "구글 시트에 연결할 수 없습니다"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count}명 · 최대 거리 ≈ {d} 타일"
+  },
+  "shape": {
+    "square": "정사각형",
+    "gap_square": "간격 사각형",
+    "diamond": "다이아몬드",
+    "circle": "원",
+    "heart": "하트",
+    "cat_face": "고양이 얼굴",
+    "middle_finger": "가운뎃손가락",
+    "skull": "해골",
+    "snowflake": "눈송이"
+  },
+  "canvas": {
+    "title": "PoU 군집 지도",
+    "shelters": {
+      "other": "셸터"
+    },
+    "frankenstein": "프랑켄슈타인",
+    "industry_lv": "산업 레벨",
+    "lv": "Lv",
+    "one_tile": "1타일",
+    "shelter_3x3": "셸터 3×3",
+    "lane": "통로",
+    "tiles": "타일",
+    "gap_every_2": "셸터 2개마다 1타일 간격",
+    "frank1": "프랑켄",
+    "frank2": "슈타인"
+  }
+}
