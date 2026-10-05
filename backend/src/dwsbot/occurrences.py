@@ -11,7 +11,7 @@ postponed event would still be announced at its original time.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -114,3 +114,22 @@ async def next_occurrence(
     """Just the next one, or None if the event has no future date."""
     found = await resolve_occurrences(session, definition, now=now, count=1)
     return found[0] if found else None
+
+
+async def happening(
+    session: AsyncSession, definition: EventDefinition, *, now: datetime, until: datetime
+) -> list[Occurrence]:
+    """Occurrences still to finish by `now` that start before `until`.
+
+    One already under way counts, so a member opening the page mid-event sees
+    it as on now rather than not at all.
+    """
+    started_after = now - timedelta(minutes=definition.duration_minutes or 0)
+    found = await resolve_occurrences(
+        session,
+        definition,
+        now=started_after,
+        count=200,
+        horizon_days=(until - started_after).days + 1,
+    )
+    return [o for o in found if o.starts_at <= until]
