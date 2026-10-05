@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "Halaman Peta Hive",
+    "current": "Peta Saat Ini",
+    "generator": "Generator"
+  },
+  "current": {
+    "title": "Peta Hive Saat Ini",
+    "subtitle": "Formasi shelter yang sedang diterapkan di gim.",
+    "applied": "Ini adalah tata letak hive Aliansi yang sedang diterapkan.",
+    "snapshot": "Berdasarkan data anggota yang dikumpulkan pada {date}.",
+    "snapshot_unknown": "Snapshot beku dari roster.",
+    "to_generator": "Merencanakan tata letak baru? Buka Generator →",
+    "loading": "Memuat peta yang diterapkan…",
+    "load_failed": "Tidak dapat memuat snapshot: {reason}"
+  },
+  "generator": {
+    "title": "Generator Peta Hive",
+    "subtitle": "Pratinjau langsung dari roster Aliansi saat ini — untuk merencanakan penataan berikutnya.",
+    "to_current": "Lihat peta yang sedang diterapkan →",
+    "hint": "Data dimuat langsung dari Google Sheet — ketuk ↻ Segarkan setelah mengeditnya. Cubit atau “Ukuran asli” untuk memperbesar · Unduh PNG untuk resolusi penuh.",
+    "layout": "Tata letak",
+    "stick_groups": "Rekatkan grup",
+    "spread_top10": "Sebar Top 10",
+    "spread_lv8": "Sebar Lv8",
+    "refresh": "Segarkan",
+    "fetching": "Mengambil data terbaru dari Google Sheet…",
+    "load_failed": "Tidak dapat memuat roster: {reason}"
+  },
+  "fit_width": "Sesuaikan lebar",
+  "actual_size": "Ukuran asli",
+  "download_png": "Unduh PNG",
+  "render_error": "Kesalahan render: {reason}",
+  "reason": {
+    "http": "sheet menjawab HTTP {status}",
+    "not_public": "sheet belum dipublikasikan ke web",
+    "empty": "tidak ada anggota di sheet",
+    "network": "Google Sheets tidak dapat dijangkau"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count} anggota · terjauh ≈ {d} ubin"
+  },
+  "shape": {
+    "square": "Persegi",
+    "gap_square": "Persegi berjarak",
+    "diamond": "Wajik",
+    "circle": "Lingkaran",
+    "heart": "Hati",
+    "cat_face": "Wajah kucing",
+    "middle_finger": "Jari tengah",
+    "skull": "Tengkorak",
+    "snowflake": "Kepingan salju"
+  },
+  "canvas": {
+    "title": "Peta Hive PoU",
+    "shelters": {
+      "other": "shelter"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Industri Lv",
+    "lv": "Lv",
+    "one_tile": "1 ubin",
+    "shelter_3x3": "shelter 3×3",
+    "lane": "jalur",
+    "tiles": "ubin",
+    "gap_every_2": "jarak 1 ubin tiap 2 shelter",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

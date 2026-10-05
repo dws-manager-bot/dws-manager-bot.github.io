@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Kovan haritası sayfaları",
+    "current": "Güncel harita",
+    "generator": "Oluşturucu"
+  },
+  "current": {
+    "title": "Güncel Kovan Haritası",
+    "subtitle": "Oyunda şu an uygulanan barınak dizilimi.",
+    "applied": "Bu, İttifak’ın şu an uyguladığı kovan dizilimidir.",
+    "snapshot": "{date} tarihinde toplanan üye verilerine göre.",
+    "snapshot_unknown": "Üye listesinin sabitlenmiş bir anlık görüntüsü.",
+    "to_generator": "Yeni bir dizilim mi planlıyorsunuz? Oluşturucuyu açın →",
+    "loading": "Uygulanan harita yükleniyor…",
+    "load_failed": "Anlık görüntü yüklenemedi: {reason}"
+  },
+  "generator": {
+    "title": "Kovan Haritası Oluşturucu",
+    "subtitle": "Güncel İttifak listesinden canlı önizleme — bir sonraki dizilimi planlamak için.",
+    "to_current": "Şu an uygulanan haritayı görün →",
+    "hint": "Veriler Google Sheet’ten canlı yüklenir — düzenledikten sonra ↻ Yenile’ye dokunun. Yakınlaştırmak için iki parmakla açın ya da “Gerçek boyut”a dokunun · Tam çözünürlük için PNG indirin.",
+    "layout": "Dizilim",
+    "stick_groups": "Bağlı gruplar",
+    "spread_top10": "İlk 10’u dağıt",
+    "spread_lv8": "Lv8’leri dağıt",
+    "refresh": "Yenile",
+    "fetching": "Google Sheet’ten en son veriler alınıyor…",
+    "load_failed": "Üye listesi yüklenemedi: {reason}"
+  },
+  "fit_width": "Genişliğe sığdır",
+  "actual_size": "Gerçek boyut",
+  "download_png": "PNG indir",
+  "render_error": "Çizim hatası: {reason}",
+  "reason": {
+    "http": "tablo HTTP {status} ile yanıt verdi",
+    "not_public": "tablo web’de yayımlanmamış",
+    "empty": "tabloda üye yok",
+    "network": "Google Sheets’e ulaşılamadı"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} üye · en uzak ≈ {d} kare",
+    "other": "v{v} · {shape} · {count} üye · en uzak ≈ {d} kare"
+  },
+  "shape": {
+    "square": "Kare",
+    "gap_square": "Aralıklı kare",
+    "diamond": "Eşkenar dörtgen",
+    "circle": "Daire",
+    "heart": "Kalp",
+    "cat_face": "Kedi yüzü",
+    "middle_finger": "Orta parmak",
+    "skull": "Kafatası",
+    "snowflake": "Kar tanesi"
+  },
+  "canvas": {
+    "title": "PoU Kovan Haritası",
+    "shelters": {
+      "one": "barınak",
+      "other": "barınak"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Endüstri Seviyesi",
+    "lv": "Lv",
+    "one_tile": "1 kare",
+    "shelter_3x3": "barınak 3×3",
+    "lane": "koridor",
+    "tiles": "kare",
+    "gap_every_2": "her 2 barınakta 1 kare boşluk",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

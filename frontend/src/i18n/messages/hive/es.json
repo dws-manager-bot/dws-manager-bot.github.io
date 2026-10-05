@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Páginas del mapa de la colmena",
+    "current": "Mapa actual",
+    "generator": "Generador"
+  },
+  "current": {
+    "title": "Mapa de la colmena actual",
+    "subtitle": "La formación de refugios aplicada ahora en el juego.",
+    "applied": "Esta es la disposición de la colmena que la Alianza tiene aplicada ahora.",
+    "snapshot": "Según los datos de miembros tomados el {date}.",
+    "snapshot_unknown": "Una instantánea fija de la lista de miembros.",
+    "to_generator": "¿Planeando una nueva disposición? Abrir el generador →",
+    "loading": "Cargando el mapa aplicado…",
+    "load_failed": "No se pudo cargar la instantánea: {reason}"
+  },
+  "generator": {
+    "title": "Generador del mapa de la colmena",
+    "subtitle": "Vista previa en vivo con la lista actual de la Alianza — para planear la próxima disposición.",
+    "to_current": "Ver el mapa aplicado ahora →",
+    "hint": "Los datos se cargan en vivo desde la Google Sheet — toca ↻ Actualizar después de editarla. Pellizca o toca «Tamaño real» para ampliar · Descargar PNG para la resolución completa.",
+    "layout": "Disposición",
+    "stick_groups": "Grupos unidos",
+    "spread_top10": "Repartir Top 10",
+    "spread_lv8": "Repartir Lv8",
+    "refresh": "Actualizar",
+    "fetching": "Obteniendo lo último de la Google Sheet…",
+    "load_failed": "No se pudo cargar la lista de miembros: {reason}"
+  },
+  "fit_width": "Ajustar al ancho",
+  "actual_size": "Tamaño real",
+  "download_png": "Descargar PNG",
+  "render_error": "Error al dibujar: {reason}",
+  "reason": {
+    "http": "la hoja respondió HTTP {status}",
+    "not_public": "la hoja no está publicada en la web",
+    "empty": "no hay miembros en la hoja",
+    "network": "no se pudo conectar con Google Sheets"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} miembro · el más lejano ≈ {d} casillas",
+    "other": "v{v} · {shape} · {count} miembros · el más lejano ≈ {d} casillas"
+  },
+  "shape": {
+    "square": "Cuadrado",
+    "gap_square": "Cuadrado con huecos",
+    "diamond": "Rombo",
+    "circle": "Círculo",
+    "heart": "Corazón",
+    "cat_face": "Cara de gato",
+    "middle_finger": "Dedo medio",
+    "skull": "Calavera",
+    "snowflake": "Copo de nieve"
+  },
+  "canvas": {
+    "title": "Mapa de la colmena PoU",
+    "shelters": {
+      "one": "refugio",
+      "other": "refugios"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Nivel de Industria",
+    "lv": "Lv",
+    "one_tile": "1 casilla",
+    "shelter_3x3": "refugio 3×3",
+    "lane": "pasillo",
+    "tiles": "casillas",
+    "gap_every_2": "1 casilla libre cada 2 refugios",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Pagine della mappa dell’alveare",
+    "current": "Mappa attuale",
+    "generator": "Generatore"
+  },
+  "current": {
+    "title": "Mappa dell’alveare attuale",
+    "subtitle": "La formazione dei rifugi attualmente applicata nel gioco.",
+    "applied": "Questa è la disposizione dell’alveare che l’Alleanza applica ora.",
+    "snapshot": "Basata sui dati dei membri raccolti il {date}.",
+    "snapshot_unknown": "Un’istantanea congelata dell’elenco dei membri.",
+    "to_generator": "Stai pianificando una nuova disposizione? Apri il generatore →",
+    "loading": "Caricamento della mappa applicata…",
+    "load_failed": "Impossibile caricare l’istantanea: {reason}"
+  },
+  "generator": {
+    "title": "Generatore della mappa dell’alveare",
+    "subtitle": "Anteprima dal vivo dall’elenco attuale dell’Alleanza — per pianificare la prossima disposizione.",
+    "to_current": "Vedi la mappa applicata ora →",
+    "hint": "I dati arrivano dal vivo dal Google Sheet — tocca ↻ Aggiorna dopo averlo modificato. Pizzica o tocca «Dimensioni reali» per ingrandire · Scarica PNG per la risoluzione piena.",
+    "layout": "Disposizione",
+    "stick_groups": "Gruppi uniti",
+    "spread_top10": "Distribuisci Top 10",
+    "spread_lv8": "Distribuisci Lv8",
+    "refresh": "Aggiorna",
+    "fetching": "Recupero degli ultimi dati dal Google Sheet…",
+    "load_failed": "Impossibile caricare l’elenco dei membri: {reason}"
+  },
+  "fit_width": "Adatta alla larghezza",
+  "actual_size": "Dimensioni reali",
+  "download_png": "Scarica PNG",
+  "render_error": "Errore di disegno: {reason}",
+  "reason": {
+    "http": "il foglio ha risposto HTTP {status}",
+    "not_public": "il foglio non è pubblicato sul web",
+    "empty": "nessun membro nel foglio",
+    "network": "impossibile raggiungere Google Sheets"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} membro · il più lontano ≈ {d} caselle",
+    "other": "v{v} · {shape} · {count} membri · il più lontano ≈ {d} caselle"
+  },
+  "shape": {
+    "square": "Quadrato",
+    "gap_square": "Quadrato con spazi",
+    "diamond": "Rombo",
+    "circle": "Cerchio",
+    "heart": "Cuore",
+    "cat_face": "Muso di gatto",
+    "middle_finger": "Dito medio",
+    "skull": "Teschio",
+    "snowflake": "Fiocco di neve"
+  },
+  "canvas": {
+    "title": "Mappa dell’alveare PoU",
+    "shelters": {
+      "one": "rifugio",
+      "other": "rifugi"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Livello Industriale",
+    "lv": "Lv",
+    "one_tile": "1 casella",
+    "shelter_3x3": "rifugio 3×3",
+    "lane": "corsia",
+    "tiles": "caselle",
+    "gap_every_2": "1 casella di spazio ogni 2 rifugi",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

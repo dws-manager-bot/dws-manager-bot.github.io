@@ -1,0 +1,60 @@
+/* The Hive Map. The map is a canvas far wider than a phone: fitted, it scales
+   down with the page; at actual size it scrolls inside its own frame, so the
+   page itself never moves sideways. */
+
+.hive { display: grid; gap: 14px; min-width: 0; }
+.hive > * { min-width: 0; }
+
+.hive-views { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.hive-views::-webkit-scrollbar { display: none; }
+
+.hive-head h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.hive-head p { margin: 0; overflow-wrap: anywhere; }
+
+.hive-note {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+.hive-note p { margin: 0; overflow-wrap: anywhere; }
+.hive-note strong { font-weight: 600; font-size: 14px; }
+
+.hive-controls { display: grid; gap: 10px; }
+.hive-layout { max-width: 360px; }
+.hive-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.hive-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.hive-actions .btn { flex: 1 1 auto; }
+
+.hive-frame {
+  overflow: auto;
+  padding: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.hive-frame[hidden] { display: none; }
+.hive-frame.actual { max-height: 78vh; }
+
+.hive-sheet {
+  max-width: 100%;
+  margin: 0 auto;
+  background: #f5f3ee;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.hive-frame.actual .hive-sheet { max-width: none; }
+.hive-sheet canvas { display: block; width: 100%; height: auto; }
+
+.hive-status { margin: 0; text-align: center; overflow-wrap: anywhere; }
+.hive-hint { margin: 0; text-align: center; font-size: 12px; overflow-wrap: anywhere; }
+
+@media (min-width: 640px) {
+  .hive-head h2 { font-size: 24px; }
+  .hive-controls { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); align-items: end; }
+  .hive-actions .btn { flex: none; }
+}
