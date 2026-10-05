@@ -3,8 +3,7 @@
     "planner": "Pianificatore",
     "events": "Eventi",
     "calculators": "Calcolatrici",
-    "hive_map": "Mappa dell’alveare",
-    "pass_war": "Mappa della guerra del passo"
+    "hive_map": "Mappa dell’alveare"
   },
   "group": {
     "alliance": "Alleanza"
