@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "規劃器",
+    "events": "活動",
+    "calculators": "計算機",
+    "hive_map": "蜂巢地圖",
+    "pass_war": "關卡戰地圖"
+  },
+  "group": {
+    "alliance": "聯盟"
+  },
+  "sign_out": "登出",
+  "loading": "載入中…",
+  "prefs": {
+    "open": "語言與時區",
+    "language": "語言",
+    "zone": "時區",
+    "server_time": "伺服器時間 (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "常用",
+    "africa": "非洲",
+    "america": "美洲",
+    "antarctica": "南極洲",
+    "arctic": "北極",
+    "asia": "亞洲",
+    "atlantic": "大西洋",
+    "australia": "澳洲",
+    "europe": "歐洲",
+    "indian": "印度洋",
+    "pacific": "太平洋"
+  },
+  "login": {
+    "prompt": "請使用你在 PoU 伺服器中使用的 Discord 帳號登入。",
+    "button": "使用 Discord 登入",
+    "refused": "此 Discord 帳號在 PoU 伺服器中沒有 Members 身分組，請聯絡管理員。"
+  }
+}

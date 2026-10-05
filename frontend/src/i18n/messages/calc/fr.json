@@ -1,0 +1,51 @@
+{
+  "calculators": "Calculatrices",
+  "titles": {
+    "precision_parts": "Pièces de précision",
+    "vehicle_level": "Niveau de véhicule modifié",
+    "vehicle_parts": "Pièces de véhicule modifié",
+    "hero_weapon": "Équipement spécialisé du héros",
+    "hero_stars": "Niveau d'étoile du héros",
+    "hero_equipment": "Équipement de héros",
+    "vehicle_chips": "Puces de véhicule modifié"
+  },
+  "note": "Coût de configuration avant bonus — les prix en jeu peuvent être inférieurs.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Coût facturé par appui sur le bouton, pas par niveau.",
+  "error": "Impossible de charger les données",
+  "empty": "Rien de sélectionné",
+  "from": "De",
+  "to": "À",
+  "add_row": "Ajouter une ligne",
+  "remove_row": "Supprimer la ligne",
+  "reset": "Réinitialiser",
+  "owned": "Possédé",
+  "covered": "Suffisant",
+  "short": "Il manque {amount}",
+  "total_needed": "Total requis",
+  "details": "Détails",
+  "total": "Total",
+  "level": "Niv.",
+  "lv": "Lv.{level}",
+  "tick": "{star} étoiles {rank} rangs",
+  "red": "rouge",
+  "max": "A été promu avec toutes les étoiles",
+  "fragment": "Fragment de",
+  "building": "Bâtiment",
+  "part": "Accessoires",
+  "select_weapon": "Choisir une arme",
+  "chip": "Puce",
+  "equip_breakthrough": "Amélioration de l'équipement",
+  "purple": "Violet",
+  "orange": "Orange",
+  "per_level": "{amount} par niveau",
+  "chip_exp": "{amount} EXP de puce",
+  "presses": {
+    "one": "{amount} appui",
+    "other": "{amount} appuis"
+  },
+  "presses_total": {
+    "one": "{amount} appui au total",
+    "other": "{amount} appuis au total"
+  }
+}

@@ -1,5 +1,10 @@
 import { createRoot } from 'react-dom/client'
 import App from '../src/App.jsx'
+import { I18nProvider } from '../src/i18n/I18n.jsx'
+import Planner from '../src/alliance/planner/Planner.jsx'
+import AllianceEvents from '../src/alliance/events/Events.jsx'
+import Calculators from '../src/alliance/calculators/Calculators.jsx'
+import HiveMap from '../src/alliance/hive/HiveMap.jsx'
 import Announcements from '../src/pages/Announcements.jsx'
 import Bgb from '../src/pages/Bgb.jsx'
 import Events from '../src/pages/Events.jsx'
@@ -11,13 +16,14 @@ import WarPlanner from '../src/pages/WarPlanner.jsx'
 import '../src/styles.css'
 
 const which = new URLSearchParams(location.search).get('p') || 'announcements'
-const Page = { app: App, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner }[which]
+const Page = { app: App, planner: Planner, aevents: AllianceEvents, calculators: Calculators, hive: HiveMap, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner }[which]
 const user = { discord_id: '1', username: 'Goba', is_admin: true }
 
 window.onerror = (m) => { document.title = 'ERROR: ' + m }
 window.addEventListener('unhandledrejection', (e) => { document.title = 'REJECT: ' + e.reason })
 
-createRoot(document.getElementById('root')).render(<Page user={user} />)
+// `&lang=ko` reads a page in another language, as a member would.
+createRoot(document.getElementById('root')).render(<I18nProvider><Page user={user} /></I18nProvider>)
 
 /* Drive the interactions the DOM dump cannot: open a row, then press one of
    its buttons, so the editor's position and a copy's prefill are observable. */

@@ -1,0 +1,86 @@
+{
+  "title": "Preparação de sobrevivência e Competição do Duelo da Aliança",
+  "caption": "Planeje os temas da Preparação de sobrevivência e seus gastos na Competição do Duelo da Aliança para que os mesmos itens pontuem duas vezes sempre que possível.",
+  "zone": "Horários em {zone}",
+  "now": {
+    "current": "Tema atual",
+    "left": "Faltam {time}",
+    "next": "A seguir",
+    "starts": "Começa às {time}",
+    "next_dual": "Próxima pontuação dupla"
+  },
+  "days": "Dia do servidor",
+  "today": "Hoje",
+  "ad": {
+    "label": "Tema da Competição do Duelo da Aliança",
+    "break": "A Competição do Duelo da Aliança descansa aos domingos. Foque nas janelas da Preparação de sobrevivência."
+  },
+  "timeline": {
+    "title": "Linha do tempo",
+    "slot": "Faixa {number}",
+    "dual": "Pontuação dupla: as mesmas ações contam nos dois eventos"
+  },
+  "matrix": {
+    "title": "Matriz de ações",
+    "dual": "Pontuação dupla",
+    "sp_only": "Só Preparação de sobrevivência",
+    "ad_only": "Só Competição do Duelo da Aliança"
+  },
+  "officials": {
+    "label": "Cargos recomendados",
+    "best": "Melhor",
+    "also": "Também ajuda",
+    "none": "Sem bônus relevantes da capital"
+  },
+  "themes": {
+    "shelter_expansion": "Construa um abrigo",
+    "hero_initiative": "Formação de Heróis",
+    "unit_training": "Treinamento de Soldados",
+    "age_of_science": "Tecnologia de Investigação",
+    "arms_expert": "Especialista da Guerra",
+    "keep_progressing": "Avançar com o Dia",
+    "holistic_growth": "Desenvolvimento Global",
+    "enemy_buster": "Derrotar Inimigo"
+  },
+  "titles": {
+    "vice_president": "Vice-Presidente",
+    "scale_of_law": "Balança da Ordem",
+    "supreme_general": "Supremo Geral",
+    "secretary_of_construction": "Ministro da Construção",
+    "secretary_of_science": "Ministro da Ciência",
+    "secretary_of_security": "Ministro da Defesa"
+  },
+  "actions": {
+    "construction_speed_ups": "Acelerações de construção",
+    "finish_building_upgrades": "Concluir melhorias de edifícios",
+    "recruitment_tickets": "Cupons de recrutamento",
+    "hero_fragments": "Fragmentos de herói",
+    "exclusive_equipment_fragments": "Fragmentos de equipamento exclusivo",
+    "training_speed_ups": "Acelerações de treinamento",
+    "complete_new_unit_batches": "Concluir treinamentos de soldados",
+    "promote_units_to_higher_tiers": "Promover soldados",
+    "consume_advanced_tactical_rations": "Consumir Rações Táticas Avançadas",
+    "consume_nutrient_potions": "Consumir Poções Nutritivas",
+    "consume_potential_chips": "Consumir Chips de Potencial",
+    "consume_special_ops_honor_medals": "Consumir Medalhas de Honra de Operações Especiais",
+    "consume_standard_training_protocols": "Consumir Regulamentos de Treinamento Comum",
+    "consume_advanced_training_protocols": "Consumir Regulamentos de Treinamento Avançado",
+    "research_speed_ups": "Acelerações de pesquisa",
+    "finish_science_tech_research": "Concluir pesquisas tecnológicas",
+    "wisdom_medals": "Medalhas da Sabedoria",
+    "gears": "Engrenagens",
+    "titaniums": "Liga de Titânio",
+    "design_blueprints": "Plantas de design",
+    "power_cores": "Núcleos de Energia",
+    "hero_equipment_lucky_chests": "Caixas de sorte de equipamento de herói",
+    "open_chip_chests": "Abrir baús de chips",
+    "field_resource_gathering": "Coletar recursos no mapa",
+    "complete_radar_missions": "Completar eventos de Radar",
+    "s_class_truck_escorts": "Escoltar caminhões de ouro negro de qualidade S",
+    "orange_shadow_call_missions": "Missões laranja de Operação Sombria",
+    "kill_roamer_zombies": "Matar Zumbis Errantes",
+    "kill_boomer_zombies": "Matar Zumbis Gigantes",
+    "kill_enemy_units": "Matar unidades inimigas",
+    "lose_units_in_battle": "Perder unidades em batalha"
+  }
+}

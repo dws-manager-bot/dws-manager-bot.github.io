@@ -1,0 +1,70 @@
+{
+  "views": {
+    "label": "ハイブマップのページ",
+    "current": "現在のマップ",
+    "generator": "生成ツール"
+  },
+  "current": {
+    "title": "現在のハイブマップ",
+    "subtitle": "現在ゲームに適用されている避難所の配置です。",
+    "applied": "これは同盟に現在適用されているハイブ配置です。",
+    "snapshot": "{date} に収集した名簿データに基づきます。",
+    "snapshot_unknown": "名簿の固定スナップショットです。",
+    "to_generator": "新しい配置を計画？生成ツールを開く →",
+    "loading": "適用中のマップを読み込み中…",
+    "load_failed": "スナップショットを読み込めませんでした：{reason}"
+  },
+  "generator": {
+    "title": "ハイブマップ生成",
+    "subtitle": "現在の同盟名簿に基づくライブプレビュー — 次の配置計画用です。",
+    "to_current": "現在適用中のマップを見る →",
+    "hint": "データは Google スプレッドシートからライブで読み込まれます — 編集後は ↻ 更新をタップ。ピンチまたは「実際のサイズ」で拡大 · フル解像度は PNG をダウンロード。",
+    "layout": "レイアウト",
+    "stick_groups": "グループ隣接",
+    "spread_top10": "上位10を分散",
+    "spread_lv8": "Lv8を分散",
+    "refresh": "更新",
+    "fetching": "Google スプレッドシートから最新を取得中…",
+    "load_failed": "名簿を読み込めませんでした：{reason}"
+  },
+  "fit_width": "幅に合わせる",
+  "actual_size": "実際のサイズ",
+  "download_png": "PNG をダウンロード",
+  "render_error": "描画エラー：{reason}",
+  "reason": {
+    "http": "シートが HTTP {status} を返しました",
+    "not_public": "シートがウェブに公開されていません",
+    "empty": "シートにメンバーがいません",
+    "network": "Google スプレッドシートに接続できません"
+  },
+  "status": {
+    "other": "v{v} · {shape} · {count}人 · 最遠 ≈ {d} タイル"
+  },
+  "shape": {
+    "square": "正方形",
+    "gap_square": "隙間付き正方形",
+    "diamond": "ダイヤ",
+    "circle": "円",
+    "heart": "ハート",
+    "cat_face": "猫の顔",
+    "middle_finger": "中指",
+    "skull": "ドクロ",
+    "snowflake": "雪の結晶"
+  },
+  "canvas": {
+    "title": "PoU ハイブマップ",
+    "shelters": {
+      "other": "避難所"
+    },
+    "frankenstein": "フランケンシュタイン",
+    "industry_lv": "工業Lv",
+    "lv": "Lv",
+    "one_tile": "1タイル",
+    "shelter_3x3": "避難所 3×3",
+    "lane": "通路",
+    "tiles": "タイル",
+    "gap_every_2": "避難所2つごとに1タイルの隙間",
+    "frank1": "フランケン",
+    "frank2": "シュタイン"
+  }
+}

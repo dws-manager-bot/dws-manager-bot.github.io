@@ -1,0 +1,14 @@
+{
+  "title": "Événements à venir",
+  "caption": "Événements de l’alliance des {days} prochains jours.",
+  "zone": "Heures affichées en {zone}.",
+  "next": "Prochain événement",
+  "today": "Aujourd’hui",
+  "tomorrow": "Demain",
+  "none": "Aucun événement prévu",
+  "on_now": "En cours",
+  "server_at": "{time} heure du serveur",
+  "moved": "Déplacé",
+  "failed": "Impossible de charger les événements.",
+  "retry": "Réessayer"
+}

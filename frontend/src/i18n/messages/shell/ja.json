@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "プランナー",
+    "events": "イベント",
+    "calculators": "計算機",
+    "hive_map": "ハイブマップ",
+    "pass_war": "関門戦マップ"
+  },
+  "group": {
+    "alliance": "同盟"
+  },
+  "sign_out": "ログアウト",
+  "loading": "読み込み中…",
+  "prefs": {
+    "open": "言語とタイムゾーン",
+    "language": "言語",
+    "zone": "タイムゾーン",
+    "server_time": "サーバー時間 (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "よく使う地域",
+    "africa": "アフリカ",
+    "america": "アメリカ",
+    "antarctica": "南極",
+    "arctic": "北極",
+    "asia": "アジア",
+    "atlantic": "大西洋",
+    "australia": "オーストラリア",
+    "europe": "ヨーロッパ",
+    "indian": "インド洋",
+    "pacific": "太平洋"
+  },
+  "login": {
+    "prompt": "PoUサーバーで使っているDiscordアカウントでログインしてください。",
+    "button": "Discordでログイン",
+    "refused": "このDiscordアカウントにはPoUサーバーのMembersロールがありません。管理者に付与を依頼してください。"
+  }
+}

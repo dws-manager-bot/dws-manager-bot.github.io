@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Planificateur",
+    "events": "Événements",
+    "calculators": "Calculatrices",
+    "hive_map": "Carte de la ruche",
+    "pass_war": "Carte de la guerre du col"
+  },
+  "group": {
+    "alliance": "Alliance"
+  },
+  "sign_out": "Se déconnecter",
+  "loading": "Chargement…",
+  "prefs": {
+    "open": "Langue et fuseau horaire",
+    "language": "Langue",
+    "zone": "Fuseau horaire",
+    "server_time": "Heure du serveur (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Fréquents",
+    "africa": "Afrique",
+    "america": "Amériques",
+    "antarctica": "Antarctique",
+    "arctic": "Arctique",
+    "asia": "Asie",
+    "atlantic": "Océan Atlantique",
+    "australia": "Australie",
+    "europe": "Europe",
+    "indian": "Océan Indien",
+    "pacific": "Océan Pacifique"
+  },
+  "login": {
+    "prompt": "Connecte-toi avec le compte Discord que tu utilises sur le serveur PoU.",
+    "button": "Se connecter avec Discord",
+    "refused": "Ce compte Discord n’a pas le rôle Members sur le serveur PoU. Demande-le à un admin."
+  }
+}

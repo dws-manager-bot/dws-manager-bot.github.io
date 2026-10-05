@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Pianificatore",
+    "events": "Eventi",
+    "calculators": "Calcolatrici",
+    "hive_map": "Mappa dell’alveare",
+    "pass_war": "Mappa della guerra del passo"
+  },
+  "group": {
+    "alliance": "Alleanza"
+  },
+  "sign_out": "Esci",
+  "loading": "Caricamento…",
+  "prefs": {
+    "open": "Lingua e fuso orario",
+    "language": "Lingua",
+    "zone": "Fuso orario",
+    "server_time": "Ora del server (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Frequenti",
+    "africa": "Africa",
+    "america": "America",
+    "antarctica": "Antartide",
+    "arctic": "Artico",
+    "asia": "Asia",
+    "atlantic": "Oceano Atlantico",
+    "australia": "Australia",
+    "europe": "Europa",
+    "indian": "Oceano Indiano",
+    "pacific": "Oceano Pacifico"
+  },
+  "login": {
+    "prompt": "Accedi con l’account Discord che usi nel server PoU.",
+    "button": "Accedi con Discord",
+    "refused": "Questo account Discord non ha il ruolo Members nel server PoU. Chiedilo a un admin."
+  }
+}

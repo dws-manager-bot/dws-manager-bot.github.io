@@ -1,0 +1,86 @@
+{
+  "title": "Überlebensbewaffnung und Allianz-Duell",
+  "caption": "Plane die Themen der Überlebensbewaffnung und deine Ausgaben im Allianz-Duell so, dass dieselben Gegenstände möglichst doppelt punkten.",
+  "zone": "Zeiten in {zone}",
+  "now": {
+    "current": "Aktuelles Thema",
+    "left": "noch {time}",
+    "next": "Als Nächstes",
+    "starts": "Beginnt {time}",
+    "next_dual": "Nächste Doppelwertung"
+  },
+  "days": "Servertag",
+  "today": "Heute",
+  "ad": {
+    "label": "Thema im Allianz-Duell",
+    "break": "Sonntags ruht das Allianz-Duell. Konzentriere dich ganz auf die Fenster der Überlebensbewaffnung."
+  },
+  "timeline": {
+    "title": "Zeitleiste",
+    "slot": "Slot {number}",
+    "dual": "Doppelwertung: Dieselben Aktionen zählen in beiden Events"
+  },
+  "matrix": {
+    "title": "Aktionsübersicht",
+    "dual": "Doppelwertung",
+    "sp_only": "Nur Überlebensbewaffnung",
+    "ad_only": "Nur Allianz-Duell"
+  },
+  "officials": {
+    "label": "Empfohlene Ämter",
+    "best": "Am besten",
+    "also": "Hilft auch",
+    "none": "Keine nennenswerten Hauptstadt-Boni"
+  },
+  "themes": {
+    "shelter_expansion": "Bau des Unterschlupfs",
+    "hero_initiative": "Entwicklung von Helden",
+    "unit_training": "Training von Soldaten",
+    "age_of_science": "Forschung der Technologie",
+    "arms_expert": "Bewaffnungsmeister",
+    "keep_progressing": "Zeitliche Entwicklung",
+    "holistic_growth": "Totale Entwicklung",
+    "enemy_buster": "Vernichtung der Feinde"
+  },
+  "titles": {
+    "vice_president": "Vizepräsident",
+    "scale_of_law": "Waage der Ordnung",
+    "supreme_general": "Höchster General",
+    "secretary_of_construction": "Bauminister",
+    "secretary_of_science": "Forschungsminister",
+    "secretary_of_security": "Verteidigungsminister"
+  },
+  "actions": {
+    "construction_speed_ups": "Bau-Beschleuniger",
+    "finish_building_upgrades": "Gebäude-Upgrades abschließen",
+    "recruitment_tickets": "Rekrutierungstickets",
+    "hero_fragments": "Heldenfragmente",
+    "exclusive_equipment_fragments": "Exklusive Rüstungsfragmente",
+    "training_speed_ups": "Trainingsbeschleuniger",
+    "complete_new_unit_batches": "Neue Einheiten fertig trainieren",
+    "promote_units_to_higher_tiers": "Einheiten befördern",
+    "consume_advanced_tactical_rations": "Fortg. taktische Rationen verbrauchen",
+    "consume_nutrient_potions": "Nährstofftränke verbrauchen",
+    "consume_potential_chips": "Potenzialchips verbrauchen",
+    "consume_special_ops_honor_medals": "Ehrenmedaillen der Spezialeinheit verbrauchen",
+    "consume_standard_training_protocols": "Normale Trainingsprotokolle verbrauchen",
+    "consume_advanced_training_protocols": "Fortg. Trainingsprotokolle verbrauchen",
+    "research_speed_ups": "Forschungsbeschleuniger",
+    "finish_science_tech_research": "Technologie-Forschung abschließen",
+    "wisdom_medals": "Weisheit-Medaillen",
+    "gears": "Zahnräder",
+    "titaniums": "Titanlegierung",
+    "design_blueprints": "Design-Baupläne",
+    "power_cores": "Energiekerne",
+    "hero_equipment_lucky_chests": "Glückstruhen der Heldenrüstung",
+    "open_chip_chests": "Chiptruhen öffnen",
+    "field_resource_gathering": "Ressourcen auf der Karte sammeln",
+    "complete_radar_missions": "Radar-Ereignisse abschließen",
+    "s_class_truck_escorts": "Dunkelgold-Trucks mit S-Qualität begleiten",
+    "orange_shadow_call_missions": "Orange Schattenaktion-Missionen",
+    "kill_roamer_zombies": "Wandernde Zombies töten",
+    "kill_boomer_zombies": "Riesenzombies töten",
+    "kill_enemy_units": "Feindliche Einheiten töten",
+    "lose_units_in_battle": "Einheiten im Kampf verlieren"
+  }
+}

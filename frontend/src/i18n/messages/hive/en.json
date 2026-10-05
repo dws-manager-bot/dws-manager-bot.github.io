@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Hive map pages",
+    "current": "Current map",
+    "generator": "Generator"
+  },
+  "current": {
+    "title": "Current Hive Map",
+    "subtitle": "The shelter formation currently applied in-game.",
+    "applied": "This is the alliance’s currently applied hive layout.",
+    "snapshot": "Based on roster data collected on {date}.",
+    "snapshot_unknown": "A frozen snapshot of the roster.",
+    "to_generator": "Planning a new layout? Open the Generator →",
+    "loading": "Loading the applied map…",
+    "load_failed": "Could not load the snapshot: {reason}"
+  },
+  "generator": {
+    "title": "Hive Map Generator",
+    "subtitle": "Live preview from the current alliance roster — for planning the next arrangement.",
+    "to_current": "View the currently applied map →",
+    "hint": "Data loads live from the Google Sheet — tap ↻ Refresh after editing it. Pinch or “Actual size” to zoom · Download PNG for full resolution.",
+    "layout": "Layout",
+    "stick_groups": "Stick groups",
+    "spread_top10": "Spread Top 10",
+    "spread_lv8": "Spread Lv8",
+    "refresh": "Refresh",
+    "fetching": "Fetching latest from Google Sheet…",
+    "load_failed": "Could not load the roster: {reason}"
+  },
+  "fit_width": "Fit width",
+  "actual_size": "Actual size",
+  "download_png": "Download PNG",
+  "render_error": "Render error: {reason}",
+  "reason": {
+    "http": "the sheet answered HTTP {status}",
+    "not_public": "the sheet is not published to the web",
+    "empty": "no members found in the sheet",
+    "network": "Google Sheets could not be reached"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} member · farthest ≈ {d} tiles",
+    "other": "v{v} · {shape} · {count} members · farthest ≈ {d} tiles"
+  },
+  "shape": {
+    "square": "Square",
+    "gap_square": "Gap square",
+    "diamond": "Diamond",
+    "circle": "Circle",
+    "heart": "Heart",
+    "cat_face": "Cat face",
+    "middle_finger": "Middle finger",
+    "skull": "Skull",
+    "snowflake": "Snowflake"
+  },
+  "canvas": {
+    "title": "PoU Hive Map",
+    "shelters": {
+      "one": "shelter",
+      "other": "shelters"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Industry Lv",
+    "lv": "Lv",
+    "one_tile": "1 tile",
+    "shelter_3x3": "shelter 3×3",
+    "lane": "lane",
+    "tiles": "tiles",
+    "gap_every_2": "1-tile gap every 2 shelters",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

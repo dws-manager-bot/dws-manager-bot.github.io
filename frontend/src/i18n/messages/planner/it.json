@@ -1,0 +1,86 @@
+{
+  "title": "Preparazione alla sopravvivenza e Duello dell'Alleanza",
+  "caption": "Pianifica i temi della Preparazione alla sopravvivenza e le spese del Duello dell'Alleanza, così gli stessi oggetti fanno punti due volte quando possibile.",
+  "zone": "Orari in {zone}",
+  "now": {
+    "current": "Tema attuale",
+    "left": "Mancano {time}",
+    "next": "Prossimo",
+    "starts": "Inizia alle {time}",
+    "next_dual": "Prossimo doppio punteggio"
+  },
+  "days": "Giorno del server",
+  "today": "Oggi",
+  "ad": {
+    "label": "Tema del Duello dell'Alleanza",
+    "break": "La domenica il Duello dell'Alleanza è in pausa. Concentrati sulle finestre della Preparazione alla sopravvivenza."
+  },
+  "timeline": {
+    "title": "Cronologia",
+    "slot": "Fascia {number}",
+    "dual": "Doppio punteggio: le stesse azioni contano in entrambi gli eventi"
+  },
+  "matrix": {
+    "title": "Matrice delle azioni",
+    "dual": "Doppio punteggio",
+    "sp_only": "Solo Preparazione alla sopravvivenza",
+    "ad_only": "Solo Duello dell'Alleanza"
+  },
+  "officials": {
+    "label": "Cariche consigliate",
+    "best": "Migliore",
+    "also": "Utile anche",
+    "none": "Nessun bonus rilevante della capitale"
+  },
+  "themes": {
+    "shelter_expansion": "Costruisci Rifugio",
+    "hero_initiative": "Coltiva eroi",
+    "unit_training": "Addestra Unità",
+    "age_of_science": "Ricerca Tecnologia",
+    "arms_expert": "Esperto di armi",
+    "keep_progressing": "Progressione al giorno",
+    "holistic_growth": "Sviluppo completo",
+    "enemy_buster": "Sconfiggi nemico"
+  },
+  "titles": {
+    "vice_president": "Vicepresidente",
+    "scale_of_law": "Bilancia del Giudizio",
+    "supreme_general": "Generale Supremo",
+    "secretary_of_construction": "Ministro dell'edilizia",
+    "secretary_of_science": "Ministro della ricerca",
+    "secretary_of_security": "Ministro della difesa"
+  },
+  "actions": {
+    "construction_speed_ups": "Accelerazioni edifici",
+    "finish_building_upgrades": "Completare potenziamenti di edifici",
+    "recruitment_tickets": "Biglietti di reclutamento",
+    "hero_fragments": "Frammenti di eroe",
+    "exclusive_equipment_fragments": "Frammenti di equipaggiamento esclusivo",
+    "training_speed_ups": "Accelerazioni addestramento",
+    "complete_new_unit_batches": "Completare addestramenti di nuovi soldati",
+    "promote_units_to_higher_tiers": "Promuovere soldati",
+    "consume_advanced_tactical_rations": "Consumare cibo tattico avanzato",
+    "consume_nutrient_potions": "Consumare pozioni nutrienti",
+    "consume_potential_chips": "Consumare chip potenziale",
+    "consume_special_ops_honor_medals": "Consumare medaglie d'onore speciali",
+    "consume_standard_training_protocols": "Consumare regolamenti di addestramento ordinari",
+    "consume_advanced_training_protocols": "Consumare regolamenti di addestramento avanzati",
+    "research_speed_ups": "Accelerazioni ricerca",
+    "finish_science_tech_research": "Completare ricerche tecnologiche",
+    "wisdom_medals": "Medaglie della saggezza",
+    "gears": "Ingranaggi",
+    "titaniums": "Lega di titanio",
+    "design_blueprints": "Disegni tecnici",
+    "power_cores": "Nuclei energetici",
+    "hero_equipment_lucky_chests": "Forzieri di fortuna dell'equipaggiamento",
+    "open_chip_chests": "Aprire forzieri chip",
+    "field_resource_gathering": "Raccogliere risorse sulla mappa",
+    "complete_radar_missions": "Completare eventi radar",
+    "s_class_truck_escorts": "Scortare camion dell'Oro Nero di livello S",
+    "orange_shadow_call_missions": "Missioni arancioni dell'Operazione Ombra",
+    "kill_roamer_zombies": "Uccidere zombie erranti",
+    "kill_boomer_zombies": "Uccidere zombie giganti",
+    "kill_enemy_units": "Uccidere unità nemiche",
+    "lose_units_in_battle": "Perdere unità in battaglia"
+  }
+}

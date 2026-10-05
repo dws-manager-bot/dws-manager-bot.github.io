@@ -1,0 +1,86 @@
+{
+  "title": "الاستعداد للنجاة ومواجهة التحالفات",
+  "caption": "خطّط لدورات الاستعداد للنجاة ونوافذ الإنفاق في مواجهة التحالفات كي تمنحك العناصر نفسها نقاطًا مزدوجة كلما أمكن.",
+  "zone": "الأوقات بتوقيت {zone}",
+  "now": {
+    "current": "السمة الحالية",
+    "left": "متبقٍ {time}",
+    "next": "التالي",
+    "starts": "يبدأ {time}",
+    "next_dual": "النقاط المزدوجة التالية"
+  },
+  "days": "يوم الخادم",
+  "today": "اليوم",
+  "ad": {
+    "label": "سمة مواجهة التحالفات",
+    "break": "لا توجد مواجهة تحالفات يوم الأحد. ركّز فقط على نوافذ الاستعداد للنجاة."
+  },
+  "timeline": {
+    "title": "المخطط الزمني",
+    "slot": "الخانة {number}",
+    "dual": "نقاط مزدوجة: الإجراءات نفسها تُحتسب في الحدثين"
+  },
+  "matrix": {
+    "title": "مصفوفة الإجراءات",
+    "dual": "نقاط مزدوجة",
+    "sp_only": "الاستعداد للنجاة فقط",
+    "ad_only": "مواجهة التحالفات فقط"
+  },
+  "officials": {
+    "label": "المناصب الموصى بها",
+    "best": "أفضل اختيار",
+    "also": "مفيد أيضًا",
+    "none": "لا توجد تعزيزات مهمة من العاصمة"
+  },
+  "themes": {
+    "shelter_expansion": "بناء ملجأ",
+    "hero_initiative": "تدريب الأبطال",
+    "unit_training": "تدريب الوحدات",
+    "age_of_science": "قم ببحث التقنية",
+    "arms_expert": "خبير الاستعداد القتالي",
+    "keep_progressing": "التقدم اليومي",
+    "holistic_growth": "تطوير شامل",
+    "enemy_buster": "هزيمة الأعداء"
+  },
+  "titles": {
+    "vice_president": "نائب الرئيس",
+    "scale_of_law": "ميزان النظام",
+    "supreme_general": "الجنرال الأعلى",
+    "secretary_of_construction": "وزير البناء",
+    "secretary_of_science": "وزير البحث العلمي",
+    "secretary_of_security": "وزير الدفاع"
+  },
+  "actions": {
+    "construction_speed_ups": "تسريع البناء",
+    "finish_building_upgrades": "إنهاء ترقيات المباني",
+    "recruitment_tickets": "تذاكر التجنيد",
+    "hero_fragments": "شظايا الأبطال",
+    "exclusive_equipment_fragments": "شظايا المعدات الحصرية",
+    "training_speed_ups": "تسريع التدريب",
+    "complete_new_unit_batches": "إكمال دفعات الوحدات الجديدة",
+    "promote_units_to_higher_tiers": "ترقية الوحدات لمستويات أعلى",
+    "consume_advanced_tactical_rations": "استهلاك حصص تكتيكية متقدمة",
+    "consume_nutrient_potions": "استهلاك جرعات المغذيات",
+    "consume_potential_chips": "استهلاك رقائق الإمكانات",
+    "consume_special_ops_honor_medals": "استهلاك أوسمة شرف العمليات الخاصة",
+    "consume_standard_training_protocols": "استهلاك بروتوكولات التدريب القياسية",
+    "consume_advanced_training_protocols": "استهلاك بروتوكولات التدريب المتقدمة",
+    "research_speed_ups": "تسريع البحث",
+    "finish_science_tech_research": "إنهاء أبحاث التقنية",
+    "wisdom_medals": "ميداليات الحكمة",
+    "gears": "التروس",
+    "titaniums": "التيتانيوم",
+    "design_blueprints": "مخططات التصميم",
+    "power_cores": "نوى الطاقة",
+    "hero_equipment_lucky_chests": "صناديق معدات الأبطال المحظوظة",
+    "open_chip_chests": "فتح صناديق الرقائق",
+    "field_resource_gathering": "جمع موارد الميدان",
+    "complete_radar_missions": "إكمال مهام الرادار",
+    "s_class_truck_escorts": "مرافقة شاحنات الفئة S",
+    "orange_shadow_call_missions": "مهام استدعاء الظل البرتقالي",
+    "kill_roamer_zombies": "قتل الزومبي المتجولين",
+    "kill_boomer_zombies": "قتل زومبي البومر",
+    "kill_enemy_units": "قتل وحدات العدو",
+    "lose_units_in_battle": "خسارة الوحدات في المعركة"
+  }
+}

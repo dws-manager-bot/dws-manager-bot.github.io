@@ -1,0 +1,14 @@
+{
+  "title": "即將開始的活動",
+  "caption": "未來 {days} 天的聯盟活動。",
+  "zone": "時間以 {zone} 顯示。",
+  "next": "下一個活動",
+  "today": "今天",
+  "tomorrow": "明天",
+  "none": "目前沒有活動安排",
+  "on_now": "進行中",
+  "server_at": "伺服器時間 {time}",
+  "moved": "已改期",
+  "failed": "無法載入活動。",
+  "retry": "重試"
+}

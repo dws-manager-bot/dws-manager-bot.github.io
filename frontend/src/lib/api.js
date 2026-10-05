@@ -149,6 +149,8 @@ export const api = {
   testAnnouncement: (id) => request(`/announcements/${id}/test`, { method: 'POST' }),
 
   listEvents: () => request('/events'),
+  // Any member: the calendar the admins keep, moves and skips applied.
+  upcomingEvents: (days = 14) => request(`/events/upcoming?days=${days}`),
   createEvent: (data) => request('/events', { method: 'POST', body: JSON.stringify(data) }),
   updateEvent: (id, data) =>
     request(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

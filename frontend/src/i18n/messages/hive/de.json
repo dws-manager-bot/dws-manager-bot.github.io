@@ -1,0 +1,72 @@
+{
+  "views": {
+    "label": "Seiten der Hive-Karte",
+    "current": "Aktuelle Karte",
+    "generator": "Generator"
+  },
+  "current": {
+    "title": "Aktuelle Hive-Karte",
+    "subtitle": "Die Unterschlupf-Formation, die gerade im Spiel steht.",
+    "applied": "Das ist die Hive-Aufstellung, die die Allianz gerade verwendet.",
+    "snapshot": "Stand der Mitgliederdaten vom {date}.",
+    "snapshot_unknown": "Ein eingefrorener Stand der Mitgliederliste.",
+    "to_generator": "Neue Aufstellung planen? Zum Generator →",
+    "loading": "Die aktuelle Karte wird geladen…",
+    "load_failed": "Der Stand konnte nicht geladen werden: {reason}"
+  },
+  "generator": {
+    "title": "Hive-Karten-Generator",
+    "subtitle": "Live-Vorschau aus der aktuellen Mitgliederliste der Allianz – zum Planen der nächsten Aufstellung.",
+    "to_current": "Zur aktuell verwendeten Karte →",
+    "hint": "Die Daten kommen live aus dem Google Sheet – nach dem Bearbeiten auf ↻ Aktualisieren tippen. Zum Vergrößern mit zwei Fingern ziehen oder „Originalgröße“ · PNG herunterladen für volle Auflösung.",
+    "layout": "Layout",
+    "stick_groups": "Stick-Gruppen",
+    "spread_top10": "Top 10 verteilen",
+    "spread_lv8": "Lv8 verteilen",
+    "refresh": "Aktualisieren",
+    "fetching": "Neueste Daten aus dem Google Sheet werden geholt…",
+    "load_failed": "Die Mitgliederliste konnte nicht geladen werden: {reason}"
+  },
+  "fit_width": "An Breite anpassen",
+  "actual_size": "Originalgröße",
+  "download_png": "PNG herunterladen",
+  "render_error": "Darstellungsfehler: {reason}",
+  "reason": {
+    "http": "das Sheet antwortete mit HTTP {status}",
+    "not_public": "das Sheet ist nicht im Web veröffentlicht",
+    "empty": "keine Mitglieder im Sheet",
+    "network": "Google Sheets ist nicht erreichbar"
+  },
+  "status": {
+    "one": "v{v} · {shape} · {count} Mitglied · am weitesten ≈ {d} Felder",
+    "other": "v{v} · {shape} · {count} Mitglieder · am weitesten ≈ {d} Felder"
+  },
+  "shape": {
+    "square": "Quadrat",
+    "gap_square": "Quadrat mit Lücken",
+    "diamond": "Raute",
+    "circle": "Kreis",
+    "heart": "Herz",
+    "cat_face": "Katzengesicht",
+    "middle_finger": "Mittelfinger",
+    "skull": "Totenkopf",
+    "snowflake": "Schneeflocke"
+  },
+  "canvas": {
+    "title": "PoU Hive-Karte",
+    "shelters": {
+      "one": "Unterschlupf",
+      "other": "Unterschlüpfe"
+    },
+    "frankenstein": "Frankenstein",
+    "industry_lv": "Industrie-Lv.",
+    "lv": "Lv",
+    "one_tile": "1 Feld",
+    "shelter_3x3": "Unterschlupf 3×3",
+    "lane": "Gasse",
+    "tiles": "Felder",
+    "gap_every_2": "1 Feld Lücke nach je 2 Unterschlüpfen",
+    "frank1": "FRANKEN",
+    "frank2": "STEIN"
+  }
+}

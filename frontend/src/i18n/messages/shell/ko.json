@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "플래너",
+    "events": "이벤트",
+    "calculators": "계산기",
+    "hive_map": "군집 지도",
+    "pass_war": "관문전 지도"
+  },
+  "group": {
+    "alliance": "연맹"
+  },
+  "sign_out": "로그아웃",
+  "loading": "불러오는 중…",
+  "prefs": {
+    "open": "언어와 시간대",
+    "language": "언어",
+    "zone": "시간대",
+    "server_time": "서버 시간 (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "자주 쓰는 지역",
+    "africa": "아프리카",
+    "america": "아메리카",
+    "antarctica": "남극",
+    "arctic": "북극",
+    "asia": "아시아",
+    "atlantic": "대서양",
+    "australia": "오스트레일리아",
+    "europe": "유럽",
+    "indian": "인도양",
+    "pacific": "태평양"
+  },
+  "login": {
+    "prompt": "PoU 서버에서 쓰는 디스코드 계정으로 로그인하세요.",
+    "button": "디스코드로 로그인",
+    "refused": "이 디스코드 계정에는 PoU 서버의 Members 역할이 없습니다. 관리자에게 요청하세요."
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "title": "生存軍備と同盟対決戦",
+  "caption": "生存軍備ローテーションと同盟対決戦など消費ウィンドウを計画し、同じアイテムで可能な限り二重得点を狙いましょう。",
+  "zone": "{zone}の時刻",
+  "now": {
+    "current": "現在のテーマ",
+    "left": "残り {time}",
+    "next": "次のテーマ",
+    "starts": "{time} 開始",
+    "next_dual": "次の二重得点"
+  },
+  "days": "サーバー曜日",
+  "today": "今日",
+  "ad": {
+    "label": "同盟対決戦テーマ",
+    "break": "日曜日は同盟対決戦が休みです。SPウィンドウに集中しましょう。"
+  },
+  "timeline": {
+    "title": "タイムライン",
+    "slot": "スロット{number}",
+    "dual": "二重得点：同じアクションが両方のイベントで得点になります"
+  },
+  "matrix": {
+    "title": "アクションマトリクス",
+    "dual": "二重得点",
+    "sp_only": "SP専用",
+    "ad_only": "同盟対決戦専用"
+  },
+  "officials": {
+    "label": "推奨官職",
+    "best": "最適",
+    "also": "追加候補",
+    "none": "有効な首都バフなし"
+  },
+  "themes": {
+    "shelter_expansion": "避難所建設",
+    "hero_initiative": "ヒーロー育成",
+    "unit_training": "兵士を訓練する",
+    "age_of_science": "科学技術研究",
+    "arms_expert": "軍備達人",
+    "keep_progressing": "日進月歩",
+    "holistic_growth": "全面的な発展",
+    "enemy_buster": "敵軍撃破"
+  },
+  "titles": {
+    "vice_president": "副大統領",
+    "scale_of_law": "秩序の天秤",
+    "supreme_general": "至高将軍",
+    "secretary_of_construction": "建設長官",
+    "secretary_of_science": "科学研究長官",
+    "secretary_of_security": "国防長官"
+  },
+  "actions": {
+    "construction_speed_ups": "建設加速",
+    "finish_building_upgrades": "建物アップグレード完了",
+    "recruitment_tickets": "募集チケット",
+    "hero_fragments": "ヒーローの欠片",
+    "exclusive_equipment_fragments": "専用装備の欠片",
+    "training_speed_ups": "訓練加速",
+    "complete_new_unit_batches": "新規ユニット訓練完了",
+    "promote_units_to_higher_tiers": "ユニット昇格",
+    "consume_advanced_tactical_rations": "高度戦術糧食消費",
+    "consume_nutrient_potions": "栄養薬剤消費",
+    "consume_potential_chips": "潜在チップ消費",
+    "consume_special_ops_honor_medals": "特殊作戦名誉勲章消費",
+    "consume_standard_training_protocols": "標準特訓条例消費",
+    "consume_advanced_training_protocols": "高度特訓条例消費",
+    "research_speed_ups": "研究加速",
+    "finish_science_tech_research": "科学研究完了",
+    "wisdom_medals": "知恵のメダル",
+    "gears": "ギア",
+    "titaniums": "チタン",
+    "design_blueprints": "設計図",
+    "power_cores": "パワーコア",
+    "hero_equipment_lucky_chests": "ヒーロー装備ラッキーチェスト",
+    "open_chip_chests": "チップチェストを開く",
+    "field_resource_gathering": "フィールド資源採集",
+    "complete_radar_missions": "レーダーミッション完了",
+    "s_class_truck_escorts": "Sクラストラック護送",
+    "orange_shadow_call_missions": "オレンジシャドウ召喚ミッション",
+    "kill_roamer_zombies": "ローマーゾンビ討伐",
+    "kill_boomer_zombies": "ブーマーゾンビ討伐",
+    "kill_enemy_units": "敵ユニット撃破",
+    "lose_units_in_battle": "戦闘でユニット損失"
+  }
+}

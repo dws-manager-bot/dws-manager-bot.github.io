@@ -1,0 +1,86 @@
+{
+  "title": "Подготовка к выживанию и Дуэль альянсов",
+  "caption": "Планируйте темы Подготовки к выживанию и траты в Дуэли альянсов так, чтобы одни и те же предметы по возможности приносили очки дважды.",
+  "zone": "Время: {zone}",
+  "now": {
+    "current": "Текущая тема",
+    "left": "Осталось {time}",
+    "next": "Далее",
+    "starts": "Начало в {time}",
+    "next_dual": "Следующий двойной зачёт"
+  },
+  "days": "День сервера",
+  "today": "Сегодня",
+  "ad": {
+    "label": "Тема Дуэли альянсов",
+    "break": "По воскресеньям Дуэль альянсов отдыхает. Сосредоточьтесь на окнах Подготовки к выживанию."
+  },
+  "timeline": {
+    "title": "Шкала времени",
+    "slot": "Слот {number}",
+    "dual": "Двойной зачёт: одни и те же действия приносят очки в обоих событиях"
+  },
+  "matrix": {
+    "title": "Матрица действий",
+    "dual": "Двойной зачёт",
+    "sp_only": "Только Подготовка к выживанию",
+    "ad_only": "Только Дуэль альянсов"
+  },
+  "officials": {
+    "label": "Рекомендуемые должности",
+    "best": "Лучше всего",
+    "also": "Тоже помогает",
+    "none": "Нет заметных бонусов столицы"
+  },
+  "themes": {
+    "shelter_expansion": "Постройка базы",
+    "hero_initiative": "Развитие героя",
+    "unit_training": "Тренировка юнитов",
+    "age_of_science": "Исследование технологий",
+    "arms_expert": "Эксперт по вооружению",
+    "keep_progressing": "Прогресс вперед",
+    "holistic_growth": "Общее развитие",
+    "enemy_buster": "Победа над врагом"
+  },
+  "titles": {
+    "vice_president": "Зам. президента",
+    "scale_of_law": "Scale of Law",
+    "supreme_general": "Верховный маршал",
+    "secretary_of_construction": "Министр строительства",
+    "secretary_of_science": "Министр науки",
+    "secretary_of_security": "Министр обороны"
+  },
+  "actions": {
+    "construction_speed_ups": "Ускорения строительства",
+    "finish_building_upgrades": "Завершать улучшения зданий",
+    "recruitment_tickets": "Купоны найма",
+    "hero_fragments": "Фрагменты героев",
+    "exclusive_equipment_fragments": "Фрагменты эксклюзивного снаряжения",
+    "training_speed_ups": "Ускорения тренировки",
+    "complete_new_unit_batches": "Завершать тренировку юнитов",
+    "promote_units_to_higher_tiers": "Повышать юниты",
+    "consume_advanced_tactical_rations": "Тратить продвинутые тактические пайки",
+    "consume_nutrient_potions": "Тратить питательные зелья",
+    "consume_potential_chips": "Тратить чипы потенциала",
+    "consume_special_ops_honor_medals": "Тратить почётные медали спецназа",
+    "consume_standard_training_protocols": "Тратить обычные протоколы тренировки",
+    "consume_advanced_training_protocols": "Тратить продвинутые протоколы тренировки",
+    "research_speed_ups": "Ускорения исследований",
+    "finish_science_tech_research": "Завершать исследования технологий",
+    "wisdom_medals": "Медали мудрости",
+    "gears": "Шестерни",
+    "titaniums": "Титановый сплав",
+    "design_blueprints": "Чертежи",
+    "power_cores": "Энергоядра",
+    "hero_equipment_lucky_chests": "Сундуки удачи со снаряжением героев",
+    "open_chip_chests": "Открывать сундуки с чипами",
+    "field_resource_gathering": "Сбор ресурсов на карте",
+    "complete_radar_missions": "Выполнять задания радара",
+    "s_class_truck_escorts": "Сопровождать грузовики S-класса",
+    "orange_shadow_call_missions": "Оранжевые теневые миссии",
+    "kill_roamer_zombies": "Убивать бродячих зомби",
+    "kill_boomer_zombies": "Убивать гигантских зомби",
+    "kill_enemy_units": "Убивать вражеские юниты",
+    "lose_units_in_battle": "Терять юниты в бою"
+  }
+}

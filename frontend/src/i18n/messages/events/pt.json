@@ -1,0 +1,14 @@
+{
+  "title": "Próximos eventos",
+  "caption": "Eventos da aliança dos próximos {days} dias.",
+  "zone": "Horários em {zone}.",
+  "next": "Próximo evento",
+  "today": "Hoje",
+  "tomorrow": "Amanhã",
+  "none": "Nenhum evento agendado",
+  "on_now": "Acontecendo agora",
+  "server_at": "{time} horário do servidor",
+  "moved": "Remarcado",
+  "failed": "Não foi possível carregar os eventos.",
+  "retry": "Tentar de novo"
+}

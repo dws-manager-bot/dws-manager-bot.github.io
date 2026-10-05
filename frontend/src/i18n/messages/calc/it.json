@@ -1,0 +1,51 @@
+{
+  "calculators": "Calcolatrici",
+  "titles": {
+    "precision_parts": "Pezzi di precisione",
+    "vehicle_level": "Livello del veicolo modificato",
+    "vehicle_parts": "Componenti del veicolo modificato",
+    "hero_weapon": "Equip. esclusivo per eroi",
+    "hero_stars": "Stella dell'eroe",
+    "hero_equipment": "Equip. dell'eroe",
+    "vehicle_chips": "Chip del veicolo modificato"
+  },
+  "note": "Costo di configurazione prima dei bonus: i prezzi in gioco possono essere inferiori.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Addebitato per ogni pressione del pulsante, non per livello.",
+  "error": "Impossibile caricare i dati",
+  "empty": "Nulla selezionato",
+  "from": "Da",
+  "to": "A",
+  "add_row": "Aggiungi riga",
+  "remove_row": "Rimuovi riga",
+  "reset": "Ripristina",
+  "owned": "Già in possesso",
+  "covered": "Sufficiente",
+  "short": "Mancano {amount}",
+  "total_needed": "Totale necessario",
+  "details": "Dettagli",
+  "total": "Totale",
+  "level": "Livello",
+  "lv": "Lv.{level}",
+  "tick": "{star} stelle {rank} fase",
+  "red": "Rosso",
+  "max": "Potenziato a stelle piene",
+  "fragment": "Frammenti di",
+  "building": "Edifici",
+  "part": "Accessori",
+  "select_weapon": "Seleziona arma",
+  "chip": "Chip",
+  "equip_breakthrough": "Aggiornamento di Equipaggiamento",
+  "purple": "Viola",
+  "orange": "Arancione",
+  "per_level": "{amount} per livello",
+  "chip_exp": "{amount} EXP chip",
+  "presses": {
+    "one": "{amount} pressione",
+    "other": "{amount} pressioni"
+  },
+  "presses_total": {
+    "one": "{amount} pressione in totale",
+    "other": "{amount} pressioni in totale"
+  }
+}

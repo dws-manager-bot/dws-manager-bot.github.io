@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "planner": "Planner",
+    "events": "Events",
+    "calculators": "Calculators",
+    "hive_map": "Hive Map",
+    "pass_war": "Pass War map"
+  },
+  "group": {
+    "alliance": "Alliance"
+  },
+  "sign_out": "Sign out",
+  "loading": "Loading…",
+  "prefs": {
+    "open": "Language and time zone",
+    "language": "Language",
+    "zone": "Time zone",
+    "server_time": "Server time (UTC−2)"
+  },
+  "zone_groups": {
+    "common": "Common",
+    "africa": "Africa",
+    "america": "Americas",
+    "antarctica": "Antarctica",
+    "arctic": "Arctic",
+    "asia": "Asia",
+    "atlantic": "Atlantic Ocean",
+    "australia": "Australia",
+    "europe": "Europe",
+    "indian": "Indian Ocean",
+    "pacific": "Pacific Ocean"
+  },
+  "login": {
+    "prompt": "Sign in with the Discord account you use in the PoU server.",
+    "button": "Sign in with Discord",
+    "refused": "That Discord account does not have the Members role in the PoU server. Ask an admin for it."
+  }
+}

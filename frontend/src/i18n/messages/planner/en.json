@@ -1,0 +1,86 @@
+{
+  "title": "Survival Preparedness and Alliance Duel",
+  "caption": "Plan your Survival Preparedness rotations and Alliance Duel spending windows so the same items score twice whenever possible.",
+  "zone": "Times in {zone}",
+  "now": {
+    "current": "Current theme",
+    "left": "{time} left",
+    "next": "Next up",
+    "starts": "Starts {time}",
+    "next_dual": "Next dual window"
+  },
+  "days": "Server day",
+  "today": "Today",
+  "ad": {
+    "label": "Alliance Duel theme",
+    "break": "Alliance Duel rests on Sundays. Focus entirely on SP windows."
+  },
+  "timeline": {
+    "title": "Timeline",
+    "slot": "Slot {number}",
+    "dual": "Dual window: the same actions score in both events"
+  },
+  "matrix": {
+    "title": "Action matrix",
+    "dual": "Dual",
+    "sp_only": "SP only",
+    "ad_only": "Alliance Duel only"
+  },
+  "officials": {
+    "label": "Recommended officials",
+    "best": "Best",
+    "also": "Also helps",
+    "none": "No notable capital buffs"
+  },
+  "themes": {
+    "shelter_expansion": "Shelter Expansion",
+    "hero_initiative": "Hero Initiative",
+    "unit_training": "Unit Training",
+    "age_of_science": "Age of Science",
+    "arms_expert": "Arms Expert",
+    "keep_progressing": "Keep Progressing",
+    "holistic_growth": "Holistic Growth",
+    "enemy_buster": "Enemy Buster"
+  },
+  "titles": {
+    "vice_president": "Vice President",
+    "scale_of_law": "Scale of Law",
+    "supreme_general": "Supreme General",
+    "secretary_of_construction": "Secretary of Construction",
+    "secretary_of_science": "Secretary of Science",
+    "secretary_of_security": "Secretary of Security"
+  },
+  "actions": {
+    "construction_speed_ups": "Construction speed-ups",
+    "finish_building_upgrades": "Finish building upgrades",
+    "recruitment_tickets": "Recruitment tickets",
+    "hero_fragments": "Hero fragments",
+    "exclusive_equipment_fragments": "Exclusive equipment fragments",
+    "training_speed_ups": "Training speed-ups",
+    "complete_new_unit_batches": "Complete new unit batches",
+    "promote_units_to_higher_tiers": "Promote units to higher tiers",
+    "consume_advanced_tactical_rations": "Consume advanced tactical rations",
+    "consume_nutrient_potions": "Consume nutrient potions",
+    "consume_potential_chips": "Consume potential chips",
+    "consume_special_ops_honor_medals": "Consume special ops honor medals",
+    "consume_standard_training_protocols": "Consume standard training protocols",
+    "consume_advanced_training_protocols": "Consume advanced training protocols",
+    "research_speed_ups": "Research speed-ups",
+    "finish_science_tech_research": "Finish science tech research",
+    "wisdom_medals": "Wisdom medals",
+    "gears": "Gears",
+    "titaniums": "Titaniums",
+    "design_blueprints": "Design blueprints",
+    "power_cores": "Power cores",
+    "hero_equipment_lucky_chests": "Hero equipment lucky chests",
+    "open_chip_chests": "Open chip chests",
+    "field_resource_gathering": "Field resource gathering",
+    "complete_radar_missions": "Complete radar missions",
+    "s_class_truck_escorts": "S-class truck escorts",
+    "orange_shadow_call_missions": "Orange shadow call missions",
+    "kill_roamer_zombies": "Kill roamer zombies",
+    "kill_boomer_zombies": "Kill boomer zombies",
+    "kill_enemy_units": "Kill enemy units",
+    "lose_units_in_battle": "Lose units in battle"
+  }
+}
