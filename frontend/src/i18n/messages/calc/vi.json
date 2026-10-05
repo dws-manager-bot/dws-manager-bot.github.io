@@ -1,0 +1,49 @@
+{
+  "calculators": "Máy Tính",
+  "titles": {
+    "precision_parts": "Linh Kiện Tinh Xảo",
+    "vehicle_level": "Cấp Xe Độ",
+    "vehicle_parts": "Phụ Kiện Xe Độ",
+    "hero_weapon": "Vũ Khí Chuyên Dụng Tướng",
+    "hero_stars": "Cấp sao Tướng",
+    "hero_equipment": "Trang Bị Tướng",
+    "vehicle_chips": "Chip Xe Độ"
+  },
+  "note": "Chi phí cấu hình trước buff — giá trong game có thể thấp hơn.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Tính theo mỗi lần nhấn nút, không phải mỗi cấp.",
+  "error": "Không tải được dữ liệu",
+  "empty": "Chưa chọn mục nào",
+  "from": "Từ",
+  "to": "Đến",
+  "add_row": "Thêm dòng",
+  "remove_row": "Xóa dòng",
+  "reset": "đặt lại",
+  "owned": "Đã có",
+  "covered": "Đủ",
+  "short": "Thiếu {amount}",
+  "total_needed": "Tổng cần",
+  "details": "Chi Tiết",
+  "total": "Tổng",
+  "level": "Cấp",
+  "lv": "Lv.{level}",
+  "tick": "{star} sao Bậc {rank}",
+  "red": "Đỏ",
+  "max": "Đã đạt sao tối đa",
+  "fragment": "Mảnh",
+  "building": "Kiến Trúc",
+  "part": "Phụ Kiện",
+  "select_weapon": "Chọn vũ khí",
+  "chip": "Chip",
+  "equip_breakthrough": "Đột Phá Trang Bị",
+  "purple": "Tím",
+  "orange": "Cam",
+  "per_level": "{amount} mỗi cấp",
+  "chip_exp": "{amount} EXP chip",
+  "presses": {
+    "other": "{amount} lần nhấn"
+  },
+  "presses_total": {
+    "other": "Tổng cộng {amount} lần nhấn nút"
+  }
+}

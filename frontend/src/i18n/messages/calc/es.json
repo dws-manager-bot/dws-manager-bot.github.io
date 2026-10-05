@@ -1,0 +1,51 @@
+{
+  "calculators": "Calculadoras",
+  "titles": {
+    "precision_parts": "Piezas precisas",
+    "vehicle_level": "Nivel del vehículo modificado",
+    "vehicle_parts": "Accesorio del Vehículo modificado",
+    "hero_weapon": "Arma exclusiva",
+    "hero_stars": "Estrellas del Héroe",
+    "hero_equipment": "Equipo de Héroe",
+    "vehicle_chips": "Chips de vehículos modificados"
+  },
+  "note": "Coste de configuración antes de bonificaciones: los precios en el juego pueden ser menores.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Se cobra por cada pulsación, no por nivel.",
+  "error": "No se pudieron cargar los datos",
+  "empty": "Nada seleccionado",
+  "from": "Desde",
+  "to": "Hasta",
+  "add_row": "Añadir fila",
+  "remove_row": "Quitar fila",
+  "reset": "Restablecer",
+  "owned": "Adquirido",
+  "covered": "Suficiente",
+  "short": "Faltan {amount}",
+  "total_needed": "Total necesario",
+  "details": "Detalles",
+  "total": "Total",
+  "level": "Nivel",
+  "lv": "Lv.{level}",
+  "tick": "{star} Estrella Rango {rank}",
+  "red": "Rojo",
+  "max": "Nivel máximo de estrella alcanzado",
+  "fragment": "Fragmento de",
+  "building": "Construcción.",
+  "part": "Accesorios.",
+  "select_weapon": "Seleccionar arma",
+  "chip": "Chip",
+  "equip_breakthrough": "Avance de Equipos",
+  "purple": "Morado",
+  "orange": "Naranja",
+  "per_level": "{amount} por nivel",
+  "chip_exp": "{amount} EXP de chip",
+  "presses": {
+    "one": "{amount} pulsación",
+    "other": "{amount} pulsaciones"
+  },
+  "presses_total": {
+    "one": "{amount} pulsación en total",
+    "other": "{amount} pulsaciones en total"
+  }
+}

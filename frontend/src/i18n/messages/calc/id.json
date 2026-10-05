@@ -1,0 +1,49 @@
+{
+  "calculators": "Kalkulator",
+  "titles": {
+    "precision_parts": "Komponen Presisi",
+    "vehicle_level": "Level Mobil Modifikasi",
+    "vehicle_parts": "Suku Cadang Mobil Modifikasi",
+    "hero_weapon": "Senjata Eksklusif Hero",
+    "hero_stars": "Bintang Hero",
+    "hero_equipment": "Perlengkapan Hero",
+    "vehicle_chips": "Chip Mobil Modifikasi"
+  },
+  "note": "Biaya konfigurasi sebelum buff — harga dalam game bisa lebih rendah.",
+  "source": "Dark War Survival {build}",
+  "per_press": "Dihitung per tekan tombol, bukan per level.",
+  "error": "Gagal memuat data",
+  "empty": "Belum ada yang dipilih",
+  "from": "Dari",
+  "to": "Ke",
+  "add_row": "Tambah baris",
+  "remove_row": "Hapus baris",
+  "reset": "Reset",
+  "owned": "Sudah dimiliki",
+  "covered": "Cukup",
+  "short": "Kurang {amount}",
+  "total_needed": "Total dibutuhkan",
+  "details": "Detail",
+  "total": "Total",
+  "level": "Level",
+  "lv": "Lv.{level}",
+  "tick": "Bintang {star} Rank {rank}",
+  "red": "Merah",
+  "max": "Sudah max bintang",
+  "fragment": "Shard",
+  "building": "Bangunan",
+  "part": "Suku Cadang",
+  "select_weapon": "Pilih Senjata",
+  "chip": "Chip",
+  "equip_breakthrough": "Breakthrough Perlengkapan",
+  "purple": "Ungu",
+  "orange": "Oranye",
+  "per_level": "{amount} per level",
+  "chip_exp": "{amount} EXP chip",
+  "presses": {
+    "other": "{amount} kali tekan"
+  },
+  "presses_total": {
+    "other": "Total {amount} kali tekan tombol"
+  }
+}

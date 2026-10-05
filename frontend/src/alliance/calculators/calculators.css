@@ -1,0 +1,141 @@
+/* The calculators. One column at any width, as pou-rocks had it: a sheet of
+   rows reads top to bottom, and the total stays pinned to the bottom of the
+   screen while the rows scroll past it. */
+
+.calc { max-width: 760px; margin-inline: auto; }
+.page-head.calc-head { margin-bottom: 4px; }
+.calc-sub { margin: 0 0 4px; }
+
+/* A chevron that points onward points the other way in Arabic. */
+[dir='rtl'] .calc-flip { transform: scaleX(-1); }
+.calc-back-icon { transform: scaleX(-1); }
+[dir='rtl'] .calc-back-icon { transform: none; }
+
+.calc-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px; margin-bottom: 2px;
+  font-size: 14px; text-decoration: none;
+}
+
+/* ---------- the list ---------- */
+
+.calc-list { display: grid; gap: 10px; min-width: 0; }
+.card.calc-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 60px; padding-block: 12px;
+  color: var(--text); text-decoration: none; font-weight: 600;
+}
+.calc-link span { min-width: 0; overflow-wrap: anywhere; }
+.calc-link svg { flex: none; color: var(--accent); }
+.calc-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- rows ---------- */
+
+.calc-rows { display: grid; gap: 12px; margin-top: 12px; min-width: 0; }
+/* A card that lifts under the pointer fights the selects inside it. */
+.card.calc-row:hover { transform: none; box-shadow: none; }
+.card.calc-empty { text-align: center; padding-block: 28px; }
+
+.calc-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.calc-row-head select { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.btn.calc-remove { flex: none; width: 44px; padding: 0; color: var(--muted); }
+
+.calc-desc {
+  margin: 8px 0 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.calc-desc .dot { margin-inline-end: 6px; vertical-align: 1px; }
+.dot.calc-purple { background: #c084fc; }
+.dot.calc-orange { background: #fb923c; }
+
+.calc-span { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.calc-span label { min-width: 0; }
+.calc-span select { padding-inline: 8px; }
+/* Long ladder names, like "Rot 1 Sterne - Phase 2", get a line each on a phone. */
+@media (max-width: 479px) {
+  .calc-span.long { grid-template-columns: minmax(0, 1fr); }
+}
+
+.calc-row-foot {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: 4px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.calc-row-foot > * { min-width: 0; }
+.calc-row-sum { display: flex; flex-wrap: wrap; gap: 2px 12px; font-variant-numeric: tabular-nums; }
+.calc-row-sum b { font-weight: 600; }
+
+.calc-actions { margin-top: 14px; }
+
+/* Also a heading inside a .panel, which would otherwise make it large. */
+.calc .calc-label {
+  margin: 0 0 6px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- what you own ---------- */
+
+.panel.calc-owned { padding-block: 14px 10px; }
+.calc-have {
+  display: grid; grid-template-columns: minmax(0, 1fr) 8.5rem;
+  align-items: center; gap: 12px; padding: 4px 0;
+}
+.calc-have > div { display: grid; min-width: 0; }
+.calc-have label { color: var(--text); font-size: 14px; overflow-wrap: anywhere; }
+.calc-have input { text-align: end; font-variant-numeric: tabular-nums; }
+.calc-state { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.calc-ok { color: var(--ok); }
+.calc-short { color: var(--accent); }
+
+/* ---------- breakdown ---------- */
+
+.btn.calc-toggle { width: 100%; justify-content: space-between; margin-top: 16px; }
+.calc-toggle svg { flex: none; transition: transform 0.15s; }
+.calc-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+
+/* The table is wider than a phone; it scrolls on its own, not the page. */
+.calc-table-wrap {
+  margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.calc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.calc-table th, .calc-table td { padding: 8px 12px; text-align: start; white-space: nowrap; }
+.calc-table th {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted);
+}
+.calc-table .num { text-align: end; }
+.calc-table tbody tr { border-top: 1px solid var(--border); }
+.calc-table .calc-group th {
+  padding-top: 12px; white-space: normal;
+  font-size: 13.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text);
+}
+.calc-table .calc-group + tr { border-top: 0; }
+.calc-table tfoot tr { border-top: 2px solid var(--border); }
+.calc-table tfoot td { font-weight: 600; }
+.calc-table tfoot .num { color: var(--accent); font-weight: 700; }
+.calc-none { margin: 0; padding: 14px 16px; }
+
+.calc-meta { margin: 20px 0 0; }
+
+/* ---------- total ---------- */
+
+/* A floating card rather than a full-width bar, so it needs nothing from the
+   padding around the page. */
+.calc-totals {
+  position: sticky; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 5;
+  margin-top: 20px; padding: 10px 14px;
+  background: rgba(39, 39, 42, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.45);
+}
+.calc .calc-totals .calc-label { margin-bottom: 2px; }
+.calc-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.calc-total span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calc-total strong { flex: none; color: var(--accent); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 640px) {
+  .calc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calc-totals { bottom: 12px; padding: 12px 18px; }
+}
