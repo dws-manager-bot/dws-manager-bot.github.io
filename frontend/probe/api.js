@@ -1,4 +1,6 @@
 import season from '../src/warplan/season5.json'
+// `?role=member|anon` signs the app shell in as a plain member, or not at all.
+const role = new URLSearchParams(location.search).get('role')
 const now = Date.now()
 const iso = (min) => new Date(now + min * 60000).toISOString()
 const rows = [
@@ -329,7 +331,8 @@ export const api = {
   createPlayer: (p) => ok({ ...p, id: 'new', active: true, updated_at: iso(0), names: [seen(p.name, '2026-09-23')] }),
   updatePlayer: (id, p) => ok({ ...players.find((x) => x.id === id), ...p }),
   deletePlayer: () => ok(null),
-  me: () => ok({ username: 'Goba', is_admin: true }),
+  listHistory: () => ok([]),
+  me: () => ok({ username: 'Goba', is_admin: role !== 'member' }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.
   raw: (path, opts) => (liveData && String(path).startsWith('/war/')
@@ -338,7 +341,7 @@ export const api = {
       ? warRaw(String(path), opts)
       : String(path).split('/').length > 2 ? {} : [])),
 }
-export const getToken = () => 'x'
+export const getToken = () => (role === 'anon' ? null : 'x')
 export const clearToken = () => {}
 export const consumeTokenFromUrl = () => null
 export const loginUrl = () => '#'
