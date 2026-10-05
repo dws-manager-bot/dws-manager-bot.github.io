@@ -187,6 +187,18 @@ class OccurrenceOut(BaseModel):
     instance_id: int | None = None
 
 
+class UpcomingOut(BaseModel):
+    """One occurrence on the members' Events page, moves and skips applied."""
+
+    event_id: int
+    key: str
+    name: str
+    starts_at: datetime
+    duration_minutes: int
+    moved: bool = False
+    note: str | None = None
+
+
 class OccurrenceOverrideIn(BaseModel):
     """Move or skip one date without touching the recurrence rule.
 
