@@ -30,9 +30,14 @@ class Settings(BaseSettings):
     # same API. Separate origin, so it needs its own CORS entry below.
     passwar_url: str = "https://pou-rocks.github.io/pou-pass-war"
 
-    # Discord role names that may use the backoffice and admin bot commands.
+    # Discord role names that may use the admin pages and admin bot commands.
     admin_roles: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["R5", "R4"]
+        default_factory=lambda: ["Beasts", "R5"]
+    )
+    # Role names that may sign in to the site's alliance pages. Admin roles
+    # count as well, so this lists only the roles that are not admin roles.
+    member_roles: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["Members"]
     )
 
     # --- Database ---
@@ -67,7 +72,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     log_level: str = "INFO"
 
-    @field_validator("admin_roles", "cors_origins", mode="before")
+    @field_validator("admin_roles", "member_roles", "cors_origins", mode="before")
     @classmethod
     def _split_csv(cls, v):
         """Accept both a JSON list and a plain comma-separated env string."""
