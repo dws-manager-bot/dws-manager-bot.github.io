@@ -6,6 +6,7 @@ The token's is_admin then decides who may open the admin pages and save.
 from __future__ import annotations
 
 import asyncio
+import base64
 import time
 from types import SimpleNamespace
 
@@ -28,31 +29,55 @@ def signing_key(monkeypatch):
 
 def test_state_round_trips_each_app():
     for app in security.APPS:
-        assert security.verify_state(security.make_state(app)) == app
+        assert security.verify_state(security.make_state(app)) == (app, None)
 
 
 def test_unknown_app_falls_back_to_backoffice():
     # The stricter of the two, so a malformed hint cannot widen access.
-    assert security.verify_state(security.make_state("evil")) == "backoffice"
+    assert security.verify_state(security.make_state("evil")) == ("backoffice", None)
 
 
 def test_default_is_backoffice():
-    assert security.verify_state(security.make_state()) == "backoffice"
+    assert security.verify_state(security.make_state()) == ("backoffice", None)
+
+
+def test_origin_round_trips():
+    site = "https://pou.actuallygaming.com"
+    assert security.verify_state(security.make_state("backoffice", site)) == (
+        "backoffice",
+        site,
+    )
 
 
 def test_tampered_app_is_rejected():
-    nonce, _app, issued, sig = security.make_state("backoffice").split(".")
-    forged = f"{nonce}.elsewhere.{issued}.{sig}"
-    assert security.verify_state(forged) is None
+    nonce, _app, issued, where, sig = security.make_state("backoffice").split(".")
+    assert security.verify_state(f"{nonce}.elsewhere.{issued}.{where}.{sig}") is None
+
+
+def test_swapped_origin_is_rejected():
+    nonce, app, issued, _where, sig = security.make_state("backoffice", "https://a.example").split(".")
+    evil = base64.urlsafe_b64encode(b"https://evil.example").decode().rstrip("=")
+    assert security.verify_state(f"{nonce}.{app}.{issued}.{evil}.{sig}") is None
 
 
 def test_garbage_and_old_states_are_rejected():
     assert security.verify_state("nope") is None
     assert security.verify_state("") is None
-    stale = security.make_state("backoffice")
-    nonce, app, _issued, _sig = stale.split(".")
+    nonce, app, _issued, where, sig = security.make_state("backoffice").split(".")
     old = str(int(time.time()) - 4000)
-    assert security.verify_state(f"{nonce}.{app}.{old}.{_sig}") is None
+    assert security.verify_state(f"{nonce}.{app}.{old}.{where}.{sig}") is None
+
+
+def test_return_origin_must_be_a_listed_site(monkeypatch):
+    from dwsbot.api.routers import auth
+
+    monkeypatch.setattr(
+        auth, "get_settings",
+        lambda: SimpleNamespace(cors_origins=["https://a.example", "https://b.example"]),
+    )
+    assert auth._vetted_origin("https://b.example/") == "https://b.example"
+    assert auth._vetted_origin("https://evil.example") is None
+    assert auth._vetted_origin(None) is None
 
 
 # ------------------------------- who is let in -------------------------------

@@ -15,7 +15,9 @@ export function clearToken() {
 }
 
 export function loginUrl() {
-  return `${API_URL}/auth/login`
+  // Say which site this is, so the API sends the browser back here and not to
+  // some other domain that serves the same bundle.
+  return `${API_URL}/auth/login?return_to=${encodeURIComponent(window.location.origin)}`
 }
 
 /** A WebSocket address on the API's host: https becomes wss, http ws. */

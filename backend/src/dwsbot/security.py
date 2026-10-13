@@ -8,6 +8,7 @@ short-lived JWT for the SPA to carry.
 """
 from __future__ import annotations
 
+import base64
 import hmac
 import logging
 import secrets
@@ -31,38 +32,44 @@ _ALGORITHM = "HS256"
 APPS = ("backoffice",)
 
 
-def make_state(app: str = "backoffice") -> str:
+def _sign(payload: str) -> str:
+    return hmac.new(
+        get_settings().jwt_secret.encode(), payload.encode(), "sha256"
+    ).hexdigest()[:32]
+
+
+def make_state(app: str = "backoffice", origin: str | None = None) -> str:
     """A CSRF state token that needs no server-side session store.
 
     It also carries which frontend started the login, so one registered Discord
     redirect URI can serve several apps -- adding a new one needs no change in
-    the Discord developer portal.
+    the Discord developer portal -- and which site the browser was on, so the
+    callback sends it back there rather than to one fixed address. The caller
+    vets `origin`; the signature only stops it being swapped afterwards.
     """
-    settings = get_settings()
     app = app if app in APPS else "backoffice"
     nonce = secrets.token_urlsafe(16)
     issued = str(int(time.time()))
-    sig = hmac.new(
-        settings.jwt_secret.encode(), f"{nonce}.{app}.{issued}".encode(), "sha256"
-    ).hexdigest()[:32]
-    return f"{nonce}.{app}.{issued}.{sig}"
+    where = base64.urlsafe_b64encode((origin or "").encode()).decode().rstrip("=")
+    payload = f"{nonce}.{app}.{issued}.{where}"
+    return f"{payload}.{_sign(payload)}"
 
 
-def verify_state(state: str, max_age_seconds: int = 600) -> str | None:
-    """Return the app the login began from, or None if the state is bad or stale."""
-    settings = get_settings()
+def verify_state(state: str, max_age_seconds: int = 600) -> tuple[str, str | None] | None:
+    """Return (app, origin) the login began from, or None if bad or stale."""
     try:
-        nonce, app, issued, sig = state.split(".")
+        nonce, app, issued, where, sig = state.split(".")
     except ValueError:
         return None
-    expected = hmac.new(
-        settings.jwt_secret.encode(), f"{nonce}.{app}.{issued}".encode(), "sha256"
-    ).hexdigest()[:32]
-    if not hmac.compare_digest(sig, expected):
+    if not hmac.compare_digest(sig, _sign(f"{nonce}.{app}.{issued}.{where}")):
         return None
     if (time.time() - int(issued)) > max_age_seconds:
         return None
-    return app if app in APPS else "backoffice"
+    try:
+        origin = base64.urlsafe_b64decode(where + "=" * (-len(where) % 4)).decode() or None
+    except ValueError:
+        return None
+    return (app if app in APPS else "backoffice"), origin
 
 
 # --------------------------------------------------------------------- oauth

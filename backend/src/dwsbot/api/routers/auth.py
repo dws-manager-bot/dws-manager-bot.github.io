@@ -29,24 +29,37 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _vetted_origin(origin: str | None) -> str | None:
+    """The site to send the browser back to, only if it may call this API.
+
+    The CORS list doubles as the allow-list, so there is one place to add a
+    domain and no open redirect: anything else falls back to FRONTEND_URL.
+    """
+    origin = (origin or "").rstrip("/")
+    return origin if origin in get_settings().cors_origins else None
+
+
 @router.get("/login", summary="Begin Discord OAuth2 login")
-async def login(app: str = Query("backoffice")) -> RedirectResponse:
+async def login(
+    app: str = Query("backoffice"), return_to: str | None = Query(None)
+) -> RedirectResponse:
     settings = get_settings()
     if not settings.oauth_enabled:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "OAuth is not configured — set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET",
         )
-    return RedirectResponse(authorize_url(make_state(app)))
+    return RedirectResponse(authorize_url(make_state(app, _vetted_origin(return_to))))
 
 
 @router.get("/callback", summary="OAuth2 redirect target")
 async def callback(session: DbSession, code: str = Query(...), state: str = Query(...)):
     settings = get_settings()
-    app = verify_state(state)
-    if app is None:
+    verified = verify_state(state)
+    if verified is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Login state expired or invalid")
-    back = settings.frontend_url
+    _app, origin = verified
+    back = (_vetted_origin(origin) or settings.frontend_url).rstrip("/")
 
     access_token = await exchange_code(code)
     user, role_ids, _in_guild, nick = await fetch_identity(access_token)

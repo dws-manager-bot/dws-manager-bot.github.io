@@ -50,8 +50,9 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "https://pou.actuallyplaying.com",
-            # The Pages address. It redirects to the custom domain, so nothing
-            # calls from it today; kept so removing the domain fails soft.
+            "https://pou.actuallygaming.com",
+            # The Pages address. Login returns to whichever of these the
+            # browser started from, so each must be listed.
             "https://dws-manager-bot.github.io",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
