@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
         auth,
         bgb,
         events,
+        giftcodes,
         history,
         lineups,
         members,
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(announcements.router)
     app.include_router(events.router)
+    app.include_router(giftcodes.router)
     app.include_router(members.router)
     app.include_router(players.router)
     app.include_router(bgb.router)

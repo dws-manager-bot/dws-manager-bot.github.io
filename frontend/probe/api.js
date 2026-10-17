@@ -233,6 +233,34 @@ const liveRaw = (live, path) => {
   return {}
 }
 
+
+// Invented ids and names: this file is public. The shapes match GET /giftcodes.
+const gtime = (min) => iso(min)
+const giftCodes = [
+  { id: 4, code: 'FRESH2026', status: 'active', source: 'manual', note: 'posted in #all-gift-code',
+    closed_response: null, closed_at: null, created_by_name: 'Goba', created_at: gtime(-30),
+    redeemed: 1, waiting: 1, results: [
+      { user_id: 1, username: 'Goba', state: 'redeemed', attempts: 1, response: 'ok', last_attempt_at: gtime(-20) }] },
+  { id: 3, code: 'MOONCAKE8', status: 'exhausted', source: 'manual', note: null,
+    closed_response: 'count limit', closed_at: gtime(-3000), created_by_name: 'Goba', created_at: gtime(-3100),
+    redeemed: 0, waiting: 0, results: [
+      { user_id: 1, username: 'Goba', state: 'exhausted', attempts: 1, response: 'count limit', last_attempt_at: gtime(-3000) }] },
+  { id: 2, code: 'DWDC6R4M', status: 'expired', source: 'manual', note: null,
+    closed_response: 'code expired', closed_at: gtime(-6000), created_by_name: 'Nyx', created_at: gtime(-6100),
+    redeemed: 0, waiting: 0, results: [] },
+  { id: 1, code: 'DWDC12LS', status: 'active', source: 'manual', note: 'typo? tried twice',
+    closed_response: null, closed_at: null, created_by_name: 'Goba', created_at: gtime(-9000),
+    redeemed: 1, waiting: 0, results: [
+      { user_id: 1, username: 'Goba', state: 'already', attempts: 1, response: 'code already exchanged', last_attempt_at: gtime(-8990) },
+      { user_id: 3, username: 'Sol', state: 'not_found', attempts: 3, response: 'gift code not exist', last_attempt_at: gtime(-8000) }] },
+]
+const giftAccounts = [
+  { id: 1, discord_id: '111', username: 'Goba', game_uid: '1000000000000001', auto_redeem: true, has_login: true, login_failed_at: null },
+  { id: 2, discord_id: '222', username: 'Nyx', game_uid: '1000000000000002', auto_redeem: true, has_login: true, login_failed_at: gtime(-90) },
+  { id: 3, discord_id: '333', username: 'Sol', game_uid: null, auto_redeem: false, has_login: false, login_failed_at: null },
+]
+const giftRunning = new URLSearchParams(location.search).get('giftrun') === '1'
+
 export const api = {
   listAnnouncements: () => ok(rows),
   listEvents: () => ok(events),
@@ -337,6 +365,14 @@ export const api = {
   createPlayer: (p) => ok({ ...p, id: 'new', active: true, updated_at: iso(0), names: [seen(p.name, '2026-09-23')] }),
   updatePlayer: (id, p) => ok({ ...players.find((x) => x.id === id), ...p }),
   deletePlayer: () => ok(null),
+  listGiftCodes: () => ok(new URLSearchParams(location.search).get('empty') ? [] : giftCodes),
+  createGiftCode: (p) => ok({ ...giftCodes[0], id: 99, code: p.code, results: [], redeemed: 0, waiting: 2 }),
+  deleteGiftCode: () => ok(null),
+  listGiftAccounts: () => ok(giftAccounts),
+  updateGiftAccount: (id, p) => ok({ ...giftAccounts.find((x) => x.id === id), game_uid: p.game_uid || null,
+    auto_redeem: Boolean(p.auto_redeem), has_login: true, login_failed_at: null }),
+  giftRun: () => ok({ running: giftRunning, started_at: iso(-1), finished_at: null, summary: {}, error: null }),
+  startGiftRun: () => ok({ running: true, started_at: iso(0), finished_at: null, summary: {}, error: null }),
   listHistory: () => ok([]),
   me: () => ok({ username: 'Goba', is_admin: role !== 'member' }),
   health: () => ok({ status: 'ok' }),
