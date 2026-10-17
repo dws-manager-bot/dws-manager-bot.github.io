@@ -1,6 +1,7 @@
 """Pydantic request/response models for the backoffice API."""
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, date, datetime
 from typing import Annotated, Literal
@@ -858,3 +859,92 @@ class WarPostOut(BaseModel):
 
 class WarPlanOut(WarPlanSummary):
     doc: dict = Field(default_factory=dict)
+
+
+# ----------------------------------------------------------------- gift codes
+
+# Codes seen so far are 6-9 letters and digits. The pattern is on the input
+# only: a code stored last week is shown as it is, never rejected.
+GiftCodeText = Annotated[
+    str, StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z0-9]{3,40}$")
+]
+
+
+class GiftCodeCreate(BaseModel):
+    code: GiftCodeText
+    note: str | None = Field(None, max_length=500)
+
+
+class RedemptionOut(BaseModel):
+    user_id: int
+    username: str | None = None
+    state: str
+    attempts: int
+    response: str | None = None
+    last_attempt_at: datetime | None = None
+
+
+class GiftCodeOut(ORMModel):
+    id: int
+    code: str
+    status: str
+    source: str
+    note: str | None = None
+    closed_response: str | None = None
+    closed_at: datetime | None = None
+    created_by_name: str | None = None
+    created_at: datetime
+    # Accounts that are done with it, whether we redeemed it or they already had.
+    redeemed: int = 0
+    # Accounts that still have a call coming. Zero once the code is closed.
+    waiting: int = 0
+    results: list[RedemptionOut] = Field(default_factory=list)
+
+
+class GiftAccountOut(BaseModel):
+    """Never carries the login token, only whether there is one."""
+
+    id: int
+    discord_id: Snowflake
+    username: str | None = None
+    game_uid: str | None = None
+    auto_redeem: bool
+    has_login: bool
+    login_failed_at: datetime | None = None
+
+
+class GiftAccountUpdate(BaseModel):
+    """A partial edit. A blank id or token clears it."""
+
+    game_uid: str | None = None
+    game_uuid: str | None = None
+    auto_redeem: bool | None = None
+
+    @field_validator("game_uid", "game_uuid", mode="before")
+    @classmethod
+    def _blank_clears(cls, v):
+        if isinstance(v, str):
+            return v.strip() or None
+        return v
+
+    @field_validator("game_uid")
+    @classmethod
+    def _id_is_digits(cls, v):
+        if v is not None and not re.fullmatch(r"\d{10,20}", v):
+            raise ValueError("A game id is 10 to 20 digits")
+        return v
+
+    @field_validator("game_uuid")
+    @classmethod
+    def _token_shape(cls, v):
+        if v is not None and not re.fullmatch(r"[0-9A-Za-z-]{16,64}", v):
+            raise ValueError("That does not look like a login token")
+        return v
+
+
+class GiftRunOut(BaseModel):
+    running: bool
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    summary: dict[str, int] = Field(default_factory=dict)
+    error: str | None = None

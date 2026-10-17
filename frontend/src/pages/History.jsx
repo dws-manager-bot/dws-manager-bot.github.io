@@ -35,6 +35,10 @@ const ACTIONS = {
   'player.returned': ['marked a member as returned', 'add'],
   'player.delete': ['deleted a member', 'del'],
   'player.import': ['imported screenshots', 'sync'],
+  'giftcode.create': ['added a gift code', 'add'],
+  'giftcode.delete': ['deleted a gift code', 'del'],
+  'giftcode.account': ['changed gift-code settings for an account', 'edit'],
+  'giftcode.run': ['redeemed gift codes', 'sync'],
 }
 
 const describe = (action) => ACTIONS[action]?.[0] ?? action
