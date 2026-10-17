@@ -9,6 +9,7 @@ import { navigate, onLinkClick, rememberReturn, takeReturn, usePath } from './li
 const Announcements = lazy(() => import('./pages/Announcements.jsx'))
 const Bgb = lazy(() => import('./pages/Bgb.jsx'))
 const Events = lazy(() => import('./pages/Events.jsx'))
+const GiftCodes = lazy(() => import('./pages/GiftCodes.jsx'))
 const History = lazy(() => import('./pages/History.jsx'))
 const Members = lazy(() => import('./pages/Members.jsx'))
 const PassWar = lazy(() => import('./pages/PassWar.jsx'))
@@ -36,6 +37,7 @@ const PAGES = [
   { id: 'events', path: '/admin/events', label: 'Events', Component: Events, admin: true },
   { id: 'members', path: '/admin/members', label: 'Members', Component: Members, admin: true },
   { id: 'bgb', path: '/admin/bgb', label: 'BGB', Component: Bgb, admin: true },
+  { id: 'giftcodes', path: '/admin/gift-codes', label: 'Gift codes', Component: GiftCodes, admin: true },
   { id: 'season', path: '/admin/season', label: 'Season', Component: Season, admin: true },
   { id: 'history', path: '/admin/history', label: 'History', Component: History, admin: true },
   // Admin-only, reading included: they are the alliance's strategy.

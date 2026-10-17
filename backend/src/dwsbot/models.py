@@ -512,6 +512,96 @@ class AppUser(Base, TimestampMixin):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # The account's in-game id (16 digits, ending like ...413). Text, not a number:
+    # it is an identifier, and nothing here ever does arithmetic on it.
+    game_uid: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
+    # The website login token the gift-code site checks beside the id. A
+    # credential: written by an admin, read only by the redeemer, and never
+    # serialised, logged or put in the audit trail.
+    game_uuid: Mapped[str | None] = mapped_column(String(64))
+    # Set when the site refused that token, so the redeemer stops trying until
+    # a new one is saved.
+    game_login_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    auto_redeem: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+
+
+class GiftCodeStatus(enum.StrEnum):
+    """What the game's site says about the code itself, for everyone."""
+
+    ACTIVE = "active"          # not known to be dead
+    EXPIRED = "expired"        # E005: the window has closed
+    EXHAUSTED = "exhausted"    # E007: first-come-first-served, and the cap is reached
+
+
+class RedemptionState(enum.StrEnum):
+    """How one account's attempt at one code ended."""
+
+    REDEEMED = "redeemed"      # we redeemed it; the reward is in their in-game mail
+    ALREADY = "already"        # the account had redeemed it before
+    NOT_FOUND = "not_found"    # the site does not know the code (yet?)
+    EXPIRED = "expired"
+    EXHAUSTED = "exhausted"
+    ERROR = "error"            # a system error or an answer we do not recognise
+
+
+class GiftCode(Base, TimestampMixin):
+    """A gift code the alliance wants redeemed."""
+
+    __tablename__ = "gift_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # As typed, minus whitespace: whether the site cares about case is not known.
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), default=GiftCodeStatus.ACTIVE.value,
+        server_default=GiftCodeStatus.ACTIVE.value, nullable=False,
+    )
+    # "manual" now; "discord" once the channel is wired in.
+    source: Mapped[str] = mapped_column(
+        String(16), default="manual", server_default="manual", nullable=False
+    )
+    note: Mapped[str | None] = mapped_column(Text)
+    # What the site said when it closed the code, so a wrong close can be told apart.
+    closed_response: Mapped[str | None] = mapped_column(String(200))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_by_name: Mapped[str | None] = mapped_column(String(100))
+
+    redemptions: Mapped[list[GiftCodeRedemption]] = relationship(
+        back_populates="gift_code", cascade="all, delete-orphan", order_by="GiftCodeRedemption.id"
+    )
+
+
+class GiftCodeRedemption(Base, TimestampMixin):
+    """One account's standing with one code. Its existence is what stops a retry.
+
+    A row in a final state (`redeemed`, `already`) means the account is done with
+    that code, so the redeemer never calls the site for the pair again.
+    """
+
+    __tablename__ = "gift_code_redemptions"
+    __table_args__ = (UniqueConstraint("code_id", "user_id", name="uq_redemption_pair"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code_id: Mapped[int] = mapped_column(
+        ForeignKey("gift_codes.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Calls made for this pair, so an unknown code is not retried for ever.
+    attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"), nullable=False
+    )
+    # The site's own message. Never the request, which carries the login token.
+    response: Mapped[str | None] = mapped_column(String(200))
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    gift_code: Mapped[GiftCode] = relationship(back_populates="redemptions")
+
 
 class WarLineup(Base, TimestampMixin):
     """The alliance's Pass Occupation War line-up — one shared plan.

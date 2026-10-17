@@ -222,4 +222,15 @@ export const api = {
   updatePlayer: (id, data) =>
     request(`/players/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePlayer: (id) => request(`/players/${id}`, { method: 'DELETE' }),
+
+  /* Gift codes for the game's redeem page, and who wants them redeemed. */
+  listGiftCodes: () => request('/giftcodes'),
+  createGiftCode: (data) => request('/giftcodes', { method: 'POST', body: JSON.stringify(data) }),
+  deleteGiftCode: (id) => request(`/giftcodes/${id}`, { method: 'DELETE' }),
+  listGiftAccounts: () => request('/giftcodes/accounts'),
+  // PATCH: only the fields sent change. The login token goes up and never comes back.
+  updateGiftAccount: (id, data) =>
+    request(`/giftcodes/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  giftRun: () => request('/giftcodes/run'),
+  startGiftRun: () => request('/giftcodes/run', { method: 'POST' }),
 }
