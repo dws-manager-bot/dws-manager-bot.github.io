@@ -107,6 +107,21 @@ class Player(Base, TimestampMixin):
     # BigInteger: the top total CP is already 1.6 billion, and int4 stops at 2.1.
     bgb_cp: Mapped[int | None] = mapped_column(BigInteger)
     total_cp: Mapped[int | None] = mapped_column(BigInteger)
+    # The game's own account id, read off the member scan. Unlike the nickname it
+    # survives every rename, so it is what a later scan is matched on.
+    game_uid: Mapped[str | None] = mapped_column(String(32), unique=True)
+    # The six parts of total CP as the profile screen lists them. Null until a scan
+    # has read this player; they add up to total_cp when read together.
+    structure_cp: Mapped[int | None] = mapped_column(BigInteger)
+    tech_cp: Mapped[int | None] = mapped_column(BigInteger)
+    troop_cp: Mapped[int | None] = mapped_column(BigInteger)
+    hero_cp: Mapped[int | None] = mapped_column(BigInteger)
+    mod_vehicle_cp: Mapped[int | None] = mapped_column(BigInteger)
+    pet_agent_cp: Mapped[int | None] = mapped_column(BigInteger)
+    peak_cp: Mapped[int | None] = mapped_column(BigInteger)
+    # The day the six parts were read. total_cp can be newer than this when a
+    # screenshot import touched it since.
+    cp_read_on: Mapped[date | None] = mapped_column(Date)
     # False once they leave the alliance. The row stays, so a return is the same player.
     active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true(), nullable=False
