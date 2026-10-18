@@ -282,6 +282,14 @@ class PlayerOut(ORMModel):
     industry_level: int | None = None
     bgb_cp: int | None = None
     total_cp: int | None = None
+    structure_cp: int | None = None
+    tech_cp: int | None = None
+    troop_cp: int | None = None
+    hero_cp: int | None = None
+    mod_vehicle_cp: int | None = None
+    pet_agent_cp: int | None = None
+    peak_cp: int | None = None
+    cp_read_on: date | None = None
     active: bool
     notes: str | None = None
     updated_at: datetime
