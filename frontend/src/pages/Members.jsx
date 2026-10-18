@@ -38,6 +38,16 @@ const parseCount = (text) => {
   return /^\d+$/.test(digits) ? Number(digits) : NaN
 }
 
+/* The six parts the profile screen adds up to total CP, in the game's order. */
+const CP_PARTS = [
+  ['structure_cp', 'Structure CP'],
+  ['tech_cp', 'Tech CP'],
+  ['troop_cp', 'Troop CP'],
+  ['hero_cp', 'Hero CP'],
+  ['mod_vehicle_cp', 'Mod Vehicle CP'],
+  ['pet_agent_cp', 'Pet Agent CP'],
+]
+
 const SORTS = [
   ['bgb', 'BGB CP'],
   ['total', 'Total CP'],
@@ -127,7 +137,7 @@ export default function Members() {
     const matched = rows
       .map((p) => {
         if (!q) return { p, was: null }
-        if (fold(p.name).includes(q)) return { p, was: null }
+        if (fold(p.name).includes(q) || (p.game_uid ?? '').includes(q)) return { p, was: null }
         const old = p.names.find((n) => n.name !== p.name && fold(n.name).includes(q))
         return old ? { p, was: old.name } : null
       })
@@ -299,6 +309,31 @@ export default function Members() {
           <dd>{p.rank ? `R${p.rank}` : <span className="muted">not set</span>}</dd>
           <dt>Industry level</dt>
           <dd>{p.industry_level ?? '—'}</dd>
+          {p.cp_read_on && (
+            <>
+              {CP_PARTS.map(([field, label]) => (
+                <Fragment key={field}>
+                  <dt>{label}</dt>
+                  <dd>
+                    {full(p[field])}
+                    {p.total_cp > 0 && p[field] != null && (
+                      <span className="muted"> · {Math.round((100 * p[field]) / p.total_cp)}%</span>
+                    )}
+                  </dd>
+                </Fragment>
+              ))}
+              <dt>Peak CP</dt>
+              <dd>{full(p.peak_cp)}</dd>
+              <dt>CP read</dt>
+              <dd>{fmtDay(p.cp_read_on)}</dd>
+            </>
+          )}
+          {p.game_uid && (
+            <>
+              <dt>Game UID</dt>
+              <dd><code>{p.game_uid}</code></dd>
+            </>
+          )}
           <dt>{p.names.length > 1 ? 'Names' : 'Seen'}</dt>
           <dd>
             <ul className="names">
@@ -376,7 +411,7 @@ export default function Members() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search names, old ones too"
+          placeholder="Search names (old ones too) or game UID"
           aria-label="Search members"
         />
         <div className="row">
