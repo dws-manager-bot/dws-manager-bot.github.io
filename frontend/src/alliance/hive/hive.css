@@ -48,7 +48,8 @@
   overflow: hidden;
 }
 .hive-frame.actual .hive-sheet { max-width: none; }
-.hive-sheet canvas { display: block; width: 100%; height: auto; }
+.hive-sheet canvas,
+.hive-sheet img { display: block; width: 100%; height: auto; }
 
 .hive-status { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .hive-hint { margin: 0; text-align: center; font-size: 12px; overflow-wrap: anywhere; }

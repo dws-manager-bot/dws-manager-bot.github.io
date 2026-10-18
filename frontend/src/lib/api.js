@@ -180,6 +180,18 @@ export const api = {
 
   listPlayers: () => request('/players'),
 
+  /* The hive map members see: a picture an admin applied. Members read it and
+     its caption; applying it is an upload, so it goes around the JSON helper. */
+  hiveApplied: () => request('/hive/applied'),
+  hiveAppliedImage: () => file('/hive/applied/image', 'hive_map.png'),
+  applyHive: (blob, shelters, options) => {
+    const form = new FormData()
+    form.append('image', blob, 'hive_map.png')
+    form.append('shelters', String(shelters))
+    form.append('options', JSON.stringify(options))
+    return request('/hive/applied', { method: 'POST', body: form, headers: { 'Content-Type': undefined } })
+  },
+
   /* The season standing, ranked and ready to tier. */
   season: (kind) => request(`/season${kind ? `?kind=${kind}` : ''}`),
   seasonAwards: (season) => request(`/season/awards${season ? `?season=${season}` : ''}`),

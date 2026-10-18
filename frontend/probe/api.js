@@ -42,11 +42,17 @@ const channels = [
 ]
 // Invented names: this file is public. The shapes match GET /players.
 const seen = (name, first_seen, last_seen = first_seen) => ({ name, first_seen, last_seen })
+const extra = Array.from({ length: 10 }, (_, i) => ({
+  id: `x${i}`, name: `Member ${i + 1}`, rank: 1 + (i % 4), industry_level: 3 + (i % 6),
+  bgb_cp: 20000000 + i * 9000000, total_cp: 500000000 + i * 61000000, troop_cp: 300000000 + i * 17000000,
+  hive_outermost: i === 3, hive_group: i % 4 === 0 ? 'Duo' : null,
+  active: true, notes: null, updated_at: '2026-10-18T00:00:00Z', names: [],
+}))
 const players = [
   { id: 'a1', name: 'Nyx', rank: 4, industry_level: 8, bgb_cp: 278997886, total_cp: 1618239833,
     game_uid: '1522692461000413', structure_cp: 129107401, tech_cp: 104473929, troop_cp: 1287912720,
     hero_cp: 183177050, mod_vehicle_cp: 124694000, pet_agent_cp: 23678650, peak_cp: 1894649520,
-    cp_read_on: '2026-10-18',
+    cp_read_on: '2026-10-18', hive_outermost: true, hive_group: 'Kagura',
     active: true, notes: null, updated_at: iso(-60), names: [seen('Nyx', '2026-08-21', '2026-09-09')] },
   { id: 'a2', name: 'ǝVelaɐ', rank: null, industry_level: 7, bgb_cp: 54499085, total_cp: 748346000,
     active: true, notes: 'Moved her main to this account around 3 Sep; her old one is velasam.',
@@ -60,6 +66,7 @@ const players = [
   { id: 'a5', name: 'Stinky', rank: 2, industry_level: 4, bgb_cp: 18948867, total_cp: 463088597,
     active: false, notes: null, updated_at: iso(-60), names: [seen('Stinky', '2026-08-21', '2026-09-03')] },
 ]
+players.push(...extra)
 const ok = (v) => Promise.resolve(JSON.parse(JSON.stringify(v)))
 /* A Blob does not survive the JSON round-trip above, so the endpoints that
    return a file hand theirs straight back. */
@@ -289,6 +296,18 @@ export const api = {
   guidedSetup: () => ok({}),
   roles: () => ok([]),
   listPlayers: () => ok(players),
+  hiveApplied: () => ok({
+    id: 1, applied_at: '2026-10-19T01:30:00Z', applied_by_name: 'Goba', shelters: 14,
+    options: { version: 1, showGroups: true, spreadTop: true, spreadIndustry: true, farthest: 7.4, width: 600 },
+  }),
+  hiveAppliedImage: () => Promise.resolve({
+    blob: new Blob(
+      ['<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500"><rect width="600" height="500" fill="#e8dfc9"/><text x="40" y="80" font-size="32">picture</text></svg>'],
+      { type: 'image/svg+xml' },
+    ),
+    name: 'hive_map.png',
+  }),
+  applyHive: () => ok({ id: 2 }),
   seasonAwards: () => ok({
     season: '5', awards: probeAwards,
     caps: { leader: 1, backbone: 6, key: 30, contributor: 63 },

@@ -205,3 +205,17 @@ async def test_a_save_that_changes_nothing_records_nothing(client_factory):
         ("player.create", None),
         ("player.update", ["rank"]),
     ]
+
+
+@pytest.mark.asyncio
+async def test_hive_flags_are_set_and_cleared(client_factory):
+    async with client_factory(ADMIN) as c:
+        made = (await c.post("/players", json={"name": "Nyx", "rank": 4})).json()
+        assert made["hive_outermost"] is False and made["hive_group"] is None
+        got = (await c.patch(f"/players/{made['id']}",
+                             json={"hive_outermost": True, "hive_group": "  Kagura "})).json()
+        assert got["hive_outermost"] is True and got["hive_group"] == "Kagura"
+        # null clears a group; for the flag it means "leave it", like active
+        cleared = (await c.patch(f"/players/{made['id']}",
+                                 json={"hive_outermost": None, "hive_group": None})).json()
+        assert cleared["hive_outermost"] is True and cleared["hive_group"] is None

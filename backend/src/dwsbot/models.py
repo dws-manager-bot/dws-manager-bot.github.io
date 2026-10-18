@@ -16,6 +16,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    LargeBinary,
     Integer,
     SmallInteger,
     String,
@@ -122,6 +123,12 @@ class Player(Base, TimestampMixin):
     # The day the six parts were read. total_cp can be newer than this when a
     # screenshot import touched it since.
     cp_read_on: Mapped[date | None] = mapped_column(Date)
+    # For the hive map. Outermost: they asked for an outer shelter, and that beats
+    # every other claim. A group name keeps its members' shelters touching.
+    hive_outermost: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    hive_group: Mapped[str | None] = mapped_column(String(40))
     # False once they leave the alliance. The row stays, so a return is the same player.
     active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true(), nullable=False
@@ -784,3 +791,24 @@ class WarPlan(Base, TimestampMixin):
     posted_url: Mapped[str | None] = mapped_column(String(200))
     updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class HiveMap(Base):
+    """The hive map members see: a picture, drawn by an admin from the member table.
+
+    Only the picture is kept, and members are only ever handed that. The numbers
+    it was drawn from are not served to them; the picture shows what it shows.
+    """
+
+    __tablename__ = "hive_maps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    applied_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    applied_by_name: Mapped[str | None] = mapped_column(String(100))
+    png: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    shelters: Mapped[int] = mapped_column(Integer, nullable=False)
+    # What it was drawn with (layout, groups, spreading), for the caption.
+    options: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

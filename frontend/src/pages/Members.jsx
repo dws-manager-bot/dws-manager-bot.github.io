@@ -57,6 +57,7 @@ const SORTS = [
 
 const EMPTY = {
   name: '', name_change: null, rank: '', industry_level: '', bgb_cp: '', total_cp: '', notes: '',
+  hive_outermost: false, hive_group: '',
 }
 
 function toForm(p) {
@@ -69,6 +70,8 @@ function toForm(p) {
       bgb_cp: p.bgb_cp ?? null,
       total_cp: p.total_cp ?? null,
       notes: p.notes ?? null,
+      hive_outermost: p.hive_outermost ?? false,
+      hive_group: p.hive_group ?? null,
     },
     name: p.name,
     name_change: null,
@@ -77,6 +80,8 @@ function toForm(p) {
     bgb_cp: p.bgb_cp ?? '',
     total_cp: p.total_cp ?? '',
     notes: p.notes ?? '',
+    hive_outermost: p.hive_outermost ?? false,
+    hive_group: p.hive_group ?? '',
   }
 }
 
@@ -100,6 +105,8 @@ function toPayload(form) {
     rank: form.rank === '' ? null : Number(form.rank),
     ...numbers,
     notes: form.notes.trim() || null,
+    hive_outermost: form.hive_outermost,
+    hive_group: form.hive_group.trim() || null,
   }
   if (!form.id) return { payload: { name, ...next } }
   // Only what changed, so History lists the fields someone actually edited.
@@ -280,6 +287,18 @@ export default function Members() {
           </label>
         )
       })}
+      <label>
+        Hive map group
+        <input value={form.hive_group} onChange={set('hive_group')} maxLength={40} placeholder="Shelters that stay together" />
+      </label>
+      <label className="inline">
+        <input
+          type="checkbox"
+          checked={form.hive_outermost}
+          onChange={(e) => setForm((f) => ({ ...f, hive_outermost: e.target.checked }))}
+        />
+        Wants an outer shelter
+      </label>
       <label className="wide">
         Notes
         <textarea rows="2" value={form.notes} onChange={set('notes')} />
@@ -293,7 +312,7 @@ export default function Members() {
         id={p.id}
         enabled={p.active}
         title={p.name}
-        where={[p.rank && `R${p.rank}`, p.industry_level && `Lv ${p.industry_level}`, was && `was ${was}`]
+        where={[p.rank && `R${p.rank}`, p.industry_level && `Lv ${p.industry_level}`, p.hive_outermost && 'outer', p.hive_group, was && `was ${was}`]
           .filter(Boolean).join(' · ')}
         when={`BGB ${short(p.bgb_cp)}`}
         whenNote={p.total_cp != null ? `total ${short(p.total_cp)}` : null}
@@ -326,6 +345,15 @@ export default function Members() {
               <dd>{full(p.peak_cp)}</dd>
               <dt>CP read</dt>
               <dd>{fmtDay(p.cp_read_on)}</dd>
+            </>
+          )}
+          {(p.hive_outermost || p.hive_group) && (
+            <>
+              <dt>Hive map</dt>
+              <dd>
+                {[p.hive_outermost && 'wants an outer shelter', p.hive_group && `group ${p.hive_group}`]
+                  .filter(Boolean).join(' · ')}
+              </dd>
             </>
           )}
           {p.game_uid && (

@@ -267,6 +267,8 @@ class MemberUpdate(BaseModel):
 PlayerName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
+HiveGroup = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+
 class PlayerNameOut(ORMModel):
     name: str
     first_seen: date | None = None
@@ -291,6 +293,8 @@ class PlayerOut(ORMModel):
     pet_agent_cp: int | None = None
     peak_cp: int | None = None
     cp_read_on: date | None = None
+    hive_outermost: bool = False
+    hive_group: str | None = None
     active: bool
     notes: str | None = None
     updated_at: datetime
@@ -304,6 +308,8 @@ class PlayerCreate(BaseModel):
     bgb_cp: int | None = Field(None, ge=0)
     total_cp: int | None = Field(None, ge=0)
     notes: str | None = Field(None, max_length=2000)
+    hive_outermost: bool = False
+    hive_group: HiveGroup | None = None
 
 
 class SheetRowIn(BaseModel):
@@ -366,7 +372,19 @@ class PlayerUpdate(BaseModel):
     bgb_cp: int | None = Field(None, ge=0)
     total_cp: int | None = Field(None, ge=0)
     notes: str | None = Field(None, max_length=2000)
+    hive_outermost: bool | None = None
+    hive_group: HiveGroup | None = None
     active: bool | None = None
+
+
+class HiveMapOut(ORMModel):
+    """The applied hive map's caption. The picture itself is its own request."""
+
+    id: int
+    applied_at: datetime
+    applied_by_name: str | None = None
+    shelters: int
+    options: dict
 
 
 # ---------------------------------------------------------------------- meta

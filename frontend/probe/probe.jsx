@@ -5,6 +5,7 @@ import Planner from '../src/alliance/planner/Planner.jsx'
 import AllianceEvents from '../src/alliance/events/Events.jsx'
 import Calculators from '../src/alliance/calculators/Calculators.jsx'
 import HiveMap from '../src/alliance/hive/HiveMap.jsx'
+import HiveGenerator from '../src/alliance/hive/HiveGenerator.jsx'
 import Announcements from '../src/pages/Announcements.jsx'
 import Bgb from '../src/pages/Bgb.jsx'
 import Events from '../src/pages/Events.jsx'
@@ -17,7 +18,7 @@ import WarPlanner from '../src/pages/WarPlanner.jsx'
 import '../src/styles.css'
 
 const which = new URLSearchParams(location.search).get('p') || 'announcements'
-const Page = { app: App, planner: Planner, aevents: AllianceEvents, calculators: Calculators, hive: HiveMap, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner, giftcodes: GiftCodes }[which]
+const Page = { app: App, planner: Planner, aevents: AllianceEvents, calculators: Calculators, hive: HiveMap, hivegen: HiveGenerator, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner, giftcodes: GiftCodes }[which]
 const user = { discord_id: '1', username: 'Goba', is_admin: true }
 
 window.onerror = (m) => { document.title = 'ERROR: ' + m }

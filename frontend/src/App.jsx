@@ -20,6 +20,7 @@ const Planner = lazy(() => import('./alliance/planner/Planner.jsx'))
 const AllianceEvents = lazy(() => import('./alliance/events/Events.jsx'))
 const Calculators = lazy(() => import('./alliance/calculators/Calculators.jsx'))
 const HiveMap = lazy(() => import('./alliance/hive/HiveMap.jsx'))
+const HiveGenerator = lazy(() => import('./alliance/hive/HiveGenerator.jsx'))
 
 /* Alliance pages are for everyone who can sign in: the Members role, an admin
    role, or the server owner. They are in the reader's language; `nav` names
@@ -43,11 +44,12 @@ const PAGES = [
   // Admin-only, reading included: they are the alliance's strategy.
   { id: 'warplan', path: '/admin/war-planner', label: 'War planner', Component: WarPlanner, admin: true },
   { id: 'passwar', path: '/admin/pass-war', label: 'Pass War map', Component: PassWar, admin: true },
+  { id: 'hivegen', path: '/admin/hive-map', label: 'Hive map', Component: HiveGenerator, admin: true },
 ]
 
 /* Addresses a page used to have. /pass-war was an alliance page for a day, and
    the retired pou-pass-war site still redirects there. */
-const MOVED = { '/pass-war': '/admin/pass-war' }
+const MOVED = { '/pass-war': '/admin/pass-war', '/hive-map/generator': '/admin/hive-map' }
 
 const GROUPS = [
   { name: 'alliance', pages: PAGES.filter((p) => !p.admin) },

@@ -1,4 +1,4 @@
-import PassWar from './engine.js'
+import { api } from '../lib/api.js'
 
 /**
  * Loading and shaping the Pass War data, kept apart from the UI.
@@ -8,10 +8,6 @@ import PassWar from './engine.js'
  * that order, so position in this list *is* rank — which is the only rank a
  * mercenary has, since they carry no CP.
  */
-
-const SHEET =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9nTYasjEgPo-Mb7Qtu' +
-  'AoLxUf1PBmiRKMIa46L7wruZZY2zXNxTGJrzb_YkJbyng/pub?output=csv'
 
 const STORE = 'pouwar.state.v1'
 
@@ -41,23 +37,24 @@ export const DEFAULT_OPTS = {
   rivalDepth: 2,
 }
 
-/** The roster, live from the published sheet, falling back to the bundled copy. */
+/**
+ * The roster, from the member table: current members with a total CP, strongest
+ * BGB CP first. Throws when the table cannot be read — there is no older copy to
+ * fall back on, and a stale one would be taken for the real thing.
+ */
 export async function loadRoster() {
-  try {
-    const r = await fetch(SHEET, { cache: 'no-store' })
-    if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const text = await r.text()
-    // A sign-in page comes back as HTML, which parses into a plausible-looking
-    // empty roster rather than failing, so check before trusting it.
-    if (/^\s*</.test(text)) throw new Error('the sheet is not published')
-    return { members: PassWar.parseMembers(text), source: 'live Google Sheet' }
-  } catch (err) {
-    const text = await fetch('passwar-members.csv', { cache: 'no-store' }).then((r) => r.text())
-    return {
-      members: PassWar.parseMembers(text),
-      source: `bundled snapshot — ${err.message}`,
-    }
-  }
+  const players = await api.listPlayers()
+  const members = players
+    .filter((p) => p.active && p.total_cp > 0)
+    .map((p) => ({
+      name: p.name,
+      lvl: p.industry_level ?? null,
+      bgb: p.bgb_cp ?? 0,
+      cp: p.total_cp,
+      merc: false,
+    }))
+    .sort((a, b) => b.bgb - a.bgb)
+  return { members, source: 'member table' }
 }
 
 /**

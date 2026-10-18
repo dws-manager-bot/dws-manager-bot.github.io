@@ -3,7 +3,7 @@ import roster from './fixtures/roster.csv?raw'
 // Made by pou-rocks.github.io's own engine (chunk 57, module 59506) from
 // roster.csv, so these tests hold the port to that site's results.
 import expected from './fixtures/expected-layouts.json'
-import { FRANKENSTEIN, SHELTER, VERSIONS, layoutHive } from './layout.js'
+import { FRANKENSTEIN, SHELTER, VERSIONS, compareClaims, layoutHive } from './layout.js'
 import { readMembers } from './sheet.js'
 
 const members = readMembers(roster)
@@ -120,5 +120,30 @@ describe('reach', () => {
 
   it('leaves a drawn shape its outline', () => {
     expect(layoutHive(singles(140), { version: 6 }).farthest).toBeGreaterThan(24)
+  })
+})
+
+describe('who has the strongest claim to the outside', () => {
+  const m = (name, fields) => ({ name, level: 1, bgbCp: 0, cp: 0, growth: 0, outermost: false, ...fields })
+  const strongestFirst = (list) => [...list].sort((a, b) => compareClaims(b, a)).map((x) => x.name)
+
+  it('asked for it, then growth, then BGB CP, then industry level, then total CP', () => {
+    const list = [
+      m('cp', { cp: 9e9 }),
+      m('level', { level: 8, cp: 1 }),
+      m('bgb', { bgbCp: 5e8, level: 1 }),
+      m('growth', { growth: 1e9 }),
+      m('asked', { outermost: true }),
+    ]
+    expect(strongestFirst(list)).toEqual(['asked', 'growth', 'bgb', 'level', 'cp'])
+  })
+
+  it('puts growth before BGB CP even when BGB CP is far higher', () => {
+    expect(strongestFirst([m('rich', { bgbCp: 9e9 }), m('grown', { growth: 1 })])).toEqual(['grown', 'rich'])
+  })
+
+  it('counts a member with no growth figure as none', () => {
+    const bare = { name: 'bare', level: 1, bgbCp: 5, cp: 5, outermost: false }
+    expect(strongestFirst([bare, m('zero', { bgbCp: 4 })])).toEqual(['bare', 'zero'])
   })
 })

@@ -8,8 +8,8 @@
  *
  * The idea: lay out more candidate cells than needed in the chosen shape, keep
  * the innermost N, rank each kept cell by how exposed it is, and rank members
- * by how much they belong on the outside (asked for it, then BGB CP, Industry
- * level, total CP). Stick groups are placed as touching clusters; spreading
+ * by how much they belong on the outside (asked for it, then growth, BGB CP,
+ * Industry level, total CP). Stick groups are placed as touching clusters; spreading
  * pushes the strongest groups and members out toward separate corners.
  */
 
@@ -250,8 +250,12 @@ function pullInFarCells(chosen, spare) {
 /* ---------- members ---------- */
 
 // Ascending: the member with the weakest claim to the outside comes first.
-const outerClaim = (m) => [m.outermost ? 1 : 0, m.bgbCp, m.level || 0, m.cp]
+// Asked for it; then how far they have grown (total CP less troop CP, which a
+// battle can spend and a week can refill); then BGB CP, industry level and,
+// last, total CP. A member without `growth` counts as none.
+const outerClaim = (m) => [m.outermost ? 1 : 0, m.growth || 0, m.bgbCp, m.level || 0, m.cp]
 const byOuterClaim = (a, b) => compareTuples(outerClaim(a), outerClaim(b))
+export const compareClaims = byOuterClaim
 
 /**
  * Every member's cell, with what drawing it needs: the canvas size in CSS

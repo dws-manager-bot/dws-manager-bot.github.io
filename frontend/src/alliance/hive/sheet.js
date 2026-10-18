@@ -1,15 +1,8 @@
 /*
- * The roster the hive map is drawn from: a published Google Sheet, read as
- * CSV straight from the browser (Google serves it with CORS open). The first
- * tab is the roster admins keep editing; a second tab is frozen on the day the
- * formation now standing in game was applied.
+ * Reading a roster sheet's CSV. The hive map no longer loads one — it is drawn
+ * from the member table — but the layout tests still read pou-rocks' fixture
+ * through this, which is what holds the port to that site's results.
  */
-
-const SHEET =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9nTYasjEgPo-Mb7QtuAoLxUf1PBmiRKMIa46L7wruZZY2zXNxTGJrzb_YkJbyng/pub'
-
-export const LIVE_ROSTER_URL = `${SHEET}?output=csv`
-export const APPLIED_ROSTER_URL = `${SHEET}?gid=2006949335&single=true&output=csv`
 
 /** Rows of cells. Quoted cells may hold commas, doubled quotes and newlines. */
 export function parseCsv(text) {

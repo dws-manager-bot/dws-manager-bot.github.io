@@ -97,8 +97,9 @@ async def update_player(
     new_name = changes.pop("name", None)
     kind = changes.pop("name_change", None)
     # An explicit null on a required column means "leave it", not "clear it".
-    if changes.get("active") is None:
-        changes.pop("active", None)
+    for required in ("active", "hive_outermost"):
+        if changes.get(required) is None:
+            changes.pop(required, None)
 
     action, detail = "player.update", {}
     old_name = player.name

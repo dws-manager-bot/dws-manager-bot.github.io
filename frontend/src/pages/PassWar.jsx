@@ -164,8 +164,15 @@ export default function PassWar({ user }) {
     let live = true
     ;(async () => {
       setBusy('Loading…')
-      const { members, source: src } = await loadRoster()
+      let loaded
+      try {
+        loaded = await loadRoster()
+      } catch (err) {
+        if (live) { setError(`Could not read the member table: ${err.message}`); setBusy('') }
+        return
+      }
       if (!live) return
+      const { members, source: src } = loaded
       setRoster(members)
       setSource(src)
       await fetchPlans()
@@ -271,10 +278,11 @@ export default function PassWar({ user }) {
 
   async function refreshRoster() {
     setBusy('Refreshing…')
-    const { members, source: src } = await loadRoster()
-    setRoster(members); setSource(src)
-    setLineup((l) => applyOrder(members, l.filter((m) => m.merc), l.map((m) => m.name)))
-    setBusy('')
+    try {
+      const { members, source: src } = await loadRoster()
+      setRoster(members); setSource(src)
+      setLineup((l) => applyOrder(members, l.filter((m) => m.merc), l.map((m) => m.name)))
+    } catch (err) { setError(`Could not read the member table: ${err.message}`) } finally { setBusy('') }
   }
 
   function downloadPng() {
