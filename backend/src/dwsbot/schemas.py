@@ -282,6 +282,7 @@ class PlayerOut(ORMModel):
     industry_level: int | None = None
     bgb_cp: int | None = None
     total_cp: int | None = None
+    game_uid: str | None = None
     structure_cp: int | None = None
     tech_cp: int | None = None
     troop_cp: int | None = None

@@ -44,6 +44,9 @@ const channels = [
 const seen = (name, first_seen, last_seen = first_seen) => ({ name, first_seen, last_seen })
 const players = [
   { id: 'a1', name: 'Nyx', rank: 4, industry_level: 8, bgb_cp: 278997886, total_cp: 1618239833,
+    game_uid: '1522692461000413', structure_cp: 129107401, tech_cp: 104473929, troop_cp: 1287912720,
+    hero_cp: 183177050, mod_vehicle_cp: 124694000, pet_agent_cp: 23678650, peak_cp: 1894649520,
+    cp_read_on: '2026-10-18',
     active: true, notes: null, updated_at: iso(-60), names: [seen('Nyx', '2026-08-21', '2026-09-09')] },
   { id: 'a2', name: 'ǝVelaɐ', rank: null, industry_level: 7, bgb_cp: 54499085, total_cp: 748346000,
     active: true, notes: 'Moved her main to this account around 3 Sep; her old one is velasam.',
