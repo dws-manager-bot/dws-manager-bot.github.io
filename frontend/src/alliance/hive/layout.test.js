@@ -67,7 +67,11 @@ describe.each(VERSIONS)('version %i', (version) => {
       }
     })
 
-    it("matches pou-rocks' own layout", () => {
+    // Where the member table says someone asked for the outside, they are placed before
+    // the spread units, which pou-rocks' engine is not: the diamond, the circle and
+    // v7 are the layouts where that moves someone, so those six are no longer its own.
+    const movedForThoseWhoAsked = ['v3 spread', 'v3 top10', 'v4 spread', 'v4 top10', 'v7 spread', 'v7 top10'].includes(`v${version} ${name}`)
+    it.skipIf(movedForThoseWhoAsked)("matches pou-rocks' own layout", () => {
       const want = expected[`v${version} ${name}`]
       expect(cells.map((c) => c.join()).join(' ')).toBe(want.cells)
       expect([layout.W, layout.H]).toEqual(want.size)
@@ -146,4 +150,35 @@ describe('who has the strongest claim to the outside', () => {
     const bare = { name: 'bare', level: 1, bgbCp: 5, cp: 5, outermost: false }
     expect(strongestFirst([bare, m('zero', { bgbCp: 4 })])).toEqual(['bare', 'zero'])
   })
+})
+
+describe('members who asked for the outside', () => {
+  const ring = (c) => Math.max(Math.abs(c[0]), Math.abs(c[1]))
+
+  /* Ten strong groups of three that the spread would send to the rim, and a few
+     weaker members who asked for it, alone and in a pair. */
+  const roster = () => {
+    const list = []
+    const add = (fields) => list.push({ id: list.length, level: 5, bgbCp: 1, cp: 1, growth: 0, outermost: false, group: null, ...fields })
+    for (let g = 0; g < 10; g += 1) {
+      for (let k = 0; k < 3; k += 1) add({ name: `S${g}${k}`, bgbCp: 9e8 - g * 1e6 - k, cp: 2e9, growth: 1e9, group: `strong${g}` })
+    }
+    for (let i = 0; i < 4; i += 1) add({ name: `Alone${i}`, bgbCp: 100 + i, outermost: true })
+    add({ name: 'PairA', bgbCp: 50, outermost: true, group: 'pair' })
+    add({ name: 'PairB', bgbCp: 49, group: 'pair' })
+    for (let i = 0; i < 30; i += 1) add({ name: `Rest${i}`, bgbCp: 10 + i })
+    return list
+  }
+
+  it.each([[1, true, true], [1, true, false], [1, false, true], [2, true, true], [3, true, true], [4, true, true]])(
+    'sit on the outermost ring in v%i (spread top %s, spread Lv8 %s)', (version, spreadTop, spreadIndustry) => {
+      const list = roster()
+      const layout = layoutHive(list, { version, spreadTop, spreadIndustry })
+      const all = list.map((m) => ring(layout.memberCell.get(m.id)))
+      const farthest = Math.max(...all)
+      for (const m of list.filter((x) => x.outermost)) {
+        expect(ring(layout.memberCell.get(m.id)), m.name).toBe(farthest)
+      }
+    },
+  )
 })

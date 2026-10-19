@@ -371,9 +371,22 @@ export function layoutHive(members, options) {
     })
   }
 
+  const strongestOf = (group) => group.reduce((best, m) => (byOuterClaim(m, best) > 0 ? m : best))
   const spreadGroups = new Set()
   const spreadSingles = new Set()
+  const placedGroups = new Set()
 
+  /* Whoever asked for the outside is placed before anything else, spread
+     included: otherwise the spread units, placed first, take the rim and the
+     members who asked get what is left. */
+  const asked = (group) => group.some((m) => m.outermost)
+  const askedGroups = [...groups.entries()]
+    .filter(([, group]) => asked(group))
+    .sort((a, b) => byOuterClaim(strongestOf(b[1]), strongestOf(a[1])))
+  const askedSingles = singles.filter((m) => m.outermost).sort((a, b) => byOuterClaim(b, a))
+
+  // A spread unit that asked keeps its bearing; the rest follow it, below.
+  let spreadPlan = []
   if (spreadTop || spreadIndustry) {
     // A unit is a stick group or a member on their own: [best BGB CP, holds
     // someone at the spread level, members, group name or null].
@@ -407,33 +420,49 @@ export function layoutHive(members, options) {
         bearings = Array.from({ length: spread.length }, (_, i) => (90 + (360 * i) / spread.length) % 360)
       }
       const far = 3 * Math.max(...cells.map(chebyshev))
-      spread.forEach(([, , group, name], i) => {
+      spreadPlan = spread.map(([, , group, name], i) => {
         const rad = (bearings[i] * Math.PI) / 180
-        const toward = [far * Math.cos(rad), -far * Math.sin(rad)]
-        if (name !== null) {
-          placeGroup(group, toward)
-          spreadGroups.add(name)
-        } else {
-          let rim = free.filter((c) => exposure.get(keyOf(c))[0] === 1)
-          if (!rim.length) rim = free
-          const cell = rim.reduce((best, c) => (distance2(c, toward) < distance2(best, toward) ? c : best))
-          memberCell.set(group[0].id, cell)
-          take(cell)
-          spreadSingles.add(group[0].id)
-        }
+        return { group, name, toward: [far * Math.cos(rad), -far * Math.sin(rad)] }
       })
     }
   }
 
+  const placeSpread = ({ group, name, toward }) => {
+    if (name !== null) {
+      placeGroup(group, toward)
+      spreadGroups.add(name)
+      placedGroups.add(name)
+    } else {
+      let rim = free.filter((c) => exposure.get(keyOf(c))[0] === 1)
+      if (!rim.length) rim = free
+      const cell = rim.reduce((best, c) => (distance2(c, toward) < distance2(best, toward) ? c : best))
+      memberCell.set(group[0].id, cell)
+      take(cell)
+      spreadSingles.add(group[0].id)
+    }
+  }
+
+  spreadPlan.filter((u) => asked(u.group)).forEach(placeSpread)
+  for (const [name, group] of askedGroups) {
+    if (placedGroups.has(name)) continue
+    placeGroup(group, null)
+    placedGroups.add(name)
+  }
+  const outermostFree = free.slice().sort((a, b) => byExposure(b, a))
+  askedSingles.filter((m) => !spreadSingles.has(m.id)).forEach((m, i) => {
+    memberCell.set(m.id, outermostFree[i])
+    take(outermostFree[i])
+  })
+  spreadPlan.filter((u) => !asked(u.group)).forEach(placeSpread)
+
   // The rest of the groups, the one with the strongest member first; then
   // everyone else, the weakest claim on the innermost cell.
-  const strongest = (group) => group.reduce((best, m) => (byOuterClaim(m, best) > 0 ? m : best))
   ;[...groups.entries()]
-    .sort((a, b) => memberRank.get(strongest(b[1]).id) - memberRank.get(strongest(a[1]).id))
+    .sort((a, b) => memberRank.get(strongestOf(b[1]).id) - memberRank.get(strongestOf(a[1]).id))
     .forEach(([name, group]) => {
-      if (!spreadGroups.has(name)) placeGroup(group, null)
+      if (!placedGroups.has(name)) placeGroup(group, null)
     })
-  const remaining = singles.filter((m) => !spreadSingles.has(m.id)).sort(byOuterClaim)
+  const remaining = singles.filter((m) => !memberCell.has(m.id)).sort(byOuterClaim)
   const freeInnermostFirst = free.slice().sort(byExposure)
   remaining.forEach((m, i) => memberCell.set(m.id, freeInnermostFirst[i]))
 
