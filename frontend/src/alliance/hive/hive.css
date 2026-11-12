@@ -41,6 +41,7 @@
 .hive-frame.actual { max-height: 78vh; }
 
 .hive-sheet {
+  position: relative;
   max-width: 100%;
   margin: 0 auto;
   background: #f5f3ee;
@@ -50,6 +51,14 @@
 .hive-frame.actual .hive-sheet { max-width: none; }
 .hive-sheet canvas,
 .hive-sheet img { display: block; width: 100%; height: auto; }
+/* The swap highlight, laid exactly over the map (generator only). */
+.hive-sheet canvas.hive-overlay { position: absolute; inset: 0; height: 100%; }
+
+.hive-swapbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; min-width: 0; }
+.hive-swapbar .hive-hint { flex: 1 1 260px; min-width: 0; }
+.hive-swaps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hive-swapcount { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.hive-swapcount.none { color: var(--muted, #a1a1aa); font-weight: 500; }
 
 .hive-status { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .hive-hint { margin: 0; text-align: center; font-size: 12px; overflow-wrap: anywhere; }

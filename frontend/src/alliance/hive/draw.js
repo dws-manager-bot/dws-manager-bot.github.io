@@ -7,9 +7,9 @@
  * the one the alliance has been sharing. The canvas is drawn at twice its CSS
  * size so it stays sharp on a phone and in the download.
  */
-import { FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, SHELTER, TILE, keyOf, layoutHive, round1 } from './layout.js'
+import { FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, SHELTER, TILE, applySwaps, keyOf, layoutHive, round1 } from './layout.js'
 
-const SCALE = 2
+export const SCALE = 2
 const BACKGROUND = '#f5f3ee'
 const INK = '#282828'
 const FONT_STACK =
@@ -84,12 +84,14 @@ function fitName(ctx, name, width) {
 /**
  * Lays out `members` and draws them on `canvas`, sized to fit. Options:
  * version (1–9), showGroups, spreadTop, spreadIndustry, ts (the stamp under
- * the title), labels (see ENGLISH_LABELS) and direction, the labels' ('rtl'
- * for Arabic).
- * `picture` is Frankenstein's, drawn once it has loaded. Returns the layout.
+ * the title), labels (see ENGLISH_LABELS), direction, the labels' ('rtl'
+ * for Arabic), and swaps, pairs of member ids an admin traded by hand.
+ * `picture` is Frankenstein's, drawn once it has loaded. Returns the layout,
+ * swaps applied.
  */
 export function drawHive(canvas, members, options, picture) {
   const layout = layoutHive(members, options)
+  applySwaps(layout.memberCell, options.swaps)
   canvas.width = SCALE * layout.W
   canvas.height = SCALE * layout.H
   const ctx = canvas.getContext('2d')

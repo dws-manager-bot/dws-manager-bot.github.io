@@ -491,4 +491,33 @@ export function layoutHive(members, options) {
   }
 }
 
+/* ---------- swapping by hand ----------
+   An admin can trade two members' shelters after the layout has placed them.
+   A swap moves nobody to a new cell, only exchanges two, so the formation's
+   outline, its bounds and its farthest shelter stay what layoutHive made them. */
+
+/**
+ * Applies `swaps`, pairs of member ids, in order, to `memberCell` in place. A
+ * pair naming a member who is not on the map is skipped.
+ */
+export function applySwaps(memberCell, swaps) {
+  for (const [a, b] of swaps || []) {
+    if (a === b || !memberCell.has(a) || !memberCell.has(b)) continue
+    const cell = memberCell.get(a)
+    memberCell.set(a, memberCell.get(b))
+    memberCell.set(b, cell)
+  }
+  return memberCell
+}
+
+/** The id of the member whose shelter covers canvas point (x, y), in CSS pixels, or null. */
+export function memberAt(layout, x, y) {
+  const half = SHELTER / 2
+  for (const [id, cell] of layout.memberCell) {
+    const [px, py] = layout.toPx(...cell)
+    if (Math.abs(x - px) <= half && Math.abs(y - py) <= half) return id
+  }
+  return null
+}
+
 export { keyOf, round1 }
