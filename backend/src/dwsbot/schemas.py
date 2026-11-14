@@ -29,6 +29,9 @@ Snowflake = Annotated[
     PlainSerializer(str, return_type=str, when_used="json-unless-none"),
 ]
 
+# A wall-clock time of day, "19:00".
+HHMM = Annotated[str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -140,6 +143,10 @@ class EventBase(BaseModel):
     reference_date: datetime | None = None
     fixed_dates: list[str] | None = None
     start_time: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    # Rotation only: runs take turns at start_time, then these. See the model.
+    alternate_times: list[HHMM] | None = Field(None, max_length=6)
+    # A different start on given weekdays: {6: "19:00"} for Sundays (0=Mon).
+    weekday_times: dict[int, HHMM] | None = None
     duration_minutes: int = Field(60, ge=1)
     timezone: str = "Asia/Seoul"
     signup_enabled: bool = False
@@ -151,6 +158,20 @@ class EventBase(BaseModel):
             raise ValueError("weekdays must be 0 (Monday) through 6 (Sunday)")
         return v
 
+    @field_validator("alternate_times", "weekday_times")
+    @classmethod
+    def _empty_is_none(cls, v):
+        return v or None
+
+    @field_validator("weekday_times")
+    @classmethod
+    def _valid_weekday_times(cls, v):
+        if v and any(d < 0 or d > 6 for d in v):
+            raise ValueError("weekday_times days must be 0 (Monday) through 6 (Sunday)")
+        return v
+
+    # Structural, like the rules above: what a definition must look like, true of
+    # a stored row as much as of new input, so EventOut can inherit them.
     @model_validator(mode="after")
     def _schedule_is_complete(self):
         if self.schedule_type == "weekly" and not self.weekdays:
@@ -159,6 +180,18 @@ class EventBase(BaseModel):
             raise ValueError("rotation_days and reference_date are required for 'rotation'")
         if self.schedule_type == "fixed" and not self.fixed_dates:
             raise ValueError("fixed_dates is required when schedule_type is 'fixed'")
+        if self.alternate_times:
+            if self.schedule_type != "rotation":
+                raise ValueError(
+                    "alternating times need a rotation: they count from its reference date"
+                )
+            if not self.start_time:
+                raise ValueError("alternating times need a start time to alternate with")
+            turns = [self.start_time, *self.alternate_times]
+            if len(set(turns)) != len(turns):
+                raise ValueError(
+                    "each alternating time must differ from the start time and the others"
+                )
         return self
 
 

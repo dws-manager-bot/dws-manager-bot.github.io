@@ -11,7 +11,7 @@ import { zonedToIso } from '../lib/tz.js'
 import ListSection from '../components/ListSection.jsx'
 import EditorPanel from '../components/EditorPanel.jsx'
 import { copyKey, copyName, groupRows } from '../lib/grouping.js'
-import { REPEATS } from '../lib/schedule.js'
+import { REPEATS, startTimesText } from '../lib/schedule.js'
 
 // Weekday names in the viewer's language; the indices stay 0 = Monday, which
 // is what the API stores.
@@ -38,6 +38,10 @@ const EMPTY = {
   reference_date: '',
   fixed_dates: [],
   start_time: '20:00',
+  // Rotation only: runs take turns at start_time, then these.
+  alternate_times: [],
+  // [weekday, time] pairs, edited as a list; the API takes {weekday: time}.
+  weekday_rules: [],
   duration_minutes: 60,
   timezone: 'Asia/Seoul',
   signup_enabled: true,
@@ -57,10 +61,28 @@ function toPayload(form) {
         ? zonedToIso(`${String(form.reference_date).slice(0, 10)}T00:00`, form.timezone)
         : null,
     fixed_dates: form.schedule_type === 'fixed' ? form.fixed_dates : null,
+    alternate_times:
+      form.schedule_type === 'rotation' && form.alternate_times.filter(Boolean).length
+        ? form.alternate_times.filter(Boolean)
+        : null,
+    weekday_times: form.weekday_rules.some(([, time]) => time)
+      ? Object.fromEntries(form.weekday_rules.filter(([, time]) => time))
+      : null,
+    weekday_rules: undefined,
     duration_minutes: Number(form.duration_minutes),
     description: form.description || null,
   }
 }
+
+/** A stored row as the form edits it. */
+const formOf = (row) => ({
+  ...EMPTY, ...row,
+  weekdays: row.weekdays ?? [],
+  alternate_times: row.alternate_times ?? [],
+  weekday_rules: Object.entries(row.weekday_times ?? {})
+    .map(([day, time]) => [Number(day), time])
+    .sort((a, b) => a[0] - b[0]),
+})
 
 export default function Events() {
   const [rows, setRows] = useState([])
@@ -80,6 +102,25 @@ export default function Events() {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
     setForm((f) => ({ ...f, [field]: value }))
   }
+
+  /* The two lists of extra times: edit one entry, drop one, add one. */
+  const setAlternate = (i, value) =>
+    setForm((f) => ({ ...f, alternate_times: f.alternate_times.map((t, j) => (j === i ? value : t)) }))
+  const dropAlternate = (i) =>
+    setForm((f) => ({ ...f, alternate_times: f.alternate_times.filter((_, j) => j !== i) }))
+  const setRule = (i, part, value) =>
+    setForm((f) => ({
+      ...f,
+      weekday_rules: f.weekday_rules.map((r, j) => (j === i ? (part === 0 ? [Number(value), r[1]] : [r[0], value]) : r)),
+    }))
+  const dropRule = (i) =>
+    setForm((f) => ({ ...f, weekday_rules: f.weekday_rules.filter((_, j) => j !== i) }))
+  const addRule = () =>
+    setForm((f) => {
+      const taken = new Set(f.weekday_rules.map(([day]) => day))
+      const day = [6, 5, 4, 3, 2, 1, 0].find((d) => !taken.has(d))
+      return day === undefined ? f : { ...f, weekday_rules: [...f.weekday_rules, [day, f.start_time || '20:00']] }
+    })
 
   const toggleDay = (index) =>
     setForm((f) => ({
@@ -165,7 +206,7 @@ export default function Events() {
   const editing = (row) => form && form.id === row.id
 
   const startEdit = (row) => {
-    setForm({ ...EMPTY, ...row, weekdays: row.weekdays ?? [] })
+    setForm(formOf(row))
     setPreview([])
   }
 
@@ -173,11 +214,10 @@ export default function Events() {
      it is saved. The key has to differ, since it is what /events post takes. */
   const startCopy = (row) => {
     setForm({
-      ...EMPTY, ...row,
+      ...formOf(row),
       id: undefined,
       key: copyKey(row.key, rows.map((r) => r.key)),
       name: copyName(row.name, rows.map((r) => r.name)),
-      weekdays: row.weekdays ?? [],
       enabled: true,
       upcoming: undefined, created_by_name: undefined, updated_by_name: undefined,
     })
@@ -256,8 +296,36 @@ export default function Events() {
                       onChange={(v) => setForm((f) => ({ ...f, reference_date: v }))}
                       placeholder="Pick a known event day…"
                     />
-                    <small className="muted">A day the event is known to run.</small>
+                    <small className="muted">
+                      A day the event is known to run{form.alternate_times.length > 0 ? ', at the start time' : ''}.
+                    </small>
                   </label>
+                  <div className="wide">
+                    <span className="label">Takes turns with</span>
+                    <div className="time-list">
+                      {form.alternate_times.map((time, i) => (
+                        <div className="time-item" key={i}>
+                          <input
+                            type="time" value={time} aria-label={`Turn ${i + 2} start time`}
+                            onChange={(e) => setAlternate(i, e.target.value)}
+                          />
+                          <button type="button" className="btn" onClick={() => dropAlternate(i)} aria-label="Remove this time">×</button>
+                        </div>
+                      ))}
+                      {form.alternate_times.length < 6 && (
+                        <button
+                          type="button" className="btn"
+                          onClick={() => setForm((f) => ({ ...f, alternate_times: [...f.alternate_times, ''] }))}
+                        >
+                          + Add a time
+                        </button>
+                      )}
+                    </div>
+                    <small className="muted">
+                      Runs take turns: the start time, then each of these. The turn after a run follows the
+                      time it actually ran at, so a run a weekday rule moves counts as that time.
+                    </small>
+                  </div>
                 </>
               )}
 
@@ -292,6 +360,37 @@ export default function Events() {
                   )}
                 </label>
               )}
+
+              <div className="wide">
+                <span className="label">Different time on</span>
+                <div className="time-list">
+                  {form.weekday_rules.map(([day, time], i) => (
+                    <div className="time-item" key={i}>
+                      <select value={day} aria-label="Weekday" onChange={(e) => setRule(i, 0, e.target.value)}>
+                        {DAYS.map((name, d) => (
+                          <option
+                            key={name} value={d}
+                            disabled={d !== day && form.weekday_rules.some(([other]) => other === d)}
+                          >
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="time" value={time} aria-label={`Start time on ${DAYS[day]}`}
+                        onChange={(e) => setRule(i, 1, e.target.value)}
+                      />
+                      <button type="button" className="btn" onClick={() => dropRule(i)} aria-label="Remove this rule">×</button>
+                    </div>
+                  ))}
+                  {form.weekday_rules.length < 7 && (
+                    <button type="button" className="btn" onClick={addRule}>+ Add a weekday</button>
+                  )}
+                </div>
+                <small className="muted">
+                  A run on that weekday starts at this time instead. The weekday is read in the event's timezone.
+                </small>
+              </div>
 
               <label>
                 Duration (minutes)
@@ -366,7 +465,7 @@ export default function Events() {
           <div className="card-meta">
             <span className="pill">{row.schedule_type}</span>
             <code className="muted">{row.key}</code>
-            <span>{row.start_time}</span>
+            <span>{startTimesText(row, DAYS)}</span>
             <span className="muted">{row.timezone}</span>
           </div>
           {row.description && <p className="card-body">{row.description}</p>}

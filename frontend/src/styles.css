@@ -736,6 +736,12 @@ a { color: var(--accent); text-underline-offset: 2px; }
 
 /* The answer to "when will this actually post", which is the whole point of
    the builder — a cron expression cannot be checked by reading it. */
+/* A short list of extra times on the Events form: turns, and weekdays with their own. */
+.time-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; min-width: 0; }
+.time-item { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.time-item input[type='time'],
+.time-item select { width: auto; min-width: 0; }
+
 .sched-preview {
   background: var(--bg);
   border: 1px solid var(--border);

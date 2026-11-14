@@ -53,6 +53,56 @@ def occurrence_dates(
     return []
 
 
+def start_times(
+    *,
+    start_time: str | None,
+    alternate_times: list[str] | None = None,
+    weekday_times: dict | None = None,
+    rotation_days: int | None = None,
+    reference_date: date | None = None,
+):
+    """A function from an occurrence date to the time the event starts that day.
+
+    Plain: `start_time`, or the weekday's own time from `weekday_times`
+    ({6: "19:00"} for Sundays; keys may be strings, as JSON stores them).
+
+    With `alternate_times` on a rotation, runs take turns: the run on
+    `reference_date` at `start_time`, the next at the first alternate, and so
+    on round. The turn after a run follows the time it actually ran at, so when
+    a weekday rule moves a 23:00 turn to 19:00, the run after it is the 23:00
+    one, not a second 19:00. Runs before the reference date have no history to
+    follow; they take turns by count alone.
+    """
+    by_weekday = {int(k): _parse_hhmm(v) for k, v in (weekday_times or {}).items()}
+    turns = [_parse_hhmm(start_time), *(_parse_hhmm(t) for t in alternate_times or [])]
+
+    if len(turns) == 1 or not rotation_days or reference_date is None:
+        return lambda d: by_weekday.get(d.weekday(), turns[0])
+
+    walked: dict[date, time] = {}
+    state = {"at": reference_date, "turn": 0}
+
+    def walk_to(target: date) -> None:
+        while state["at"] <= target:
+            d = state["at"]
+            ran = by_weekday.get(d.weekday(), turns[state["turn"]])
+            walked[d] = ran
+            state["turn"] = (turns.index(ran) if ran in turns else state["turn"]) + 1
+            state["turn"] %= len(turns)
+            state["at"] = d + timedelta(days=rotation_days)
+
+    def at(d: date) -> time:
+        offset = (d - reference_date).days
+        if offset % rotation_days:      # not a run day of this rotation
+            return by_weekday.get(d.weekday(), turns[0])
+        if offset < 0:
+            return by_weekday.get(d.weekday(), turns[(offset // rotation_days) % len(turns)])
+        walk_to(d)
+        return walked[d]
+
+    return at
+
+
 def next_occurrences(
     definition,
     *,
@@ -63,11 +113,19 @@ def next_occurrences(
     """The next `count` timezone-aware start times for an EventDefinition."""
     tz = ZoneInfo(definition.timezone or "UTC")
     now = (now or datetime.now(tz)).astimezone(tz)
-    start = _parse_hhmm(definition.start_time)
 
     ref = definition.reference_date
     if isinstance(ref, datetime):
         ref = ref.astimezone(tz).date()
+
+    rotating = definition.schedule_type == "rotation"
+    start_on = start_times(
+        start_time=definition.start_time,
+        alternate_times=getattr(definition, "alternate_times", None) if rotating else None,
+        weekday_times=getattr(definition, "weekday_times", None),
+        rotation_days=definition.rotation_days if rotating else None,
+        reference_date=ref if rotating else None,
+    )
 
     days = occurrence_dates(
         schedule_type=definition.schedule_type,
@@ -81,7 +139,7 @@ def next_occurrences(
 
     out: list[datetime] = []
     for d in days:
-        dt = datetime.combine(d, start, tzinfo=tz)
+        dt = datetime.combine(d, start_on(d), tzinfo=tz)
         if dt > now:
             out.append(dt)
         if len(out) >= count:

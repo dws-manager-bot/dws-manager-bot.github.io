@@ -226,3 +226,42 @@ def test_a_rotation_may_be_anchored_in_the_past():
         **BASE, kind=ScheduleKind.ROTATION, interval_minutes=14 * 1440, run_at=past,
     )
     assert ann.run_at == past
+
+
+# ------------------------------------------------- event alternating/weekday times
+
+def _event(**over):
+    from dwsbot.schemas import EventCreate
+
+    base = dict(
+        key="frankenstein-round2", name="Frankenstein Round 2", schedule_type="rotation",
+        rotation_days=3, reference_date="2026-11-13T02:00:00Z", start_time="23:00",
+        timezone="Etc/GMT+2",
+    )
+    base.update(over)
+    return EventCreate(**base)
+
+
+def test_event_takes_alternating_and_weekday_times():
+    e = _event(alternate_times=["19:00"], weekday_times={"6": "19:00"})
+    assert e.alternate_times == ["19:00"]
+    assert e.weekday_times == {6: "19:00"}
+
+
+def test_event_empty_time_rules_are_none():
+    e = _event(alternate_times=[], weekday_times={})
+    assert e.alternate_times is None and e.weekday_times is None
+
+
+@pytest.mark.parametrize("over, says", [
+    ({"alternate_times": ["19:00"], "schedule_type": "weekly", "weekdays": [6]}, "need a rotation"),
+    ({"alternate_times": ["23:00"]}, "must differ"),
+    ({"alternate_times": ["19:00"], "start_time": None}, "need a start time"),
+    ({"alternate_times": ["7pm"]}, "pattern"),
+    ({"weekday_times": {"7": "19:00"}}, "Monday. through 6"),
+])
+def test_event_refuses_a_bad_time_rule(over, says):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match=says):
+        _event(**over)

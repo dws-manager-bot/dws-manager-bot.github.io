@@ -440,6 +440,13 @@ class EventDefinition(Base, TimestampMixin):
     fixed_dates: Mapped[list | None] = mapped_column(JSONB)     # ISO date strings
 
     start_time: Mapped[str | None] = mapped_column(String(5))   # "20:30" local to `timezone`
+    # Rotation only: runs take turns at start_time, then each of these ["19:00"],
+    # the run on reference_date taking start_time. The turn after a run follows
+    # the time it actually ran at, so a weekday rule that moves a run moves the
+    # turns after it too.
+    alternate_times: Mapped[list | None] = mapped_column(JSONB)
+    # A different start on given weekdays, {"6": "19:00"} for Sundays (0=Mon).
+    weekday_times: Mapped[dict | None] = mapped_column(JSONB)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Seoul", nullable=False)
 
