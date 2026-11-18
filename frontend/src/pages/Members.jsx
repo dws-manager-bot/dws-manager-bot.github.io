@@ -38,7 +38,8 @@ const parseCount = (text) => {
   return /^\d+$/.test(digits) ? Number(digits) : NaN
 }
 
-/* The six parts the profile screen adds up to total CP, in the game's order. */
+/* The parts the profile screen adds up to total CP, in the game's order. Armor is new
+   (November 2026); a player read before it shows a dash there. */
 const CP_PARTS = [
   ['structure_cp', 'Structure CP'],
   ['tech_cp', 'Tech CP'],
@@ -46,6 +47,7 @@ const CP_PARTS = [
   ['hero_cp', 'Hero CP'],
   ['mod_vehicle_cp', 'Mod Vehicle CP'],
   ['pet_agent_cp', 'Pet Agent CP'],
+  ['armor_cp', 'Armor CP'],
 ]
 
 const SORTS = [

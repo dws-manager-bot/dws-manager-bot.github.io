@@ -324,6 +324,7 @@ class PlayerOut(ORMModel):
     hero_cp: int | None = None
     mod_vehicle_cp: int | None = None
     pet_agent_cp: int | None = None
+    armor_cp: int | None = None
     peak_cp: int | None = None
     cp_read_on: date | None = None
     hive_outermost: bool = False
