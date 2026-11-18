@@ -21,6 +21,8 @@ const AllianceEvents = lazy(() => import('./alliance/events/Events.jsx'))
 const Calculators = lazy(() => import('./alliance/calculators/Calculators.jsx'))
 const HiveMap = lazy(() => import('./alliance/hive/HiveMap.jsx'))
 const HiveGenerator = lazy(() => import('./alliance/hive/HiveGenerator.jsx'))
+// Brings Tailwind, Radix and Recharts with it; only this page downloads them.
+const SeasonGuide = lazy(() => import('./guide/SeasonGuide.jsx'))
 
 /* Alliance pages are for everyone who can sign in: the Members role, an admin
    role, or the server owner. They are in the reader's language; `nav` names
@@ -33,6 +35,7 @@ const PAGES = [
   { id: 'alliance-events', path: '/events', nav: 'events', Component: AllianceEvents },
   { id: 'calculators', path: '/calculator', nav: 'calculators', Component: Calculators, prefix: true },
   { id: 'hive', path: '/hive-map', nav: 'hive_map', Component: HiveMap, prefix: true },
+  { id: 'season-guide', path: '/season-guide', nav: 'season_guide', Component: SeasonGuide, prefix: true },
   { id: 'setup', path: '/admin/setup', label: 'Set up', Component: Setup, admin: true },
   { id: 'announcements', path: '/admin/announcements', label: 'Announcements', Component: Announcements, admin: true },
   { id: 'events', path: '/admin/events', label: 'Events', Component: Events, admin: true },

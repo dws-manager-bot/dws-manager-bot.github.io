@@ -3,7 +3,8 @@
     "planner": "플래너",
     "events": "이벤트",
     "calculators": "계산기",
-    "hive_map": "군집 지도"
+    "hive_map": "군집 지도",
+    "season_guide": "시즌 가이드"
   },
   "group": {
     "alliance": "연맹"

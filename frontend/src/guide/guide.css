@@ -1,0 +1,132 @@
+/*
+ * The season guide's styles: Tailwind v4 and shadcn/ui, kept to the guide.
+ *
+ * Everything here lives under .sg, the element SeasonGuide.jsx renders, so none
+ * of it reaches the rest of the site even after the guide has loaded once:
+ *   - the reset is preflight.css, every selector prefixed with .sg;
+ *   - the colors are defined on .sg, not :root (ours use the same names);
+ *   - Tailwind only scans src/guide, so it makes no utility for a class name
+ *     that only our own pages use.
+ * The other direction is styles.css's job: its bare element rules (header,
+ * main, a, label, input) and .grid skip anything inside .sg.
+ *
+ * Colors: the guide's dark theme, moved onto our zinc and gold. There is no
+ * light theme here; the site is dark.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "./preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tw-animate-css";
+@import "./shadcn-tailwind.css";
+
+@source "./";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --color-fact: var(--fact);
+    --color-strategy: var(--strategy);
+    --color-unconfirmed: var(--unconfirmed);
+    --color-inferred: var(--inferred);
+    --color-reported: var(--reported);
+    --color-anubis: var(--anubis);
+    --color-horus: var(--horus);
+    --font-heading: var(--font-sans);
+    --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.sg {
+    --background: #18181b;
+    --foreground: #fafafa;
+    --card: #27272a;
+    --card-foreground: #fafafa;
+    --popover: #27272a;
+    --popover-foreground: #fafafa;
+    --primary: #fbbf24;
+    --primary-foreground: #18181b;
+    --secondary: #3f3f46;
+    --secondary-foreground: #fafafa;
+    --muted: #3f3f46;
+    --muted-foreground: #a1a1aa;
+    --accent: #323238;
+    --accent-foreground: #fafafa;
+    --destructive: #f87171;
+    --border: #3f3f46;
+    --input: #52525b;
+    --ring: #fcd34d;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: #27272a;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #fbbf24;
+    --sidebar-primary-foreground: #18181b;
+    --sidebar-accent: #3f3f46;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #3f3f46;
+    --sidebar-ring: #fcd34d;
+    --fact: oklch(0.75 0.14 150);
+    --strategy: oklch(0.75 0.12 250);
+    --unconfirmed: oklch(0.78 0.14 60);
+    --inferred: oklch(0.76 0.1 200);
+    --reported: oklch(0.75 0.11 310);
+    --anubis: oklch(0.72 0.12 245);
+    --horus: oklch(0.72 0.15 35);
+
+    color-scheme: dark;
+    font-size: 1rem;
+}
+
+@layer base {
+  .sg * {
+    @apply border-border outline-ring/50;
+  }
+  .sg {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+/* Anchors land below both sticky headers: the site's and the guide's. */
+.sg [id] { scroll-margin-top: calc(var(--shell-h, 0px) + 5rem); }

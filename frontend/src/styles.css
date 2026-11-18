@@ -79,7 +79,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 /* ---------- app shell ---------- */
 
 /* Sticky so the tabs stay reachable while scrolling a long list on a phone. */
-header {
+header:where(:not(.sg *)) {
   position: sticky;
   top: 0;
   z-index: 30;
@@ -170,9 +170,11 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
   white-space: nowrap;
 }
 
-main { padding: 16px; max-width: 1100px; margin: 0 auto; min-width: 0; }
+main:where(:not(.sg *)) { padding: 16px; max-width: 1100px; margin: 0 auto; min-width: 0; }
 /* The Pass War tab lays out two columns and wants the room. */
 main:has(.pw-layout) { max-width: 1680px; }
+/* The season guide brings its own widths and gutters (src/guide). */
+main:has(> .sg) { max-width: none; padding: 0; }
 .page { min-width: 0; }
 
 .page-head {
@@ -432,14 +434,16 @@ main:has(.pw-layout) { max-width: 1680px; }
 }
 .panel h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
 
-.grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+/* Tailwind in the season guide has a .grid of its own; this one stays out of it. */
+.grid:where(:not(.sg *)) { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .grid .wide { grid-column: 1 / -1; }
 
-label, .label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); }
-label.inline { flex-direction: row; align-items: center; gap: 9px; min-height: 44px; }
+label:where(:not(.sg *)), .label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); }
+label.inline:where(:not(.sg *)) { flex-direction: row; align-items: center; gap: 9px; min-height: 44px; }
 label.inline input { width: auto; }
 
-input, select, textarea {
+/* Form controls, links and labels: the season guide (.sg) styles its own. */
+input:where(:not(.sg *)), select:where(:not(.sg *)), textarea:where(:not(.sg *)) {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -450,15 +454,15 @@ input, select, textarea {
   width: 100%;
   min-height: 44px;
 }
-input:focus, select:focus, textarea:focus {
+input:focus:where(:not(.sg *)), select:focus:where(:not(.sg *)), textarea:focus:where(:not(.sg *)) {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
 }
-input[type="color"] { padding: 3px; height: 44px; }
-input[type="checkbox"] { min-height: 0; width: 20px; height: 20px; accent-color: var(--accent); }
-textarea { resize: vertical; min-height: 90px; }
-small { font-size: 12px; }
+input[type="color"]:where(:not(.sg *)) { padding: 3px; height: 44px; }
+input[type="checkbox"]:where(:not(.sg *)) { min-height: 0; width: 20px; height: 20px; accent-color: var(--accent); }
+textarea:where(:not(.sg *)) { resize: vertical; min-height: 90px; }
+small:where(:not(.sg *)) { font-size: 12px; }
 
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row.wrap { flex-wrap: wrap; }
@@ -578,7 +582,7 @@ small { font-size: 12px; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .error { color: #fecaca; }
-a { color: var(--accent); text-underline-offset: 2px; }
+a:where(:not(.sg *)) { color: var(--accent); text-underline-offset: 2px; }
 
 /* ---------- widen ---------- */
 
@@ -590,7 +594,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 @media (min-width: 640px) {
   .prefs-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 640px; margin-inline-start: auto; }
   main { padding: 24px; }
-  .grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid:where(:not(.sg *)) { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .panel { padding: 20px; }
   .user .who { display: inline; }
 }
@@ -909,7 +913,7 @@ a { color: var(--accent); text-underline-offset: 2px; }
 }
 
 /* The range control keeps the browser's blue accent unless it is told. */
-input[type="range"] {
+input[type="range"]:where(:not(.sg *)) {
   accent-color: var(--accent);
   min-height: 0;
   padding: 0;

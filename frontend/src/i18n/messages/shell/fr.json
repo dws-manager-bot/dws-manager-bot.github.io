@@ -3,7 +3,8 @@
     "planner": "Planificateur",
     "events": "Événements",
     "calculators": "Calculatrices",
-    "hive_map": "Carte de la ruche"
+    "hive_map": "Carte de la ruche",
+    "season_guide": "Guide de saison"
   },
   "group": {
     "alliance": "Alliance"

@@ -3,7 +3,8 @@
     "planner": "Planificador",
     "events": "Eventos",
     "calculators": "Calculadoras",
-    "hive_map": "Mapa de la colmena"
+    "hive_map": "Mapa de la colmena",
+    "season_guide": "Guía de temporada"
   },
   "group": {
     "alliance": "Alianza"

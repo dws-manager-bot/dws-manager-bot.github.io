@@ -3,7 +3,8 @@
     "planner": "Planer",
     "events": "Events",
     "calculators": "Rechner",
-    "hive_map": "Hive-Karte"
+    "hive_map": "Hive-Karte",
+    "season_guide": "Saison-Guide"
   },
   "group": {
     "alliance": "Allianz"
