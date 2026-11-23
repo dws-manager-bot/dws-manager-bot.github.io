@@ -21,17 +21,25 @@ export const SWATCHES = [
 ]
 
 /**
- * The map colored camp against camp, in place of the alliances: the top camp
- * blue, the bottom camp red. The pair passes the palette validator on the
- * light surface (colorblind ΔE 29.9, normal-vision 38.2, both over 3:1).
- * The history chart keeps its own pair, stepped for its dark card.
+ * The map colored camp against camp, in place of the alliances: season 6 has
+ * eight camps, one color each. They are the swatches above, in order, so they
+ * carry the same validation (colorblind separation of neighbors, lightness
+ * band) on the sand map and on the dark cards alike.
  */
-export const CAMP_COLORS = { 1: '#2563eb', 2: '#dc2626' }
+export const CAMP_COLORS = Object.fromEntries(SWATCHES.map((c, i) => [i + 1, c]))
 
-/** The first suggestion nobody has taken yet. */
-export function nextColor(alliances) {
+/**
+ * A color for a new alliance: a shade of its camp's color nobody has taken,
+ * so the map read alliance by alliance still groups by camp. Season 6 tracks
+ * every alliance in all eight camps, far more than eight swatches; within a
+ * camp the shades step in lightness, and the tag labels say which is which.
+ */
+export function nextColor(alliances, camp = 1) {
   const taken = new Set(alliances.map((a) => a.color.toLowerCase()))
-  return SWATCHES.find((c) => !taken.has(c)) || '#64748b'
+  const base = CAMP_COLORS[camp] || SWATCHES[0]
+  const shades = [base, darker(base, 0.72), lighter(base, 0.4), darker(base, 0.52), lighter(base, 0.62),
+    darker(base, 0.85), lighter(base, 0.25), darker(base, 0.4)]
+  return shades.find((c) => !taken.has(c)) || SWATCHES.find((c) => !taken.has(c)) || '#64748b'
 }
 
 /** Black or white, whichever reads on this color. */
@@ -50,6 +58,13 @@ export function rgb(hex) {
 export function darker(hex, f = 0.62) {
   const [r, g, b] = rgb(hex)
   const h = (v) => Math.round(v * f).toString(16).padStart(2, '0')
+  return `#${h(r)}${h(g)}${h(b)}`
+}
+
+/** A lighter shade of the same color: `f` of the way to white. */
+export function lighter(hex, f = 0.4) {
+  const [r, g, b] = rgb(hex)
+  const h = (v) => Math.round(v + (255 - v) * f).toString(16).padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`
 }
 

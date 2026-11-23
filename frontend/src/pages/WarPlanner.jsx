@@ -6,14 +6,14 @@ import { SERVER_TZ } from '../lib/servertime.js'
 import WarMap from '../warplan/WarMap.jsx'
 import PostPanel from '../warplan/PostPanel.jsx'
 import HistoryCard from '../warplan/HistoryCard.jsx'
-import { checkScenario, declarers, legalTargets } from '../warplan/targets.js'
-import { loadMap, search } from '../warplan/mapdata.js'
+import { checkScenario, declarers, legalTargets, plannedRuins } from '../warplan/targets.js'
+import { cityTitle, loadMap, search } from '../warplan/mapdata.js'
 import { holdersWith, standings } from '../warplan/standing.js'
 import { newId, shifted } from '../warplan/items.jsx'
 import { OpError, applyOp, inverseOf, replay } from '../warplan/ops.js'
 import { Live } from '../warplan/live.js'
 import {
-  AlliancesCard, CityPanel, ItemPanel, Legend, StandingsCard, TargetsCard, Toolbar, campName,
+  AlliancesCard, CityPanel, ItemPanel, Legend, StandingsCard, TargetsCard, TemplesCard, Toolbar,
 } from '../warplan/panels.jsx'
 import '../warplan/warplan.css'
 
@@ -63,12 +63,8 @@ const serverToday = () => new Intl.DateTimeFormat('en-CA', {
   timeZone: SERVER_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date())
 
-/** The Saturday a war is fought on: today if it is Saturday in ST, else the next. */
-function nextSaturday() {
-  const d = new Date(`${serverToday()}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + ((6 - d.getUTCDay() + 7) % 7))
-  return d.toISOString().slice(0, 10)
-}
+/** The day a new war day starts on: today in ST. Season 6 fights every day. */
+const nextWarDay = () => serverToday()
 
 const dayLabel = (iso) => new Intl.DateTimeFormat(undefined, {
   weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
@@ -97,6 +93,7 @@ export default function WarPlanner({ user }) {
   const [map, setMap] = useState(null)
   const [alliances, setAlliances] = useState([])
   const [holdings, setHoldings] = useState([])
+  const [temples, setTemples] = useState([])
   const [days, setDays] = useState([])
   const [dayId, setDayId] = useState(null)
   const [newDay, setNewDay] = useState(null)
@@ -116,7 +113,7 @@ export default function WarPlanner({ user }) {
   const [selCity, setSelCity] = useState(null)
   const [query, setQuery] = useState('')
   const [hide, setHide] = useState(() => readJson('wp.hide') || {})
-  const [colorBy, setColorBy] = useState(() => (readJson('wp.colorBy') === 'camp' ? 'camp' : 'alliance'))
+  const [colorBy, setColorBy] = useState(() => (readJson('wp.colorBy') === 'alliance' ? 'alliance' : 'camp'))
   const [extend, setExtend] = useState(null)
   const [posting, setPosting] = useState(false)
   const [targetFor, setTargetFor] = useState(() => readJson('wp.targetFor'))
@@ -148,6 +145,8 @@ export default function WarPlanner({ user }) {
   /* -------------------------------------------------------------- derived */
 
   const board = useMemo(() => new Map(holdings.map((h) => [h.city_id, h.alliance_id])), [holdings])
+  // Destroyed Fortresses: on the board under the alliance that destroyed them.
+  const ruins = useMemo(() => new Set(holdings.filter((h) => h.destroyed).map((h) => h.city_id)), [holdings])
   const scenario = doc.scenarios.find((s) => s.id === scenarioId) || doc.scenarios[0]
   const holders = useMemo(() => holdersWith(board, scenario.changes), [board, scenario.changes])
   const planId = plan?.id ?? null
@@ -157,12 +156,19 @@ export default function WarPlanner({ user }) {
   const offlineDirty = !liveOn && editable && JSON.stringify(doc) !== saved
   const unsent = liveOn && (pending.current.length > 0 || room.seq > room.saved)
   const day = days.find((d) => d.id === dayId) || null
+  // The date the rules are judged for: the open war day, else today in ST.
+  const iso = day?.day || serverToday()
   const mine = plans.find((p) => p.owner_id === me) || null
   // Any admin may publish any saved draft; your own, saved or not.
   const canPublish = !plan?.official && (isMine || Boolean(plan))
   const changed = Object.keys(scenario.changes).some((id) => (scenario.changes[id] ?? null) !== (board.get(Number(id)) ?? null))
 
-  const now = useMemo(() => (map ? standings(map, board, alliances) : []), [map, board, alliances])
+  // Fortresses the scenario destroys: another camp's, handed to an alliance.
+  const destroying = useMemo(() => (map ? plannedRuins(map, board, ruins, alliances, scenario.changes) : new Map()),
+    [map, board, ruins, alliances, scenario.changes])
+  const ruinsPlanned = useMemo(() => (destroying.size ? new Set([...ruins, ...destroying.keys()]) : ruins),
+    [ruins, destroying])
+  const now = useMemo(() => (map ? standings(map, board, alliances, ruins) : []), [map, board, alliances, ruins])
 
   // Targets for one alliance, judged on the board or on the open scenario.
   const allianceIds = useMemo(() => new Map(alliances.map((a) => [a.id, a])), [alliances])
@@ -171,14 +177,24 @@ export default function WarPlanner({ user }) {
   const targetResult = useMemo(() => {
     if (!map || targetAlliance == null) return null
     const h = onScenario ? holders : board
-    return { ...legalTargets(map, h, alliances, targetAlliance), holders: h }
-  }, [map, onScenario, holders, board, alliances, targetAlliance])
+    const r = onScenario ? ruinsPlanned : ruins
+    return { ...legalTargets(map, h, alliances, targetAlliance, { iso, ruins: r }), holders: h, ruins: r }
+  }, [map, onScenario, holders, board, ruins, ruinsPlanned, alliances, targetAlliance, iso])
   const targetRings = useMemo(() => (showTargets && targetResult
-    ? new Map(targetResult.targets.map((t) => [t.city.id, t.saturday ? 'sat' : 'any'])) : null),
+    ? new Map([
+      ...targetResult.later.map((t) => [t.city.id, 'later']),
+      ...targetResult.targets.map((t) => [t.city.id, t.today ? 'any' : 'not']),
+    ]) : null),
   [showTargets, targetResult])
-  const warnings = useMemo(() => (map && changed ? checkScenario(map, board, alliances, scenario) : []),
-    [map, changed, board, alliances, scenario])
-  const planned = useMemo(() => (map ? standings(map, holders, alliances) : []), [map, holders, alliances])
+  const warnings = useMemo(() => (map && changed ? checkScenario(map, board, alliances, scenario, { iso, ruins }) : []),
+    [map, changed, board, alliances, scenario, iso, ruins])
+  const planned = useMemo(() => (map ? standings(map, holders, alliances, ruinsPlanned) : []),
+    [map, holders, alliances, ruinsPlanned])
+  const destroys = useMemo(() => [...destroying].map(([id, by]) => {
+    const c = map.byId.get(id)
+    const a = allianceIds.get(by)
+    return { city: c, text: `${a?.name} destroys ${cityTitle(c)} (${c.x}, ${c.y}): +${c.destroy} Mithril for Camp ${a?.camp}.` }
+  }), [destroying, map, allianceIds])
 
   const fail = useCallback((err) => setError(err?.message || (err ? String(err) : null)), [])
 
@@ -448,11 +464,11 @@ export default function WarPlanner({ user }) {
     ;(async () => {
       setBusy('Loading…')
       try {
-        const [m, a, b, d] = await Promise.all([
-          loadMap(), api.raw('/war/alliances'), api.raw('/war/board'), api.raw('/war/days'),
+        const [m, a, b, d, t] = await Promise.all([
+          loadMap(), api.raw('/war/alliances'), api.raw('/war/board'), api.raw('/war/days'), api.raw('/war/temples'),
         ])
         if (!live) return
-        setMap(m); setAlliances(a); setHoldings(b); setDays(d)
+        setMap(m); setAlliances(a); setHoldings(b); setDays(d); setTemples(t)
         if (d.length) {
           const remembered = Number(readJson('wp.day'))
           const upcoming = [...d].reverse().find((x) => x.day >= serverToday())
@@ -684,11 +700,23 @@ export default function WarPlanner({ user }) {
 
   const applyScenario = async () => {
     const list = Object.entries(scenario.changes)
-      .map(([id, to]) => ({ city_id: Number(id), alliance_id: to ?? null }))
-      .filter((c) => (board.get(c.city_id) ?? null) !== c.alliance_id)
+      .map(([id, to]) => ({ city_id: Number(id), alliance_id: to ?? null, destroyed: destroying.has(Number(id)) }))
+      .filter((c) => (board.get(c.city_id) ?? null) !== c.alliance_id && !ruins.has(c.city_id))
     if (!list.length) return
     if (!confirm(`Record ${list.length} territory changes from ${scenario.name} on the board?\n\nDo this after the war, with what actually happened. The board is shared with every plan.`)) return
     await changeBoard(list, `The board now shows ${scenario.name}'s outcome.`)
+  }
+
+  /* ------------------------------------------------------------- temples */
+
+  const templeCall = async (fn, message) => {
+    setBusy('Saving…'); setError(null)
+    try {
+      await fn()
+      setTemples(await api.raw('/war/temples'))
+      if (message) setNotice(message)
+      return true
+    } catch (err) { fail(err); return false } finally { setBusy('') }
   }
 
   /* ----------------------------------------------------------- alliances */
@@ -818,7 +846,7 @@ export default function WarPlanner({ user }) {
             War day
             <select value={newDay != null ? '__new' : dayId ?? ''} disabled={Boolean(busy)}
                     onChange={(e) => {
-                      if (e.target.value === '__new') { setNewDay(nextSaturday()); return }
+                      if (e.target.value === '__new') { setNewDay(nextWarDay()); return }
                       if (!leaveOk()) return
                       setNewDay(null); openDay(Number(e.target.value)).catch(fail)
                     }}>
@@ -929,7 +957,7 @@ export default function WarPlanner({ user }) {
         )}
         {!days.length && newDay == null && (
           <p className="card-body">
-            Start with a war day — pick <b>+ New war day…</b> above. The board, influence and alliances below work without one.
+            Start with a war day — pick <b>+ New war day…</b> above. The board, Mithril and alliances below work without one.
           </p>
         )}
       </div>
@@ -978,7 +1006,7 @@ export default function WarPlanner({ user }) {
                     hide={hide} peers={liveOn ? onScenarioPeers : []}
                     onCursor={liveOn ? sendCursor : undefined}
                     extend={extend} onExtended={() => { setExtend(null); setTool('select') }}
-                    targets={targetRings} colorBy={colorBy} />
+                    targets={targetRings} colorBy={colorBy} ruins={ruins} ruinsPlanned={ruinsPlanned} />
 
             <div className="wp-find">
               <input type="search" value={query} placeholder="Find: Strife, Lv.6, or 876 502"
@@ -997,7 +1025,7 @@ export default function WarPlanner({ user }) {
                   )}
                   {found.cities.map((c) => (
                     <button key={c.id} type="button" onClick={() => goTo(c)}>
-                      {`Lv.${c.level} ${c.name}`}<span className="muted">{` X:${c.x} Y:${c.y}`}</span>
+                      {cityTitle(c)}<span className="muted">{` X:${c.x} Y:${c.y}`}</span>
                     </button>
                   ))}
                 </div>
@@ -1029,21 +1057,27 @@ export default function WarPlanner({ user }) {
           {selectedCity && (
             <CityPanel map={map} city={selectedCity} board={board} holders={holders} alliances={alliances}
                        scenario={scenario} editable={editable} busy={busy}
-                       onBoard={(id, to) => {
+                       ruins={ruins} ruinsPlanned={ruinsPlanned} iso={iso}
+                       onBoard={(id, to, destroyed) => {
                          const c = map.byId.get(id)
-                         changeBoard([{ city_id: id, alliance_id: to }],
-                           `${c.name} (${c.x}, ${c.y}) is ${to == null ? 'neutral' : `held by ${alliances.find((a) => a.id === to)?.name}`} on the board.`)
+                         const who = alliances.find((a) => a.id === to)?.name
+                         changeBoard([{ city_id: id, alliance_id: to, destroyed }],
+                           `${cityTitle(c)} (${c.x}, ${c.y}) is ${to == null ? 'neutral' : destroyed ? `destroyed by ${who}` : `held by ${who}`} on the board.`)
                        }}
                        onPlan={setPlanned} onGo={goTo} onClose={() => setSelCity(null)}
-                       declarers={declarers(map, board, alliances, selectedCity.id)} />
+                       declarers={declarers(map, board, alliances, selectedCity.id, { iso, ruins })} />
           )}
           <StandingsCard map={map} now={now} planned={planned} scenario={scenario} changed={changed}
-                         onApply={applyScenario} busy={busy} warnings={warnings} />
+                         onApply={applyScenario} busy={busy} warnings={warnings} destroys={destroys} />
           <TargetsCard map={map} alliances={alliances} allianceId={targetAlliance} setAllianceId={setTargetFor}
                        result={targetResult} basis={onScenario ? 'scenario' : 'board'} setBasis={setBasis}
                        scenario={scenario} canUseScenario={changed} show={showTargets} setShow={setShowTargets}
-                       onGo={goTo} byId={allianceIds} />
-          <HistoryCard map={map} alliances={alliances} board={board} holdings={holdings} />
+                       onGo={goTo} byId={allianceIds} iso={iso} />
+          <HistoryCard map={map} alliances={alliances} board={board} ruins={ruins} holdings={holdings} temples={temples} />
+          <TemplesCard map={map} results={temples} busy={busy} today={serverToday()}
+                       onAdd={(r) => templeCall(() => api.raw('/war/temples', { method: 'POST', body: JSON.stringify(r) }),
+                         `Recorded ${r.mithril} Mithril for Camp ${r.camp}.`)}
+                       onDelete={(id) => templeCall(() => api.raw(`/war/temples/${id}`, { method: 'DELETE' }), 'Removed.')} />
           <AlliancesCard map={map} alliances={alliances} now={now} busy={busy}
                          onCreate={(f) => allianceCall(
                            () => api.raw('/war/alliances', { method: 'POST', body: allianceBody(f) }),
@@ -1054,7 +1088,7 @@ export default function WarPlanner({ user }) {
                          onDelete={(id) => allianceCall(
                            () => api.raw(`/war/alliances/${id}`, { method: 'DELETE' }), 'Removed.')} />
           <p className="muted small wp-foot">
-            {`Camps: 1 is ${campName(map, 1)}, 2 is ${campName(map, 2)}. `}
+            Season 6, Ragnarok: Day 1 was Monday 23 Nov ST. Camps are numbered as the game numbers its Camp Bases.
             Coordinates are the game's; the map is drawn the way the minimap shows it.
           </p>
         </div>

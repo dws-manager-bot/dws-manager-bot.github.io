@@ -1,10 +1,10 @@
-import dataUrl from './season5.json?url'
+import dataUrl from './season6.json?url'
 
 /**
- * The season 5 map, as the game ships it (build 1.250.661).
+ * The season 6 (Ragnarok) map, as the game ships it (build 1.250.672).
  *
- * season5.json is generated, never edited: dws-wiki/tools/season_map.py reads
- * it out of the APK. Walls and territories arrive as run lengths over the
+ * season6.json is generated, never edited: season6_map.py in the 1.250.672
+ * extraction reads it out of the APK (eden play_type 6, SeasonEdenZone/S7). Walls and territories arrive as run lengths over the
  * row-major tile index, y*1000 + x, and are unpacked here into one byte per
  * tile. The file is fetched rather than imported so it stays out of the bundle
  * every other tab loads.
@@ -35,7 +35,8 @@ function decode(raw) {
   for (let i = 0; i < raw.walls.length; i += 2) {
     walls.fill(1, raw.walls[i], raw.walls[i] + raw.walls[i + 1])
   }
-  const zone = new Uint8Array(N * N)
+  // 16-bit: season 6 has 491 zones, past what a byte holds.
+  const zone = new Uint16Array(N * N)
   for (let i = 0, p = 0; i < raw.zones.length; i += 2) {
     zone.fill(raw.zones[i], p, p + raw.zones[i + 1])
     p += raw.zones[i + 1]
@@ -82,23 +83,40 @@ function decode(raw) {
         || (y + 1 < N && sarea[i + N] !== a) || (y > 0 && sarea[i - N] !== a)) sareaEdge[i] = 1
     }
   }
-  const cities = raw.cities.map((c) => ({ ...c, nearBy: c.nearBy || [] }))
+  const cities = raw.cities.map((c) => ({ mithril: 0, destroy: 0, ...c, nearBy: c.nearBy || [] }))
   const byId = new Map(cities.map((c) => [c.id, c]))
-  // Pyramids and the Royal Court own the territory they stand in; a pass,
-  // Stronghold or Oasis is only its own footprint.
+  // Every territory but a pass owns the ground it stands in; a pass is only
+  // its own footprint, in a wall's gap.
   const zoneOwner = new Int32Array(raw.zoneIds.length).fill(0)
-  for (const c of cities) if (c.kind === 'city') zoneOwner[c.zone] = c.id
+  for (const c of cities) if (c.kind !== 'pass') zoneOwner[c.zone] = c.id
+
+  // Where to write "Camp 3": the camp's Outpost nearest the middle of its six.
+  const campLabel = new Map()
+  const byCamp = new Map()
+  for (const c of cities) {
+    if (c.kind !== 'outpost' || !c.camp) continue
+    if (!byCamp.has(c.camp)) byCamp.set(c.camp, [])
+    byCamp.get(c.camp).push(c)
+  }
+  for (const [camp, list] of byCamp) {
+    const mx = list.reduce((t, c) => t + c.x, 0) / list.length
+    const my = list.reduce((t, c) => t + c.y, 0) / list.length
+    const mid = list.reduce((a, b) => (Math.hypot(a.x - mx, a.y - my) <= Math.hypot(b.x - mx, b.y - my) ? a : b))
+    campLabel.set(camp, mid.id)
+  }
 
   return {
-    N, walls, wallEdge, zone, edge, zoneOwner, sarea, sareaCity, sareaEdge, cities, byId,
+    N, walls, wallEdge, zone, edge, zoneOwner, sarea, sareaCity, sareaEdge, cities, byId, campLabel,
     camps: raw.camps, build: raw.build, season: raw.season,
   }
 }
 
-export const KIND_LABEL = { city: 'Pyramid', pass: 'Pass', stronghold: 'Stronghold', oasis: 'Oasis' }
+export const KIND_LABEL = {
+  outpost: 'Outpost', fortress: 'Fortress', pass: 'Pass', altar: 'Altar', temple: 'Temple',
+}
 
-/** "Lv.4 Strife Pass (East)", "Lv.1 Pyramid". */
-export const cityTitle = (c) => `Lv.${c.level} ${c.name}`
+/** "Lv.4 Fortress", "Lv.1 Camp Outpost"; a Temple's name carries its own level. */
+export const cityTitle = (c) => (/^Lv\./.test(c.name) || c.kind === 'altar' || c.size > 7 ? c.name : `Lv.${c.level} ${c.name}`)
 
 /** The coordinates the game prints and accepts: "X:876 Y:502". */
 export const coords = (x, y) => `X:${Math.round(x)} Y:${Math.round(y)}`
@@ -130,8 +148,8 @@ export function search(map, text) {
     const hay = `${c.name} lv.${c.level} lv${c.level} ${c.region || ''} ${c.id}`.toLowerCase()
     return words.every((w) => hay.includes(w))
   })
-  // Passes and higher levels first: they are what a search is usually for.
-  const rank = { pass: 0, city: 1, stronghold: 2, oasis: 3 }
+  // The big things first: they are what a search is usually for.
+  const rank = { temple: 0, altar: 1, fortress: 2, pass: 3, outpost: 4 }
   hits.sort((a, b) => rank[a.kind] - rank[b.kind] || b.level - a.level || a.id - b.id)
   return { cities: hits.slice(0, 8), point: null }
 }

@@ -91,7 +91,7 @@ export default function PostPanel({ plan, day, dayText, scenarios, render, onPos
         <label className="wide">
           Message <span className="muted">(optional)</span>
           <textarea rows="3" maxLength={1800} value={message} disabled={Boolean(busy)}
-                    placeholder={`Orders for ${day?.title || 'Saturday'}: rally 10:40 ST, horn at 11:00.`}
+                    placeholder={`Orders for ${day?.title || 'the war window'}: troops out by 11:50 ST, attacks at 12:00.`}
                     onChange={(e) => setMessage(e.target.value)} />
         </label>
         <div className="wide">

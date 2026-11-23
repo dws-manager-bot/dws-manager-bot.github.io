@@ -1,4 +1,4 @@
-import season from '../src/warplan/season5.json'
+import season from '../src/warplan/season6.json'
 // `?role=member|anon` signs the app shell in as a plain member, or not at all.
 const role = new URLSearchParams(location.search).get('role')
 const now = Date.now()
@@ -156,51 +156,57 @@ for (const m of seasonMembers) {
 }
 let probeAwards = { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }
 
-/* The War planner. Invented alliances, real map ids: a Saturday around the
-   eastern Strife Pass (876, 502) with one camp holding the ground south of it. */
+/* The War planner, season 6. Invented line-up, real map ids: our camp is
+   Camp 3 (the base at the right edge, x 876-976), with Camp 4 and Camp 2 on
+   the map too. Day 2 of the season, a Tuesday. */
 const warAlliances = [
-  { id: 1, season: 5, name: 'Iron Wolves', tag: 'IW', camp: 1, color: '#2563eb', server: '413' },
-  { id: 2, season: 5, name: 'Dawn Watch', tag: 'DWn', camp: 1, color: '#16a34a', server: '413' },
-  { id: 3, season: 5, name: 'Red Tide', tag: 'RT', camp: 2, color: '#dc2626', server: '415' },
-  { id: 4, season: 5, name: 'Ember Court', tag: 'EMB', camp: 2, color: '#ea580c', server: '415' },
+  { id: 1, season: 6, name: 'Path of Unity', tag: 'PoU', camp: 3, color: '#199e70', server: '413' },
+  { id: 2, season: 6, name: 'Rising Phoenix', tag: 'RPx', camp: 3, color: '#127152', server: '413' },
+  { id: 3, season: 6, name: 'Korea United', tag: 'KOR', camp: 3, color: '#75c5a9', server: '421' },
+  { id: 4, season: 6, name: 'Big Dogs', tag: 'BigD', camp: 3, color: '#0d5239', server: '421' },
+  { id: 5, season: 6, name: 'Red Tide', tag: 'RT', camp: 4, color: '#c98500', server: '415' },
+  { id: 6, season: 6, name: 'Ember Court', tag: 'EMB', camp: 4, color: '#916000', server: '415' },
+  { id: 7, season: 6, name: 'Iron Wolves', tag: 'IW', camp: 2, color: '#d95926', server: '402' },
 ]
-const hold = (city_id, alliance_id) => ({ city_id, alliance_id, updated_by_name: 'Goba', updated_at: iso(-300) })
+const hold = (city_id, alliance_id, destroyed = false) => ({ city_id, alliance_id, destroyed, updated_by_name: 'Goba', updated_at: iso(-300) })
 const warBoard = [
-  hold(145, 1), hold(148, 1), hold(157, 2), hold(153, 2), hold(222, 1),
-  hold(136, 3), hold(131, 3), hold(126, 4), hold(219, 3), hold(123, 4), hold(318, 1), hold(483, 1),
-  // Pyramid 148 is Iron Wolves', but the Stronghold beside it is Ember Court's:
-  // its area should show Ember Court's color over Iron Wolves' ground.
-  hold(322, 4),
+  hold(1011, 1), hold(1010, 1), hold(989, 1), hold(991, 1), hold(1009, 1),
+  hold(1044, 2), hold(1043, 2), hold(1024, 2),
+  hold(990, 3), hold(988, 3),
+  hold(965, 4), hold(964, 4),
+  // A Camp 4 Fortress inside our reach, to see a destroy planned, and one
+  // already destroyed by KOR.
+  hold(945, 5), hold(922, 3, true),
+  hold(718, 5), hold(741, 5), hold(692, 6), hold(1055, 7), hold(1056, 7),
 ]
-// `&board=full`: the whole map held, to judge colors at a glance — the top
-// half by the top camp's two alliances, the bottom half by the bottom camp's,
-// every third territory left neutral.
+// `&board=full`: much of the map held, to judge eight camp colors at a glance.
 if (new URLSearchParams(location.search).get('board') === 'full') {
   const taken = new Set(warBoard.map((h) => h.city_id))
   for (const c of season.cities) {
-    if (taken.has(c.id) || c.id % 3 === 0 || c.kind === 'oasis') continue
-    if (c.y > 560) warBoard.push(hold(c.id, c.id % 2 ? 1 : 2))
-    else if (c.y < 440) warBoard.push(hold(c.id, c.id % 2 ? 3 : 4))
+    if (taken.has(c.id) || c.id % 3 === 0 || !['outpost', 'fortress', 'altar'].includes(c.kind)) continue
+    warBoard.push(hold(c.id, 1 + (Math.floor(c.x / 125) + Math.floor(c.y / 250)) % 7))
   }
 }
 // The board's edits, oldest first, adding up to warBoard above.
 const warHistory = [
-  { at: iso(-60 * 24 * 9), by: 'Goba', changes: [{ city: 145, from: null, to: 1 }, { city: 136, from: null, to: 3 }] },
-  { at: iso(-60 * 24 * 7), by: 'Nyx', changes: [{ city: 148, from: null, to: 1 }, { city: 131, from: null, to: 3 }, { city: 126, from: null, to: 4 }] },
-  { at: iso(-60 * 24 * 5), by: 'Goba', changes: [{ city: 157, from: null, to: 2 }, { city: 153, from: null, to: 2 }, { city: 219, from: null, to: 3 }] },
-  { at: iso(-60 * 24 * 2), by: 'Goba', changes: [{ city: 222, from: null, to: 1 }, { city: 123, from: null, to: 4 }, { city: 318, from: null, to: 1 }, { city: 483, from: null, to: 1 }] },
+  { at: iso(-60 * 20), by: 'Goba', changes: [{ city: 1011, from: null, to: 1 }, { city: 1044, from: null, to: 2 }, { city: 990, from: null, to: 3 }, { city: 965, from: null, to: 4 }, { city: 718, from: null, to: 5 }, { city: 1055, from: null, to: 7 }] },
+  { at: iso(-60 * 14), by: 'Nyx', changes: [{ city: 1010, from: null, to: 1 }, { city: 989, from: null, to: 1 }, { city: 1043, from: null, to: 2 }, { city: 988, from: null, to: 3 }, { city: 964, from: null, to: 4 }, { city: 741, from: null, to: 5 }, { city: 692, from: null, to: 6 }, { city: 1056, from: null, to: 7 }] },
+  { at: iso(-60 * 6), by: 'Goba', changes: [{ city: 991, from: null, to: 1 }, { city: 1009, from: null, to: 1 }, { city: 1024, from: null, to: 2 }, { city: 945, from: null, to: 5 }, { city: 922, from: null, to: 5 }] },
+  { at: iso(-60 * 2), by: 'Goba', changes: [{ city: 922, from: 5, to: 3, destroyed: true }] },
+]
+const warTemples = [
+  { id: 1, day: '2026-11-23', city_id: 1033, camp: 3, rank: 1, mithril: 180, notes: null, created_by_name: 'Goba' },
+  { id: 2, day: '2026-11-23', city_id: 1033, camp: 4, rank: 2, mithril: 120, notes: null, created_by_name: 'Goba' },
 ]
 const warDoc = (withDrawings) => ({ scenarios: [
-  { id: 'a', name: 'Plan A', changes: { 219: 1, 136: 1 }, items: withDrawings ? [
-    { id: 'i1', type: 'arrow', a: [846, 470], b: [873, 497], color: '#2563eb', alliance: 1, width: 1.6 },
-    { id: 'i2', type: 'arrow', a: [826, 535], b: [870, 506], c: [853, 530], color: '#16a34a', alliance: 2, width: 1.4, dash: true },
-    { id: 'i3', type: 'pin', x: 873, y: 490, label: 'Rally 10:40', color: '#fbbf24', alliance: null },
-    { id: 'i4', type: 'sticker', x: 874, y: 512, symbol: 'target', size: 10, color: '#dc2626', alliance: null },
-    { id: 'i5', type: 'note', x: 885, y: 530, w: 44, h: 16, text: 'Flip the front tiles at 10:59:30, re-flip 11:01:30', opacity: 0.85, font: 3, color: '#fef3c7' },
-    { id: 'i6', type: 'stamp', kind: 'shelter', x: 872, y: 488, size: 3, color: '#2563eb', alliance: 1 },
-    { id: 'i7', type: 'stamp', kind: 'portal', x: 869, y: 488, size: 2, color: '#2563eb', alliance: 1 },
+  // 1042 and 1062: Outposts in reach. 970: a Lv.4 Fortress, not open until
+  // Day 3. 945: Camp 4's Fortress — taking it destroys it, and only on an
+  // invasion day. 900: a second War for RPx is fine (one each).
+  { id: 'a', name: 'Plan A', changes: { 1042: 1, 1062: 1, 970: 1, 945: 1, 900: 2 }, items: withDrawings ? [
+    { id: 'i1', type: 'arrow', a: [940, 880], b: [880, 925], color: '#199e70', alliance: 1, width: 1.6 },
+    { id: 'i3', type: 'pin', x: 902, y: 802, label: 'Day 3', color: '#fbbf24', alliance: null },
   ] : [] },
-  { id: 'b', name: 'Plan B', changes: { 224: 2 }, items: [] },
+  { id: 'b', name: 'Plan B', changes: { 1062: 1 }, items: [] },
 ] })
 const warPlans = {
   10: { id: 10, day_id: 1, owner_id: null, owner_name: null, official: true, scenarios: 2, version: 3,
@@ -210,11 +216,12 @@ const warPlans = {
 }
 const warRaw = (path, opts = {}) => {
   const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : null
-  if (path === '/war/alliances') return body ? { ...body, id: 9, season: 5 } : warAlliances
+  if (path === '/war/alliances') return body ? { ...body, id: 9, season: 6 } : warAlliances
   if (path === '/war/board') return warBoard
   if (path === '/war/board/history') return warHistory
-  if (path === '/war/days') return body ? { id: 2, season: 5, ...body, plans: 0, official: false }
-    : [{ id: 1, season: 5, day: '2026-10-03', title: 'Strife Pass', plans: 2, official: true }]
+  if (path === '/war/temples') return body ? { ...body, id: 3, created_by_name: 'Goba' } : warTemples
+  if (path === '/war/days') return body ? { id: 2, season: 6, ...body, plans: 0, official: false }
+    : [{ id: 1, season: 6, day: new URLSearchParams(location.search).get('day') || '2026-11-24', title: 'Camp Base push', plans: 2, official: true }]
   if (path === '/war/days/1/plans') return Object.values(warPlans).map(({ doc, ...rest }) => rest)
   const plan = path.match(/^\/war\/plans\/(\d+)$/)
   if (plan) return warPlans[plan[1]]
@@ -235,6 +242,7 @@ const liveRaw = (live, path) => {
   if (path === '/war/alliances') return live.alliances
   if (path === '/war/board') return live.board
   if (path === '/war/board/history') return live.history || []
+  if (path === '/war/temples') return live.temples || []
   if (path === '/war/days') return live.days
   const plans = path.match(/^\/war\/days\/(\d+)\/plans$/)
   if (plans) return live.plans[plans[1]] || []

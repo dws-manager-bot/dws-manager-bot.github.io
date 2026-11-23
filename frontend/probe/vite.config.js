@@ -21,6 +21,12 @@ import path from 'node:path'
 export default defineConfig({
   root: path.resolve('.'),
   plugins: [react()],
-  resolve: { alias: [{ find: /^.*[\\/]lib[\\/]api\.js$/, replacement: path.resolve('probe/api.js') }] },
+  resolve: {
+    alias: [
+      { find: /^.*[\\/]lib[\\/]api\.js$/, replacement: path.resolve('probe/api.js') },
+      // The season guide's own "@/..." imports, as the site's config has them.
+      { find: /^@\//, replacement: `${path.resolve('src/guide')}/` },
+    ],
+  },
   build: { outDir: 'probe-dist', rollupOptions: { input: path.resolve('probe/index.html') }, emptyOutDir: true },
 })

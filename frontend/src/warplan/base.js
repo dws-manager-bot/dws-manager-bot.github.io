@@ -31,19 +31,20 @@ const mix = (c, a, base = SAND) => [
  * scenario changes hands, stripes of the new holder over the old — so a plan
  * is visibly a plan and never mistaken for the board.
  */
-export function zoneStyles(map, board, holders, colorOf) {
+export function zoneStyles(map, board, holders, colorOf, ruins = new Set(), ruinsPlanned = ruins) {
   const style = (cityId) => {
     if (!cityId) return null
-    const now = holders.get(cityId)
-    const was = board.get(cityId)
+    // A destroyed Fortress holds its ground for nobody.
+    const now = ruinsPlanned.has(cityId) ? null : holders.get(cityId)
+    const was = ruins.has(cityId) ? null : board.get(cityId)
     const color = now != null ? colorOf(now) : null
     const before = was != null ? colorOf(was) : null
     if (!color && !before) return null
     return { fill: color ? rgb(color) : null, was: before ? rgb(before) : null, planned: now !== was }
   }
   const zones = Array.from(map.zoneOwner, style)
-  // A held Stronghold colors its own area over whatever territory it lies in:
-  // in the game, its area stops following the Pyramid's owner once taken.
+  // Season 5 only: a held Stronghold colored its own area. Season 6 has none,
+  // and this is an empty list.
   const areas = map.sareaCity.map(style)
   return { zones, areas }
 }

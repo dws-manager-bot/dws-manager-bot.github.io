@@ -2,18 +2,24 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api.js'
 import { SERVER_TZ } from '../lib/servertime.js'
 import { campName } from './panels.jsx'
-import { standings } from './standing.js'
+import { CAMP_COLORS } from './palette.js'
+import { CAMPS } from './standing.js'
+import { DAY1, paydays } from './season.js'
 
 /**
- * Influence over the season, per alliance or per camp.
+ * Mithril over the season, per camp or per alliance.
  *
  * Nothing new is stored for it: the board's edits come back from the audit
- * log in order (GET /war/board/history), are replayed here from an empty
- * board, and each step is scored with the map's own influence values. The
- * last point is the board as it stands now, so the chart always ends where
- * the Influence card does.
+ * log in order (GET /war/board/history) and are replayed here from an empty
+ * board, with each Monday 00:00 ST paying every Fortress and Altar held at
+ * that moment, each destroyed Fortress paying its destroyer once, and each
+ * Temple result paying its camp. Temples pay camps, not alliances, so they
+ * show only in the camp lines.
  *
- * Influence only moves when territory changes hands, so it is drawn as steps.
+ * Who held a Fortress at the Monday payout is taken from the board's edits,
+ * so it is right only as far as the board was kept up to date that week.
+ *
+ * Mithril only moves at those moments, so it is drawn as steps.
  * Each line is its alliance's own color; text stays in text colors, with the
  * colored mark beside it. Hover anywhere for every value at that moment.
  */
@@ -24,7 +30,6 @@ const SURFACE = '#27272a'
 const GRID = '#3f3f46'
 const INK = '#fafafa'
 const MUTED = '#a1a1aa'
-const CAMP_COLORS = { 1: '#3987e5', 2: '#d95926' }
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US')
 
@@ -45,32 +50,62 @@ const timeFmt = new Intl.DateTimeFormat(undefined, {
   month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: SERVER_TZ,
 })
 
-function replay(map, alliances, events, board) {
-  const score = (holders) => {
-    const rows = standings(map, holders, alliances)
-    const values = new Map(rows.map((r) => [r.alliance.id, r.influence]))
-    const camps = new Map([[1, 0], [2, 0]])
-    for (const r of rows) camps.set(r.alliance.camp, camps.get(r.alliance.camp) + r.influence)
-    return { values, camps }
+// Day 1 00:00 ST, where every line starts at zero.
+const START = new Date(`${DAY1}T02:00:00Z`)
+
+function replay(map, alliances, events, temples) {
+  const campOf = new Map(alliances.map((a) => [a.id, a.camp]))
+  const values = new Map()
+  const camps = new Map(CAMPS.map((c) => [c, 0]))
+  const pay = (allianceId, n) => {
+    if (!n || !campOf.has(allianceId)) return
+    values.set(allianceId, (values.get(allianceId) || 0) + n)
+    camps.set(campOf.get(allianceId), camps.get(campOf.get(allianceId)) + n)
   }
   const holders = new Map()
-  const steps = []
-  for (const e of events) {
-    if (!steps.length) steps.push({ t: new Date(e.at), by: null, ...score(holders) })
-    for (const c of e.changes) {
-      if (c.to == null) holders.delete(Number(c.city))
-      else holders.set(Number(c.city), c.to)
+  const ruins = new Set()
+
+  const moments = [
+    ...events.map((e) => ({ t: new Date(e.at), kind: 'board', e })),
+    ...paydays(new Date()).map((t) => ({ t, kind: 'payday' })),
+    // A result is entered after the contest; 15:00 ST orders it after that
+    // day's war window.
+    ...temples.map((r) => ({ t: new Date(`${r.day}T17:00:00Z`), kind: 'temple', r })),
+  ].filter((m) => m.t >= START).sort((a, b) => a.t - b.t)
+
+  const snap = (t, extra) => ({ t, values: new Map(values), camps: new Map(camps), ...extra })
+  const steps = [snap(START, { by: null })]
+  for (const m of moments) {
+    if (m.kind === 'board') {
+      for (const c of m.e.changes) {
+        const id = Number(c.city)
+        const city = map.byId.get(id)
+        // A Fortress set back from destroyed takes its destroy Mithril back.
+        if (c.was_destroyed) pay(c.from, -(city?.destroy || 0))
+        if (c.destroyed) pay(c.to, city?.destroy || 0)
+        if (c.to == null) holders.delete(id)
+        else holders.set(id, c.to)
+        if (c.destroyed) ruins.add(id)
+        else ruins.delete(id)
+      }
+      steps.push(snap(m.t, { by: m.e.by }))
+    } else if (m.kind === 'payday') {
+      for (const [id, a] of holders) if (!ruins.has(id)) pay(a, map.byId.get(id)?.mithril || 0)
+      steps.push(snap(m.t, { by: 'Monday payout' }))
+    } else {
+      camps.set(m.r.camp, (camps.get(m.r.camp) || 0) + m.r.mithril)
+      const temple = map.byId.get(m.r.city_id)
+      steps.push(snap(m.t, { by: `${temple?.name || 'Temple'} · Camp ${m.r.camp}` }))
     }
-    steps.push({ t: new Date(e.at), by: e.by, ...score(holders) })
   }
-  if (steps.length) steps.push({ t: new Date(), by: null, now: true, ...score(board) })
+  steps.push(snap(new Date(), { by: null, now: true }))
   return steps
 }
 
-export default function HistoryCard({ map, alliances, board, holdings }) {
+export default function HistoryCard({ map, alliances, holdings, temples = [] }) {
   const [events, setEvents] = useState(null)
   const [error, setError] = useState(null)
-  const [by, setBy] = useState('alliances')
+  const [by, setBy] = useState('camps')
   const [table, setTable] = useState(false)
   const [hover, setHover] = useState(null)
   const [width, setWidth] = useState(360)
@@ -92,10 +127,11 @@ export default function HistoryCard({ map, alliances, board, holdings }) {
   }, [])
 
   const steps = useMemo(
-    () => (events ? replay(map, alliances, events, board) : []), [map, alliances, events, board])
+    () => (events ? replay(map, alliances, events, temples) : []), [map, alliances, events, temples])
 
+  const campsShown = CAMPS.filter((c) => alliances.some((a) => a.camp === c) || temples.some((r) => r.camp === c))
   const series = by === 'camps'
-    ? [1, 2].map((camp) => ({ key: `c${camp}`, name: campName(map, camp), color: CAMP_COLORS[camp], get: (s) => s.camps.get(camp) }))
+    ? campsShown.map((camp) => ({ key: `c${camp}`, name: campName(map, camp), color: CAMP_COLORS[camp], get: (s) => s.camps.get(camp) || 0 }))
     : alliances.map((a) => ({ key: `a${a.id}`, name: a.tag ? `[${a.tag}] ${a.name}` : a.name, short: a.tag || a.name, color: a.color, get: (s) => s.values.get(a.id) || 0 }))
 
   if (error) return <div className="card"><div className="card-head"><strong>Season history</strong></div><p className="card-body error">{error}</p></div>
@@ -146,7 +182,7 @@ export default function HistoryCard({ map, alliances, board, holdings }) {
     <div className="card">
       <div className="card-head">
         <strong>Season history</strong>
-        <span className="muted small">influence on the board</span>
+        <span className="muted small">Mithril so far</span>
       </div>
       <div className="row wp-hist-controls">
         <button type="button" className={by === 'alliances' ? 'chip on' : 'chip'} onClick={() => setBy('alliances')}>Alliances</button>
@@ -163,8 +199,8 @@ export default function HistoryCard({ map, alliances, board, holdings }) {
       )}
 
       <div ref={box} className="wp-hist">
-        {events === null ? <p className="muted small">Loading…</p> : !events.length ? (
-          <p className="card-body">No board changes recorded yet. Every change made under Held now draws the next step here.</p>
+        {events === null ? <p className="muted small">Loading…</p> : !events.length && !temples.length ? (
+          <p className="card-body">Nothing recorded yet. Every change made under Held now, and every Temple result, draws the next step here.</p>
         ) : table ? (
           <div className="wp-table-wrap">
             <table className="wp-table">
@@ -178,7 +214,7 @@ export default function HistoryCard({ map, alliances, board, holdings }) {
           </div>
         ) : (
           <div className="wp-hist-plot">
-            <svg width={W} height={H} role="img" aria-label="Influence over the season">
+            <svg width={W} height={H} role="img" aria-label="Mithril over the season">
               {yt.map((v) => (
                 <g key={v}>
                   <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke={GRID} strokeWidth="1" />

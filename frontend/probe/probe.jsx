@@ -117,7 +117,7 @@ if (which === 'warplan' && act === 'livepng') {
 }
 
 /* The War planner opens on the official plan, read only. `act=mine` switches
-   to the author's own draft; `act=city` also selects the eastern Strife Pass. */
+   to the author's own draft; `act=city` also selects Camp 4's Lv.4 Fortress at (902, 752), which Plan A destroys. */
 if (which === 'warplan' && act && act !== 'livepng') {
   setTimeout(() => {
     const pick = [...document.querySelectorAll('select')].find((el) => [...el.options].some((o) => o.value === '11'))
@@ -167,7 +167,7 @@ if (which === 'warplan' && act && act !== 'livepng') {
         // The color pickers: the toolbar's (a drawing tool picked) and the
         // alliance form's.
         ;[...document.querySelectorAll('.wp-tool')].find((b) => b.textContent.trim() === 'Arrow')?.click()
-        ;[...document.querySelectorAll('.btn')].find((b) => b.textContent.trim() === 'Add an alliance')?.click()
+        ;[...document.querySelectorAll('.btn')].find((b) => b.textContent.trim() === 'Add')?.click()
       }
       if (act === 'route' || act === 'layers') {
         const map = document.querySelector('.wp-map')
@@ -182,8 +182,8 @@ if (which === 'warplan' && act && act !== 'livepng') {
           () => { tap(0.7, 0.35); tap(0.7, 0.35); map.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, ...at(0.7, 0.35) })) },
           () => { document.body.dataset.routes = document.querySelectorAll('.wp-map [data-item]').length },
         ] : [
-          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Oases')?.click(),
-          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Strongholds')?.click(),
+          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Outposts')?.click(),
+          () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Temples')?.click(),
           () => { document.body.dataset.cities = document.querySelectorAll('.wp-map [data-city]').length },
           () => [...document.querySelectorAll('.wp-layer')].find((b) => b.textContent.trim() === 'Passes')?.click(),
           () => { document.body.dataset.nopass = document.querySelectorAll('.wp-map [data-city]').length },
@@ -288,8 +288,8 @@ if (which === 'warplan' && act && act !== 'livepng') {
       if (act === 'city') {
         const find = document.querySelector('.wp-find input')
         const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-        set.call(find, 'strife east'); find.dispatchEvent(new Event('input', { bubbles: true }))
-        setTimeout(() => { document.querySelector('.wp-found button')?.click() }, 150)
+        set.call(find, '902 752'); find.dispatchEvent(new Event('input', { bubbles: true }))
+        setTimeout(() => { [...document.querySelectorAll('.wp-found button')].find((b) => !/^Go to/.test(b.textContent))?.click() }, 150)
       }
       setTimeout(() => { document.title = 'done:' + act }, act === 'city' ? 500 : 3000)
     }, 400)

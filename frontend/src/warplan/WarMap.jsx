@@ -25,50 +25,54 @@ import { CAMP_COLORS, darker, inkOn } from './palette.js'
  * Other admins on the same plan show as named cursors, and what they have
  * selected is outlined in their color. None of that goes into the PNG.
  *
- * `colorBy` paints held ground by alliance, or by camp — blue for the top
- * camp, red for the bottom. The PNG is whichever is showing.
+ * `colorBy` paints held ground by alliance, or by camp — each of the eight
+ * its own color. The PNG is whichever is showing. `ruins` are the destroyed
+ * Fortresses on the board, `ruinsPlanned` those after the scenario.
  */
 
 const ZMAX = 40
+const EMPTY = new Set()
 const TAP = 6   // px a pointer may wander and still count as a tap
 
 const NEUTRAL = {
-  city: { fill: '#fffbeb', stroke: '#b7791f' },
+  outpost: { fill: '#fffbeb', stroke: '#a8a29e' },
+  fortress: { fill: '#fef3c7', stroke: '#b45309' },
   pass: { fill: '#9a3412', stroke: '#431407' },
-  stronghold: { fill: '#475569', stroke: '#1e293b' },
-  oasis: { fill: '#0f766e', stroke: '#042f2e' },
+  altar: { fill: '#f3e8ff', stroke: '#7e22ce' },
+  temple: { fill: '#fde68a', stroke: '#a16207' },
 }
-// Camp against camp, red means the bottom camp, so an unheld pass leaves its
-// dark red for charcoal.
+// Camp against camp, a camp may be red, so an unheld pass leaves its dark red
+// for charcoal.
 const NEUTRAL_PASS_CAMPS = { fill: '#3f3f46', stroke: '#18181b' }
+const RUIN = { fill: '#d6d3d1', stroke: '#57534e' }
 
 const HALO = { stroke: '#ffffff', strokeWidth: 3.2, strokeLinejoin: 'round', paintOrder: 'stroke' }
 
 function passLabel(name, z) {
   if (z >= 1.4) return name
-  return name.replace('Strife Pass', 'Strife').replace('Temple Fortress', 'Temple').replace('Sands Fortress', 'Sands')
+  return name.replace(/ Pass$/, '')
 }
 
 /**
  * A marker's drawn size in px: its footprint at this zoom, never below a size
- * that can be seen and tapped. A pass is 5 tiles to a Pyramid's 7, yet it is
- * what a plan turns on, so it draws up to half again its footprint while
- * zoomed out, easing back to its true size where the tile grid appears — there
- * stamps are placed against it tile by tile.
+ * that can be seen and tapped. Outposts are the many small things and stay
+ * small; Fortresses, Altars and Temples are what a plan turns on. A pass draws
+ * up to half again its footprint while zoomed out, easing back to its true
+ * size where the tile grid appears — there stamps are placed against it tile
+ * by tile.
  */
 function markerSize(c, z) {
   const px = c.size * z
   if (c.kind === 'pass') {
     const grow = 1 + 0.5 * Math.min(1, Math.max(0, (GRID_Z - z) / 5))
-    return Math.max(px * grow, 12)
+    return Math.max(px * grow, 10)
   }
-  const royal = c.kind === 'city' && c.size > 7
-  return Math.max(px, { city: royal ? 13 : 9, stronghold: 8, oasis: 6 }[c.kind])
+  return Math.max(px, { outpost: 5, fortress: 10, altar: 13, temple: c.size > 7 ? 16 : 12 }[c.kind])
 }
 
 /* ------------------------------------------------------------------ markers */
 
-function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity, hide, camps }) {
+function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selectedCity, hide, camps, ruins, ruinsPlanned }) {
   const out = []
   const labels = []
   for (const c of map.cities) {
@@ -79,53 +83,60 @@ function Cities({ map, board, holders, P, z, W, H, colorOf, allianceOf, selected
     const cys = y0 + px / 2
     if (cxs < -60 || cys < -60 || cxs > W + 60 || cys > H + 60) continue
     if (hide[c.kind] && selectedCity !== c.id) continue
-    if (c.kind === 'oasis' && z < 1.1 && selectedCity !== c.id) continue
-    if (c.kind === 'stronghold' && z < 0.55 && selectedCity !== c.id) continue
+    if (c.kind === 'outpost' && z < 0.45 && !c.camp && selectedCity !== c.id && !holders.has(c.id)) continue
 
-    const holder = holders.get(c.id)
-    const planned = holder !== board.get(c.id)
+    const ruined = ruinsPlanned.has(c.id)
+    const holder = ruined ? null : holders.get(c.id)
+    const planned = holder !== (ruins.has(c.id) ? null : board.get(c.id)) || ruined !== ruins.has(c.id)
     const color = holder != null ? colorOf(holder) : null
-    const look = color ? { fill: color, stroke: darker(color, 0.55) }
+    const look = ruined ? RUIN : color ? { fill: color, stroke: darker(color, 0.55) }
       : camps && c.kind === 'pass' ? NEUTRAL_PASS_CAMPS : NEUTRAL[c.kind]
-    const royal = c.kind === 'city' && c.size > 7
     const s = markerSize(c, z)
     const dash = planned ? '3 2' : undefined
-    const sw = planned ? 2.2 : 1.4
-    const hit = Math.max(s, 26)
+    const sw = planned ? 2.2 : c.kind === 'outpost' ? 1 : 1.4
+    const hit = Math.max(s, c.kind === 'outpost' ? 16 : 26)
 
     let shape
-    if (c.kind === 'oasis') {
-      shape = <circle cx={cxs} cy={cys} r={s / 2} fill={look.fill} stroke={look.stroke} strokeWidth={sw} strokeDasharray={dash} />
-    } else if (c.kind === 'stronghold') {
-      const r = s * 0.62
+    if (c.kind === 'altar') {
+      const r = s * 0.66
       shape = <polygon points={`${cxs},${cys - r} ${cxs + r},${cys} ${cxs},${cys + r} ${cxs - r},${cys}`}
-                       fill={look.fill} stroke={look.stroke} strokeWidth={sw} strokeDasharray={dash} />
+                       fill={look.fill} stroke={look.stroke} strokeWidth={2} strokeDasharray={dash} />
+    } else if (c.kind === 'temple') {
+      shape = <circle cx={cxs} cy={cys} r={s / 2} fill={look.fill} stroke={look.stroke}
+                      strokeWidth={c.size > 7 ? 2.6 : 1.8} strokeDasharray={dash} />
     } else {
       shape = <rect x={cxs - s / 2} y={cys - s / 2} width={s} height={s} rx={c.kind === 'pass' ? 1 : 2}
-                    fill={look.fill} stroke={look.stroke} strokeWidth={royal ? 2.2 : sw} strokeDasharray={dash} />
+                    fill={look.fill} stroke={look.stroke} strokeWidth={c.kind === 'fortress' ? sw + 0.6 : sw}
+                    strokeDasharray={dash} />
     }
 
+    const glyph = c.kind === 'fortress' ? c.level : c.kind === 'temple' ? (c.size > 7 ? '★' : c.level) : null
     out.push(
       <g key={c.id} data-city={c.id}>
         <rect x={cxs - hit / 2} y={cys - hit / 2} width={hit} height={hit} fill="transparent" />
         {shape}
-        {c.kind === 'city' && s >= 13 && (
+        {ruined && s >= 8 && (
+          <path d={`M${cxs - s * 0.3},${cys - s * 0.3}L${cxs + s * 0.3},${cys + s * 0.3}M${cxs + s * 0.3},${cys - s * 0.3}L${cxs - s * 0.3},${cys + s * 0.3}`}
+                stroke="#44403c" strokeWidth="2" />
+        )}
+        {!ruined && glyph != null && s >= 12 && (
           <text x={cxs} y={cys + s * 0.19} textAnchor="middle" fontFamily={FONT} fontWeight="700"
-                fontSize={Math.min(s * 0.52, 22)} fill={color ? inkOn(color) : '#92400e'}>
-            {royal ? '★' : c.level}
+                fontSize={Math.min(s * 0.52, 22)} fill={color ? inkOn(color) : look.stroke}>
+            {glyph}
           </text>
         )}
       </g>,
     )
 
-    // Names where they help: the Strife Passes always, since they are what
-    // Saturday is about; the bigger gates once there is room; the rest close up.
-    const big = /Strife|Grand|Fortress/.test(c.name)
+    // Names where they help: Temples and Altars always, Camp Bases by their
+    // first Outpost, passes once there is room; the rest close up.
     let label = null
-    if (c.kind === 'pass' && (/Strife/.test(c.name) || (big && z >= 0.9) || z >= 1.8)) label = passLabel(c.name, z)
-    else if (royal && z >= 0.6) label = 'Royal Court'
-    else if (c.kind === 'stronghold' && z >= 2.2) label = 'Stronghold'
-    const owner = holder != null && z >= 1.3 ? allianceOf(holder) : null
+    if (c.kind === 'temple' && c.size > 7) label = 'Supreme Temple'
+    else if (c.kind === 'temple' && z >= 0.9) label = c.name.replace(/^Lv\.\d /, '')
+    else if (c.kind === 'altar' && z >= 0.6) label = c.name.replace('Judgment ', '')
+    else if (c.kind === 'pass' && z >= 1.2) label = passLabel(c.name, z)
+    else if (c.kind === 'outpost' && c.camp && z < 2.5 && c.id === map.campLabel.get(c.camp)) label = `Camp ${c.camp}`
+    const owner = holder != null && z >= (c.kind === 'outpost' ? 2.2 : 1.3) ? allianceOf(holder) : null
     if ((label || owner) && !hide.names) {
       const fs = Math.max(10, Math.min(13, 9 + z))
       labels.push(
@@ -146,7 +157,8 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   const {
     map, board, holders, alliances, items, tool, toolOpts, editable,
     selectedItem, selectedCity, onSelectItem, onSelectCity, onCreate, onItem,
-    hide = {}, peers = [], onCursor, extend = null, onExtended, targets = null, colorBy = 'alliance',
+    hide = {}, peers = [], onCursor, extend = null, onExtended, targets = null, colorBy = 'camp',
+    ruins = EMPTY, ruinsPlanned = ruins,
   } = props
 
   const wrapRef = useRef(null)
@@ -214,12 +226,12 @@ const WarMap = forwardRef(function WarMap(props, ref) {
   /* ----------------------------------------------------------- the raster */
 
   const image = useMemo(() => {
-    const styles = hide.fills ? noStyles(map) : zoneStyles(map, board, holders, colorOf)
+    const styles = hide.fills ? noStyles(map) : zoneStyles(map, board, holders, colorOf, ruins, ruinsPlanned)
     const c = document.createElement('canvas')
     c.width = N; c.height = N
     c.getContext('2d').putImageData(paintBase(map, styles), 0, 0)
     return c
-  }, [map, board, holders, colorOf, N, hide.fills])
+  }, [map, board, holders, colorOf, N, hide.fills, ruins, ruinsPlanned])
 
   const paint = useCallback((canvas, v, W, H, dpr) => {
     canvas.width = Math.round(W * dpr)
@@ -510,7 +522,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
     } else if (g.mode === 'city' && !g.moved) {
       onSelectCity(g.city)
     } else if (g.mode === 'pan' && !g.moved && g.empty) {
-      // A tap inside a territory picks its Pyramid, which is a much bigger
+      // A tap inside a territory picks what stands in it, a much bigger
       // target than the marker; a tap on a wall or open ground picks nothing.
       const t = toTile(...g.start)
       const i = t.y * N + t.x
@@ -609,14 +621,17 @@ const WarMap = forwardRef(function WarMap(props, ref) {
                 const cx = x0 + (c.size * z) / 2; const cy = y0 + (c.size * z) / 2
                 if (cx < -40 || cy < -40 || cx > size.W + 40 || cy > size.H + 40) return null
                 const r = markerSize(c, z) / 2 + 6
-                const sat = targets.get(c.id) === 'sat'
+                // Amber: may be taken on this day. Red dashed: in reach, not on
+                // this weekday. Grey dotted: in reach once it opens.
+                const kind = targets.get(c.id)
+                const stroke = kind === 'any' ? '#f59e0b' : kind === 'not' ? '#ef4444' : '#78716c'
                 return (
                   <g key={`t${c.id}`}>
                     <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} rx="5" fill="none"
                           stroke="#ffffff" strokeWidth="5" strokeOpacity="0.9" />
                     <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} rx="5" fill="none"
-                          stroke={sat ? '#ef4444' : '#f59e0b'} strokeWidth="2.5"
-                          strokeDasharray={sat ? '5 3' : undefined} />
+                          stroke={stroke} strokeWidth="2.5"
+                          strokeDasharray={kind === 'not' ? '5 3' : kind === 'later' ? '2 3' : undefined} />
                   </g>
                 )
               })}
@@ -625,7 +640,7 @@ const WarMap = forwardRef(function WarMap(props, ref) {
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
             <Cities map={map} board={board} holders={holders} P={P} z={z} W={size.W} H={size.H}
                     colorOf={colorOf} allianceOf={allianceOf} selectedCity={selectedCity} hide={hide}
-                    camps={colorBy === 'camp'} />
+                    camps={colorBy === 'camp'} ruins={ruins} ruinsPlanned={ruinsPlanned} />
           </g>
           <g pointerEvents={tool === 'select' ? 'auto' : 'none'}>
             {!hide.drawings && (

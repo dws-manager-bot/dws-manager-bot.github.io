@@ -1,14 +1,40 @@
 import { useState } from 'react'
 import { KIND_LABEL, cityTitle, coords } from './mapdata.js'
 import { CAMP_COLORS, INKS, SWATCHES, inkOn, nextColor } from './palette.js'
-import { CAP, CAP_WITH_TECH, SCORED, fullNum, shortNum } from './standing.js'
+import { CAMPS, fullNum, shortNum } from './standing.js'
 import { ITEM_LABEL, NOTE, PENCIL, STAMPS, STICKERS, StickerSymbol } from './items.jsx'
-import { DECLARATIONS_PER_DAY } from './targets.js'
+import { WHEN_TEXT, holdable } from './targets.js'
+import { CHALLENGES_PER_DAY, WARS_PER_DAY, dayText } from './season.js'
 
 /* The War planner's side panels. Each is a plain card; the page owns the data
    and passes down what a panel shows and what it may change. */
 
 export const campName = (map, camp) => map?.camps?.[camp] || `Camp ${camp}`
+
+/** An alliance in a list: "[PoU] Path of Unity". */
+const allianceName = (a) => (a.tag ? `[${a.tag}] ${a.name}` : a.name)
+
+/** Alliances grouped by camp, for a <select>; camps with none are left out. */
+function CampOptions({ map, alliances }) {
+  return CAMPS.map((camp) => {
+    const list = alliances.filter((a) => a.camp === camp)
+    if (!list.length) return null
+    return (
+      <optgroup key={camp} label={campName(map, camp)}>
+        {list.map((a) => <option key={a.id} value={a.id}>{allianceName(a)}</option>)}
+      </optgroup>
+    )
+  })
+}
+
+/** What a territory is worth, in a line. */
+function worth(c) {
+  if (c.kind === 'fortress') return `Pays ${c.mithril} Mithril each Monday · ${c.destroy} if destroyed`
+  if (c.kind === 'altar') return `Pays ${c.mithril} Mithril each Monday`
+  if (c.kind === 'outpost') return 'No Mithril · the way to the next Fortress'
+  if (c.kind === 'pass') return c.camp ? `A gate, open to Camp ${c.camp} only` : 'A gate: never held'
+  return 'A contest: results go under Temple results'
+}
 
 function copy(text) {
   navigator.clipboard?.writeText(text).catch(() => {})
@@ -100,82 +126,93 @@ export function InkPicker({ ink, setInk, alliances }) {
 /* ------------------------------------------------------- territory inspector */
 
 export function CityPanel({
-  map, city, board, holders, alliances, scenario, editable, onBoard, onPlan, onGo, busy, onClose, declarers = [],
+  map, city, board, ruins, holders, ruinsPlanned, alliances, scenario, editable, onBoard, onPlan, onGo, busy, onClose,
+  declarers = [], iso,
 }) {
   const held = board.get(city.id)
+  const ruin = ruins.has(city.id)
   const planned = scenario.changes?.[city.id]
   const planValue = planned === undefined ? 'same' : planned === null ? 'none' : String(planned)
   const willHold = holders.get(city.id)
   const byId = new Map(alliances.map((a) => [a.id, a]))
+  const canHold = holdable(city)
   const options = (
     <>
       <option value="none">Neutral</option>
-      {[1, 2].map((camp) => (
-        <optgroup key={camp} label={campName(map, camp)}>
-          {alliances.filter((a) => a.camp === camp).map((a) => (
-            <option key={a.id} value={a.id}>{a.tag ? `[${a.tag}] ${a.name}` : a.name}</option>
-          ))}
-        </optgroup>
-      ))}
+      <CampOptions map={map} alliances={alliances} />
     </>
   )
   return (
     <div className="card wp-inspect">
       <div className="card-head">
         <strong>{cityTitle(city)}</strong>
-        <span className="pill">{KIND_LABEL[city.kind]}</span>
+        <span className="pill">{city.camp && city.kind === 'outpost' ? 'Camp Outpost' : KIND_LABEL[city.kind]}</span>
         <button type="button" className="btn ghost small wp-close" onClick={onClose} aria-label="Close">×</button>
       </div>
       <div className="wp-facts">
         <button type="button" className="wp-coord" onClick={() => copy(`${city.x} ${city.y}`)} title="Copy coordinates">
           {coords(city.x, city.y)}
         </button>
-        <span>
-          {SCORED.has(city.kind) ? `Influence ${fullNum(city.influence)}` : 'No influence'}
-        </span>
+        <span>{worth(city)}</span>
+        <span className="muted">{`Opens Day ${city.opens}`}</span>
         {city.region && <span className="muted">{city.region}</span>}
       </div>
 
-      <div className="grid wp-owner">
-        <label>
-          Held now
-          <select value={held == null ? 'none' : String(held)} disabled={Boolean(busy)}
-                  onChange={(e) => onBoard(city.id, e.target.value === 'none' ? null : Number(e.target.value))}>
-            {options}
-          </select>
-          <small className="muted">The board — every plan is drawn over it.</small>
-        </label>
-        <label>
-          In {scenario.name}
-          <select value={planValue} disabled={!editable}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    onPlan(city.id, v === 'same' ? undefined : v === 'none' ? null : Number(v))
-                  }}>
-            <option value="same">No change</option>
-            {options}
-          </select>
-          <small className="muted">
-            {planValue === 'same' ? 'Stays as the board has it.'
-              : willHold != null ? `Planned: ${byId.get(willHold)?.name || 'removed alliance'} takes it.`
-                : 'Planned: goes neutral.'}
-          </small>
-        </label>
-      </div>
+      {canHold && (
+        <div className="grid wp-owner">
+          <label>
+            Held now
+            <select value={held == null ? 'none' : ruin ? `d${held}` : String(held)} disabled={Boolean(busy)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === 'none') onBoard(city.id, null, false)
+                      else if (v[0] === 'd') onBoard(city.id, Number(v.slice(1)), true)
+                      else onBoard(city.id, Number(v), false)
+                    }}>
+              {options}
+              {city.kind === 'fortress' && alliances.length > 0 && (
+                <optgroup label="Destroyed by">
+                  {alliances.map((a) => <option key={`d${a.id}`} value={`d${a.id}`}>{`Destroyed by ${allianceName(a)}`}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <small className="muted">
+              {ruin ? 'Destroyed for the season: it pays nobody now.' : 'The board — every plan is drawn over it.'}
+            </small>
+          </label>
+          <label>
+            In {scenario.name}
+            <select value={planValue} disabled={!editable || ruin}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      onPlan(city.id, v === 'same' ? undefined : v === 'none' ? null : Number(v))
+                    }}>
+              <option value="same">No change</option>
+              {options}
+            </select>
+            <small className="muted">
+              {planValue === 'same' ? 'Stays as the board has it.'
+                : ruinsPlanned.has(city.id) ? `Planned: ${byId.get(willHold)?.name || 'removed alliance'} destroys it (+${city.destroy} Mithril).`
+                  : willHold != null ? `Planned: ${byId.get(willHold)?.name || 'removed alliance'} takes it.`
+                    : 'Planned: goes neutral.'}
+            </small>
+          </label>
+        </div>
+      )}
 
-      {(city.kind === 'city' || city.kind === 'pass') && (
+      {canHold && !ruin && (
         <>
-          <div className="wp-sub">Can declare on it now</div>
+          <div className="wp-sub">{`Can take it · ${dayText(iso)}`}</div>
           {declarers.length ? (
             <div className="wp-near">
-              {declarers.map(({ alliance, saturday }) => (
+              {declarers.map(({ alliance, today, when }) => (
                 <span key={alliance.id} className="wp-near-btn static">
                   <Swatch color={alliance.color} size={10} />
-                  {alliance.tag || alliance.name}{saturday && <span className="muted"> · Saturday</span>}
+                  {alliance.tag || alliance.name}{!today && <span className="muted">{` · ${WHEN_TEXT[when]}`}</span>}
                 </span>
               ))}
             </div>
-          ) : <div className="muted small">No alliance on the board borders it.</div>}
+          ) : <div className="muted small">No alliance on the board reaches it on this day.</div>}
         </>
       )}
 
@@ -184,7 +221,7 @@ export function CityPanel({
           <div className="wp-sub">Borders</div>
           <div className="wp-near">
             {city.nearBy.map((id) => map.byId.get(id)).filter(Boolean).map((n) => {
-              const h = holders.get(n.id)
+              const h = ruinsPlanned.has(n.id) ? null : holders.get(n.id)
               return (
                 <button key={n.id} type="button" className="wp-near-btn" onClick={() => onGo(n)}>
                   <Swatch color={h != null ? byId.get(h)?.color || '#94a3b8' : 'transparent'} size={10} />
@@ -396,20 +433,27 @@ export function ItemPanel({ item, alliances, editable, onChange, onDelete, onDup
 
 /* ---------------------------------------------------------------- standings */
 
-export function StandingsCard({ map, now, planned, scenario, changed, onApply, busy, warnings = [] }) {
+/**
+ * What the board pays each Monday, by alliance and by camp, and what the open
+ * scenario would change. The season's running total, Temples included, is the
+ * Season history card's.
+ */
+export function StandingsCard({ map, now, planned, scenario, changed, onApply, busy, warnings = [], destroys = [] }) {
   const plannedById = new Map(planned.map((r) => [r.alliance.id, r]))
-  const totals = (rows) => rows.reduce((t, r) => ({ ...t, [r.alliance.camp]: (t[r.alliance.camp] || 0) + r.influence }), { 1: 0, 2: 0 })
+  const totals = (rows) => rows.reduce((t, r) => ({ ...t, [r.alliance.camp]: (t[r.alliance.camp] || 0) + r.weekly }), {})
   const tNow = totals(now)
   const tPlan = totals(planned)
+  const camps = CAMPS.filter((c) => now.some((r) => r.alliance.camp === c))
   const delta = (a, b) => {
-    const d = b - a
+    const d = (b || 0) - (a || 0)
     if (!d) return null
     return <span className={d > 0 ? 'wp-up' : 'wp-down'}>{d > 0 ? '+' : '−'}{shortNum(Math.abs(d))}</span>
   }
+  const held = (r) => `${r.outposts} Outposts, ${r.fortresses} Fortresses, ${r.altars} Altars${r.destroyed ? `; destroyed ${r.destroyed}` : ''}`
   return (
     <div className="card">
       <div className="card-head">
-        <strong>Influence</strong>
+        <strong>Mithril each Monday</strong>
         <span className="muted small">{changed ? `now → ${scenario.name}` : 'now'}</span>
       </div>
       {!now.length ? (
@@ -419,45 +463,47 @@ export function StandingsCard({ map, now, planned, scenario, changed, onApply, b
           <table className="wp-table">
             <thead>
               <tr>
-                <th>#</th><th>Alliance</th><th title={`Cities and passes held; the cap is ${CAP}, ${CAP_WITH_TECH} with Alliance Expansion`}>Held</th>
-                <th className="num">Influence</th>
+                <th>#</th><th>Alliance</th><th title="Outposts + Fortresses + Altars held">Held</th>
+                <th className="num">Weekly</th>
                 {changed && <th className="num">{scenario.name}</th>}
               </tr>
             </thead>
             <tbody>
               {now.map((r, i) => {
                 const p = plannedById.get(r.alliance.id) || r
-                const over = Math.max(r.count, p.count)
                 return (
                   <tr key={r.alliance.id}>
                     <td className="muted">{i + 1}</td>
                     <td>
                       <span className="wp-who"><Swatch color={r.alliance.color} />
-                        <span className="wp-name">{r.alliance.tag ? `[${r.alliance.tag}] ` : ''}{r.alliance.name}</span>
+                        <span className="wp-name">{allianceName(r.alliance)}</span>
+                        <span className="muted small">{` C${r.alliance.camp}`}</span>
                       </span>
                     </td>
-                    <td className={over > CAP_WITH_TECH ? 'wp-over' : over > CAP ? 'wp-warn' : ''}
-                        title={`${r.cities} Pyramids, ${r.passes} passes, ${r.strongholds} Strongholds, ${r.oases} Oases`}>
-                      {changed && p.count !== r.count ? `${r.count}→${p.count}` : r.count}
-                    </td>
-                    <td className="num">{shortNum(r.influence)}</td>
-                    {changed && <td className="num">{shortNum(p.influence)} {delta(r.influence, p.influence)}</td>}
+                    <td title={held(r)}>{changed && p.count !== r.count ? `${r.count}→${p.count}` : r.count}</td>
+                    <td className="num">{fullNum(r.weekly)}</td>
+                    {changed && <td className="num">{fullNum(p.weekly)} {delta(r.weekly, p.weekly)}</td>}
                   </tr>
                 )
               })}
             </tbody>
             <tfoot>
-              {[1, 2].map((camp) => (
+              {camps.map((camp) => (
                 <tr key={camp}>
-                  <td />
+                  <td><Swatch color={CAMP_COLORS[camp]} size={10} /></td>
                   <td colSpan="2">{campName(map, camp)}</td>
-                  <td className="num">{shortNum(tNow[camp])}</td>
-                  {changed && <td className="num">{shortNum(tPlan[camp])} {delta(tNow[camp], tPlan[camp])}</td>}
+                  <td className="num">{fullNum(tNow[camp] || 0)}</td>
+                  {changed && <td className="num">{fullNum(tPlan[camp] || 0)} {delta(tNow[camp], tPlan[camp])}</td>}
                 </tr>
               ))}
             </tfoot>
           </table>
         </div>
+      )}
+      {destroys.length > 0 && (
+        <ul className="wp-warnings ok" aria-label={`Fortresses ${scenario.name} destroys`}>
+          {destroys.map((d) => <li key={d.city.id}>{d.text}</li>)}
+        </ul>
       )}
       {warnings.length > 0 && (
         <ul className="wp-warnings" aria-label={`What the rules would stop in ${scenario.name}`}>
@@ -465,8 +511,8 @@ export function StandingsCard({ map, now, planned, scenario, changed, onApply, b
         </ul>
       )}
       <p className="card-body small">
-        Pyramids and passes score. Held counts both against the cap of {CAP} ({CAP_WITH_TECH} with Alliance Expansion);
-        amber is over {CAP}, red over {CAP_WITH_TECH}.
+        Fortresses pay 20 / 60 / 100 (Lv.3 / 4 / 5) and Altars 300 every Monday 00:00 ST. Outposts pay nothing.
+        Taking another camp’s Fortress destroys it: once 200%, then nothing.
       </p>
       {changed && (
         <div className="card-actions">
@@ -484,14 +530,17 @@ export function StandingsCard({ map, now, planned, scenario, changed, onApply, b
 const EMPTY = { name: '', tag: '', camp: 1, color: '', server: '', notes: '' }
 
 function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, busy }) {
+  const others = alliances.filter((a) => a.id !== initial?.id)
   const [f, setF] = useState(() => ({
     ...EMPTY, ...initial,
-    color: initial?.color || nextColor(alliances),
+    color: initial?.color || nextColor(others, initial?.camp || EMPTY.camp),
   }))
-  const others = alliances.filter((a) => a.id !== initial?.id)
+  const [picked, setPicked] = useState(Boolean(initial?.color))
   const taken = new Map(others.map((a) => [a.color.toLowerCase(), a.name]))
   const clash = taken.get(f.color.toLowerCase())
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }))
+  const pick = (c) => { setPicked(true); set('color', c) }
+  const suggestions = [...new Set([nextColor(others, f.camp), ...SWATCHES])]
   return (
     <form className="wp-aform" onSubmit={(e) => { e.preventDefault(); if (!clash) onSave(f) }}>
       <div className="grid">
@@ -505,9 +554,11 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
         </label>
         <label>
           Camp
-          <select value={f.camp} onChange={(e) => set('camp', Number(e.target.value))}>
-            <option value={1}>{campName(map, 1)}</option>
-            <option value={2}>{campName(map, 2)}</option>
+          <select value={f.camp} onChange={(e) => {
+            const camp = Number(e.target.value)
+            setF((o) => ({ ...o, camp, color: picked ? o.color : nextColor(others, camp) }))
+          }}>
+            {CAMPS.map((c) => <option key={c} value={c}>{campName(map, c)}</option>)}
           </select>
         </label>
         <label>
@@ -517,13 +568,13 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
         <div className="wide">
           <span className="label">Color</span>
           <div className="wp-inks">
-            {SWATCHES.map((c) => (
+            {suggestions.map((c) => (
               <button key={c} type="button" disabled={taken.has(c)} title={taken.get(c) || c}
                       className={f.color.toLowerCase() === c ? 'wp-ink on' : 'wp-ink'}
-                      style={{ background: c }} onClick={() => set('color', c)} aria-label={c} />
+                      style={{ background: c }} onClick={() => pick(c)} aria-label={c} />
             ))}
             <label className="wp-ink custom" title="Any color">
-              <input type="color" value={f.color} onChange={(e) => set('color', e.target.value)} />
+              <input type="color" value={f.color} onChange={(e) => pick(e.target.value)} />
             </label>
           </div>
           {clash && <small className="error">{`${clash} already uses this color.`}</small>}
@@ -547,6 +598,7 @@ function AllianceForm({ initial, alliances, map, onSave, onCancel, onDelete, bus
 
 export function AlliancesCard({ map, alliances, now, onCreate, onUpdate, onDelete, busy }) {
   const [editing, setEditing] = useState(null)   // an alliance id, or 'new'
+  const [newCamp, setNewCamp] = useState(1)
   const held = new Map(now.map((r) => [r.alliance.id, r]))
   return (
     <div className="card">
@@ -554,21 +606,25 @@ export function AlliancesCard({ map, alliances, now, onCreate, onUpdate, onDelet
         <strong>Alliances</strong>
         <span className="pill">{alliances.length}</span>
       </div>
-      <p className="card-body">Both camps, each alliance in its own color. The map colors what each one holds.</p>
-      {[1, 2].map((camp) => {
+      <p className="card-body">Every alliance in all eight camps, each in its own color. A new one starts in a shade of its camp’s.</p>
+      {CAMPS.map((camp) => {
         const list = alliances.filter((a) => a.camp === camp)
         return (
           <div key={camp} className="wp-camp">
-            <div className="wp-sub">{campName(map, camp)}</div>
-            {!list.length && <div className="muted small">None yet.</div>}
+            <div className="wp-sub wp-camp-head">
+              <Swatch color={CAMP_COLORS[camp]} size={10} />{campName(map, camp)}
+              <span className="muted">{list.length ? ` · ${list.length}` : ''}</span>
+              <button type="button" className="btn ghost small" disabled={editing === 'new'}
+                      onClick={() => { setNewCamp(camp); setEditing('new') }}>Add</button>
+            </div>
             {list.map((a) => (editing === a.id ? (
               <AllianceForm key={a.id} initial={a} alliances={alliances} map={map} busy={busy}
                             onSave={async (f) => { if (await onUpdate(a.id, f)) setEditing(null) }}
                             onCancel={() => setEditing(null)}
                             onDelete={async () => {
                               const r = held.get(a.id)
-                              const n = r ? r.count + r.strongholds + r.oases : 0
-                              if (!confirm(`Remove ${a.name}?${n ? `\n\nThe ${n} territories it holds go neutral on the board.` : ''}`)) return
+                              const n = r ? r.count + r.destroyed : 0
+                              if (!confirm(`Remove ${a.name}?${n ? `\n\nThe ${n} territories on the board under its name go neutral.` : ''}`)) return
                               if (await onDelete(a.id)) setEditing(null)
                             }} />
             ) : (
@@ -578,18 +634,14 @@ export function AlliancesCard({ map, alliances, now, onCreate, onUpdate, onDelet
                 <span className="muted small">{[a.server && `#${a.server}`, held.get(a.id)?.count ? `${held.get(a.id).count} held` : null].filter(Boolean).join(' · ')}</span>
               </button>
             )))}
+            {editing === 'new' && newCamp === camp && (
+              <AllianceForm initial={{ camp }} alliances={alliances} map={map} busy={busy}
+                            onSave={async (f) => { if (await onCreate(f)) setEditing(null) }}
+                            onCancel={() => setEditing(null)} />
+            )}
           </div>
         )
       })}
-      {editing === 'new' ? (
-        <AllianceForm alliances={alliances} map={map} busy={busy}
-                      onSave={async (f) => { if (await onCreate(f)) setEditing(null) }}
-                      onCancel={() => setEditing(null)} />
-      ) : (
-        <div className="card-actions">
-          <button type="button" className="btn small" onClick={() => setEditing('new')}>Add an alliance</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -597,7 +649,7 @@ export function AlliancesCard({ map, alliances, now, onCreate, onUpdate, onDelet
 /* ------------------------------------------------------------------- legend */
 
 export const LAYERS = [
-  ['city', 'Pyramids'], ['pass', 'Passes'], ['stronghold', 'Strongholds'], ['oasis', 'Oases'],
+  ['outpost', 'Outposts'], ['fortress', 'Fortresses'], ['altar', 'Altars'], ['temple', 'Temples'], ['pass', 'Passes'],
   ['fills', 'Territory colors'], ['drawings', 'Drawings'], ['names', 'Names'],
 ]
 
@@ -608,13 +660,14 @@ export const LAYERS = [
  */
 export function Legend({ map, hide, setHide, alliances, colorBy, setColorBy }) {
   const camps = colorBy === 'camp'
+  const inUse = CAMPS.filter((c) => alliances.some((a) => a.camp === c))
   return (
     <div className={camps ? 'wp-legend small camps' : 'wp-legend small'} role="group" aria-label="Show or hide">
       <span className="wp-colorby" role="group" aria-label="Color held ground by">
         <button type="button" className={camps ? 'chip' : 'chip on'} aria-pressed={!camps}
                 title="Each alliance in its own color" onClick={() => setColorBy('alliance')}>Alliances</button>
         <button type="button" className={camps ? 'chip on' : 'chip'} aria-pressed={camps}
-                title="Camp against camp: the top camp blue, the bottom red" onClick={() => setColorBy('camp')}>Camps</button>
+                title="Each camp in its own color" onClick={() => setColorBy('camp')}>Camps</button>
       </span>
       {LAYERS.map(([key, label]) => (
         <button key={key} type="button" aria-pressed={!hide[key]}
@@ -625,8 +678,9 @@ export function Legend({ map, hide, setHide, alliances, colorBy, setColorBy }) {
         </button>
       ))}
       <span className="wp-legend-note"><i className="wp-key planned" />Striped: planned change</span>
+      <span className="wp-legend-note"><i className="wp-key ruin" />Destroyed</span>
       {camps
-        ? [1, 2].map((camp) => (
+        ? (inUse.length ? inUse : CAMPS).map((camp) => (
           <span key={camp} className="wp-legend-note"><Swatch color={CAMP_COLORS[camp]} size={10} />{campName(map, camp)}</span>
         ))
         : alliances.map((a) => <span key={a.id} className="wp-legend-note"><Swatch color={a.color} size={10} />{a.tag || a.name}</span>)}
@@ -637,25 +691,31 @@ export function Legend({ map, hide, setHide, alliances, colorBy, setColorBy }) {
 /* ------------------------------------------------------------------ targets */
 
 /**
- * Where one alliance may declare war. Judged on the board by default — the
- * ground as it stands before anything changes hands that day — or on the open
- * scenario, to look a step further ahead.
+ * Where one alliance may attack on the war day. Judged on the board by
+ * default — the ground as it stands before anything changes hands that day —
+ * or on the open scenario, to look a step further ahead.
  */
 export function TargetsCard({ map, alliances, allianceId, setAllianceId, result, basis, setBasis, scenario,
-  canUseScenario, show, setShow, onGo, byId }) {
-  const any = result?.targets.filter((t) => !t.saturday) || []
-  const sat = result?.targets.filter((t) => t.saturday) || []
+  canUseScenario, show, setShow, onGo, byId, iso }) {
+  const today = result?.targets.filter((t) => t.today) || []
+  const challenges = today.filter((t) => t.attack === 'challenge')
+  const wars = today.filter((t) => t.attack === 'war')
+  const notToday = result?.targets.filter((t) => !t.today) || []
+  const later = result?.later || []
   const alliance = byId.get(allianceId)
-  const row = ({ city, saturday }) => {
-    const holder = saturday ? byId.get(result.holders.get(city.id)) : null
+  const row = ({ city, when, today: ok }) => {
+    const h = result.holders.get(city.id)
+    const holder = h != null && !result.ruins.has(city.id) ? byId.get(h) : null
     return (
       <li key={city.id}>
         <button type="button" className="wp-target" onClick={() => onGo(city)}>
-          <span className={saturday ? 'wp-ring sat' : 'wp-ring'} />
-          <span className="wp-name">{`Lv.${city.level} ${city.name}`}</span>
+          <span className={ok === false ? 'wp-ring sat' : ok === undefined ? 'wp-ring later' : 'wp-ring'} />
+          <span className="wp-name">{cityTitle(city)}</span>
           {holder && <span className="muted small">{holder.tag || holder.name}</span>}
+          {ok === false && <span className="muted small">{WHEN_TEXT[when]}</span>}
+          {ok === undefined && <span className="muted small">{`Day ${city.opens}`}</span>}
           <span className="muted small wp-target-at">{`${city.x}, ${city.y}`}</span>
-          <span className="small wp-target-inf">{city.influence}</span>
+          <span className="small wp-target-inf">{city.mithril || ''}</span>
         </button>
       </li>
     )
@@ -664,7 +724,7 @@ export function TargetsCard({ map, alliances, allianceId, setAllianceId, result,
     <div className="card">
       <div className="card-head">
         <strong>Targets</strong>
-        <span className="muted small">{`${DECLARATIONS_PER_DAY} declarations a day`}</span>
+        <span className="muted small">{dayText(iso)}</span>
       </div>
       {!alliances.length ? (
         <p className="card-body">Add the alliances on the map first.</p>
@@ -674,13 +734,7 @@ export function TargetsCard({ map, alliances, allianceId, setAllianceId, result,
             <label>
               For
               <select value={allianceId ?? ''} onChange={(e) => setAllianceId(Number(e.target.value))}>
-                {[1, 2].map((camp) => (
-                  <optgroup key={camp} label={campName(map, camp)}>
-                    {alliances.filter((a) => a.camp === camp).map((a) => (
-                      <option key={a.id} value={a.id}>{a.tag ? `[${a.tag}] ${a.name}` : a.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
+                <CampOptions map={map} alliances={alliances} />
               </select>
             </label>
             <div>
@@ -694,21 +748,123 @@ export function TargetsCard({ map, alliances, allianceId, setAllianceId, result,
             </div>
           </div>
           <p className="card-body small">
-            {result?.rule === 'base'
-              ? `${alliance?.name} holds nothing${basis === 'scenario' ? ` after ${scenario.name}` : ''}, so it may only declare on the Lv.1 Pyramids of the ${campName(map, alliance?.camp)} Base.`
-              : 'Pyramids and passes bordering ground its camp holds. A pass comes before the Pyramid behind it.'}
+            {result?.rule === 'start'
+              ? `${alliance?.name} holds nothing${basis === 'scenario' ? ` after ${scenario.name}` : ''}, so its first target is a Lv.1 Camp Outpost in ${campName(map, alliance?.camp)}.`
+              : 'Anything bordering ground its camp holds, through passes open to the camp on this day.'}
           </p>
           <label className="inline">
             <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
             Ring them on the map
           </label>
-          {any.length > 0 && <div className="wp-sub">{`Any day · ${any.length}`}</div>}
-          <ul className="wp-targets">{any.map(row)}</ul>
-          {sat.length > 0 && <div className="wp-sub">{`Saturday only — the other camp holds them · ${sat.length}`}</div>}
-          <ul className="wp-targets">{sat.map(row)}</ul>
-          {!any.length && !sat.length && <p className="muted small">Nothing to declare on.</p>}
+          <div className="wp-sub">{`Challenge · Outposts · ${CHALLENGES_PER_DAY} a day · ${challenges.length}`}</div>
+          <ul className="wp-targets">{challenges.map(row)}</ul>
+          <div className="wp-sub">{`War · Fortresses and Altars · ${WARS_PER_DAY} a day · ${wars.length}`}</div>
+          <ul className="wp-targets">{wars.map(row)}</ul>
+          {notToday.length > 0 && <div className="wp-sub">{`Not on this day · ${notToday.length}`}</div>}
+          <ul className="wp-targets">{notToday.map(row)}</ul>
+          {later.length > 0 && <div className="wp-sub">{`Opens later · ${later.length}`}</div>}
+          <ul className="wp-targets">{later.map((t) => row({ ...t, today: undefined }))}</ul>
+          {!today.length && !notToday.length && !later.length && <p className="muted small">Nothing in reach.</p>}
         </>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------ temple results */
+
+/**
+ * Temple Contests pay the most Mithril, by camp rank, and nothing on the board
+ * shows them: an admin enters each camp's result from the game. They count in
+ * the Season history's camp totals.
+ */
+export function TemplesCard({ map, results, onAdd, onDelete, busy, today }) {
+  const temples = map.cities.filter((c) => c.kind === 'temple').sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
+  const blank = { day: today, city_id: temples[0]?.id || '', camp: 1, rank: '', mithril: '', notes: '' }
+  const [f, setF] = useState(blank)
+  const [open, setOpen] = useState(false)
+  const set = (k, v) => setF((o) => ({ ...o, [k]: v }))
+  const byCamp = CAMPS.map((c) => [c, results.filter((r) => r.camp === c).reduce((t, r) => t + r.mithril, 0)])
+    .filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+  return (
+    <div className="card">
+      <div className="card-head">
+        <strong>Temple results</strong>
+        <span className="pill">{results.length}</span>
+      </div>
+      {byCamp.length > 0 && (
+        <div className="wp-near">
+          {byCamp.map(([camp, n]) => (
+            <span key={camp} className="wp-near-btn static"><Swatch color={CAMP_COLORS[camp]} size={10} />{`Camp ${camp} · ${fullNum(n)}`}</span>
+          ))}
+        </div>
+      )}
+      {results.length > 0 && (
+        <div className="wp-table-wrap">
+          <table className="wp-table">
+            <thead><tr><th>Day</th><th>Temple</th><th>Camp</th><th className="num">Mithril</th><th /></tr></thead>
+            <tbody>
+              {[...results].reverse().map((r) => (
+                <tr key={r.id} title={[r.notes, r.created_by_name && `by ${r.created_by_name}`].filter(Boolean).join(' · ')}>
+                  <td>{dayText(r.day).replace(/ · .*/, '')}</td>
+                  <td className="wp-name">{map.byId.get(r.city_id) ? cityTitle(map.byId.get(r.city_id)) : r.city_id}</td>
+                  <td>{`${r.camp}${r.rank ? ` · #${r.rank}` : ''}`}</td>
+                  <td className="num">{fullNum(r.mithril)}</td>
+                  <td><button type="button" className="btn ghost small" disabled={Boolean(busy)} aria-label="Remove"
+                              onClick={() => { if (confirm('Remove this result?')) onDelete(r.id) }}>×</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {open ? (
+        <form className="wp-aform" onSubmit={async (e) => {
+          e.preventDefault()
+          const ok = await onAdd({
+            day: f.day, city_id: Number(f.city_id), camp: Number(f.camp),
+            rank: f.rank ? Number(f.rank) : null, mithril: Number(f.mithril), notes: f.notes || null,
+          })
+          if (ok) setF((o) => ({ ...blank, day: o.day, city_id: o.city_id }))
+        }}>
+          <div className="grid">
+            <label>Day<input type="date" value={f.day} required onChange={(e) => set('day', e.target.value)} /></label>
+            <label>
+              Temple
+              <select value={f.city_id} onChange={(e) => set('city_id', e.target.value)}>
+                {temples.map((t) => <option key={t.id} value={t.id}>{cityTitle(t)}</option>)}
+              </select>
+            </label>
+            <label>
+              Camp
+              <select value={f.camp} onChange={(e) => set('camp', e.target.value)}>
+                {CAMPS.map((c) => <option key={c} value={c}>{campName(map, c)}</option>)}
+              </select>
+            </label>
+            <label>
+              Rank <span className="muted">(optional)</span>
+              <input type="number" min="1" max="8" value={f.rank} onChange={(e) => set('rank', e.target.value)} />
+            </label>
+            <label>
+              Mithril
+              <input type="number" min="0" max="100000" required value={f.mithril} onChange={(e) => set('mithril', e.target.value)} />
+            </label>
+            <label>
+              Notes <span className="muted">(optional)</span>
+              <input value={f.notes} maxLength={200} onChange={(e) => set('notes', e.target.value)} />
+            </label>
+          </div>
+          <div className="card-actions">
+            <button className="btn primary small" disabled={Boolean(busy) || f.mithril === ''}>Add result</button>
+            <button type="button" className="btn small" onClick={() => setOpen(false)}>Done</button>
+          </div>
+        </form>
+      ) : (
+        <div className="card-actions">
+          <button type="button" className="btn small" onClick={() => setOpen(true)}>Add a result</button>
+        </div>
+      )}
+      <p className="card-body small">One row per camp paid, as the game’s result shows it. Lv.3 Temple rank 1 pays 900; the Supreme Temple 2,500 down to 200.</p>
     </div>
   )
 }
