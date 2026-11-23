@@ -719,7 +719,8 @@ def _blank_to_none(v: str | None) -> str | None:
 class WarAllianceIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     tag: str | None = Field(default=None, max_length=16)
-    camp: Literal[1, 2]
+    # Camp Base 1-8 in season 6.
+    camp: int = Field(ge=1, le=8)
     color: HexColor
     server: str | None = Field(default=None, max_length=16)
     notes: str | None = Field(default=None, max_length=2000)
@@ -748,7 +749,7 @@ class WarAlliancePatch(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=64)
     tag: str | None = Field(default=None, max_length=16)
-    camp: Literal[1, 2] | None = None
+    camp: int | None = Field(default=None, ge=1, le=8)
     color: HexColor | None = None
     server: str | None = Field(default=None, max_length=16)
     notes: str | None = Field(default=None, max_length=2000)
@@ -787,6 +788,7 @@ class WarAllianceOut(ORMModel):
 class WarHoldingOut(ORMModel):
     city_id: int
     alliance_id: int
+    destroyed: bool = False
     updated_by_name: str | None = None
     updated_at: datetime | None = None
 
@@ -795,6 +797,8 @@ class WarBoardChange(BaseModel):
     city_id: int
     # None hands the territory back to neutral.
     alliance_id: int | None = None
+    # A Fortress this alliance destroyed rather than took (season 6).
+    destroyed: bool = False
 
 
 class WarBoardIn(BaseModel):
@@ -806,8 +810,36 @@ class WarBoardEventOut(BaseModel):
 
     at: datetime
     by: str | None = None
-    # [{"city": 219, "from": 3, "to": 1}, ...]; None is neutral.
+    # [{"city": 219, "from": 3, "to": 1}, ...]; None is neutral. A Fortress
+    # destroyed carries "destroyed": true, and one rebuilt or corrected back
+    # "was_destroyed": true.
     changes: list[dict] = Field(default_factory=list)
+
+
+class WarTempleResultIn(BaseModel):
+    day: date
+    city_id: int
+    camp: int = Field(ge=1, le=8)
+    rank: int | None = Field(default=None, ge=1, le=8)
+    mithril: int = Field(ge=0, le=100_000)
+    notes: str | None = Field(default=None, max_length=200)
+
+    @field_validator("notes")
+    @classmethod
+    def _optional(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class WarTempleResultOut(ORMModel):
+    id: int
+    day: date
+    city_id: int
+    camp: int
+    rank: int | None = None
+    mithril: int
+    notes: str | None = None
+    created_by_name: str | None = None
+    created_at: datetime | None = None
 
 
 class WarDayIn(BaseModel):

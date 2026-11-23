@@ -683,7 +683,7 @@ class AuditLog(Base):
 #
 # The season map's strategy board. Four tables, from the longest-lived down:
 # the alliances on the map, who holds what right now, the days a war is fought,
-# and the plans drawn for each day. The map itself is static game data and
+# and the plans drawn for each day. Season 6 adds a fifth: Temple results. The map itself is static game data and
 # lives in the frontend; these hold only what the alliance decides.
 
 
@@ -704,7 +704,8 @@ class WarAlliance(Base, TimestampMixin):
     season: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     tag: Mapped[str | None] = mapped_column(String(16))
-    # 1 or 2, the game's own camp numbers (worldcity.belong_eden_camp).
+    # The camp's number as the game shows it: 1 or 2 in season 5, 1-8 in
+    # season 6 (Camp Base 1-8; worldcity.belong_eden_camp is that plus 2).
     camp: Mapped[int] = mapped_column(Integer, nullable=False)
     color: Mapped[str] = mapped_column(String(7), nullable=False)
     # The state it comes from: a season camp spans several servers.
@@ -729,11 +730,39 @@ class WarHolding(Base):
     alliance_id: Mapped[int] = mapped_column(
         ForeignKey("war_alliances.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Season 6: an enemy Fortress taken is destroyed for the season, not held.
+    # The row stays, naming the alliance that destroyed it (its camp earns the
+    # destroy Mithril); the Fortress pays nobody from then on.
+    destroyed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class WarTempleResult(Base, TimestampMixin):
+    """Mithril a camp won in one Temple Contest (season 6).
+
+    Temples are contests, not holdings, so nothing on the board says who won
+    one. An admin records each result from the game, one row per camp paid.
+    """
+
+    __tablename__ = "war_temple_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    season: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    # worldcity id of the Ancient Temple or the Supreme Temple.
+    city_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    camp: Mapped[int] = mapped_column(Integer, nullable=False)
+    rank: Mapped[int | None] = mapped_column(Integer)
+    mithril: Mapped[int] = mapped_column(Integer, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(200))
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_by_name: Mapped[str | None] = mapped_column(String(100))
 
 
 class WarDay(Base, TimestampMixin):

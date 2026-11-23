@@ -123,10 +123,12 @@ async def test_a_taken_name_or_color_says_whose_it_is(client_factory):
 
 
 @pytest.mark.asyncio
-async def test_camp_must_be_one_of_the_two(client_factory):
+async def test_camp_must_be_one_of_the_eight(client_factory):
     async with client_factory(ADMIN) as c:
-        r = await c.post("/war/alliances", json={"name": "X", "color": "#123456", "camp": 3})
+        r = await c.post("/war/alliances", json={"name": "X", "color": "#123456", "camp": 9})
         assert r.status_code == 422
+        r = await c.post("/war/alliances", json={"name": "X", "color": "#123456", "camp": 8})
+        assert r.status_code == 201
 
 
 # ------------------------------------------------------------------- board
@@ -136,25 +138,26 @@ async def test_board_takes_and_releases_territories(client_factory):
     async with client_factory(ADMIN) as c:
         bot = await _alliance(c)
         r = await c.put("/war/board", json={"changes": [
-            {"city_id": 219, "alliance_id": bot["id"]},
-            {"city_id": 145, "alliance_id": bot["id"]},
+            {"city_id": 1012, "alliance_id": bot["id"]},
+            {"city_id": 1001, "alliance_id": bot["id"]},
         ]})
         assert r.status_code == 200
-        assert sorted(h["city_id"] for h in r.json()) == [145, 219]
+        assert sorted(h["city_id"] for h in r.json()) == [1001, 1012]
         assert r.json()[0]["updated_by_name"] == "Goba"
 
-        r = await c.put("/war/board", json={"changes": [{"city_id": 145, "alliance_id": None}]})
-        assert [h["city_id"] for h in r.json()] == [219]
+        r = await c.put("/war/board", json={"changes": [{"city_id": 1001, "alliance_id": None}]})
+        assert [h["city_id"] for h in r.json()] == [1012]
 
 
 @pytest.mark.asyncio
 async def test_board_refuses_what_the_map_cannot_draw(client_factory):
     async with client_factory(ADMIN) as c:
         bot = await _alliance(c)
-        bad_city = {"changes": [{"city_id": 999, "alliance_id": bot["id"]}]}
+        bad_city = {"changes": [{"city_id": 1065, "alliance_id": bot["id"]}]}
         r = await c.put("/war/board", json=bad_city)
-        assert r.status_code == 422 and "999" in r.json()["detail"]
-        r = await c.put("/war/board", json={"changes": [{"city_id": 219, "alliance_id": 4242}]})
+        # 1065 is a pass: a gate, never held.
+        assert r.status_code == 422 and "1065" in r.json()["detail"]
+        r = await c.put("/war/board", json={"changes": [{"city_id": 1012, "alliance_id": 4242}]})
         assert r.status_code == 404
         assert (await c.get("/war/board")).json() == []
 
@@ -163,13 +166,13 @@ async def test_board_refuses_what_the_map_cannot_draw(client_factory):
 async def test_an_unchanged_territory_is_not_logged(client_factory):
     async with client_factory(ADMIN) as c:
         bot = await _alliance(c)
-        change = {"changes": [{"city_id": 219, "alliance_id": bot["id"]}]}
+        change = {"changes": [{"city_id": 1012, "alliance_id": bot["id"]}]}
         await c.put("/war/board", json=change)
         await c.put("/war/board", json=change)
     async with client_factory.maker() as s:
         logged = list(await s.scalars(select(AuditLog).where(AuditLog.action == "war.board")))
     assert len(logged) == 1
-    assert logged[0].detail["changes"] == [{"city": 219, "from": None, "to": bot["id"]}]
+    assert logged[0].detail["changes"] == [{"city": 1012, "from": None, "to": bot["id"]}]
 
 
 @pytest.mark.asyncio
@@ -178,11 +181,11 @@ async def test_removing_an_alliance_releases_what_it_held(client_factory):
         bot = await _alliance(c)
         xod = await _alliance(c, "XoD", "#dc2626", camp=2)
         await c.put("/war/board", json={"changes": [
-            {"city_id": 219, "alliance_id": bot["id"]},
-            {"city_id": 136, "alliance_id": xod["id"]},
+            {"city_id": 1012, "alliance_id": bot["id"]},
+            {"city_id": 1002, "alliance_id": xod["id"]},
         ]})
         assert (await c.delete(f"/war/alliances/{bot['id']}")).status_code == 204
-        assert [h["city_id"] for h in (await c.get("/war/board")).json()] == [136]
+        assert [h["city_id"] for h in (await c.get("/war/board")).json()] == [1002]
     async with client_factory.maker() as s:
         assert len(list(await s.scalars(select(WarHolding)))) == 1
 
@@ -192,20 +195,60 @@ async def test_the_boards_history_is_every_edit_in_order(client_factory):
     async with client_factory(ADMIN) as c:
         bot = await _alliance(c)
         xod = await _alliance(c, "XoD", "#dc2626", camp=2)
-        await c.put("/war/board", json={"changes": [{"city_id": 219, "alliance_id": xod["id"]}]})
+        await c.put("/war/board", json={"changes": [{"city_id": 1012, "alliance_id": xod["id"]}]})
         await c.put("/war/board", json={"changes": [
-            {"city_id": 219, "alliance_id": bot["id"]},
-            {"city_id": 145, "alliance_id": bot["id"]},
+            {"city_id": 1012, "alliance_id": bot["id"]},
+            {"city_id": 1001, "alliance_id": bot["id"]},
         ]})
         # A no-op edit leaves no trace, so it adds no step to the history.
-        await c.put("/war/board", json={"changes": [{"city_id": 145, "alliance_id": bot["id"]}]})
+        await c.put("/war/board", json={"changes": [{"city_id": 1001, "alliance_id": bot["id"]}]})
         events = (await c.get("/war/board/history")).json()
     assert [e["changes"] for e in events] == [
-        [{"city": 219, "from": None, "to": xod["id"]}],
-        [{"city": 219, "from": xod["id"], "to": bot["id"]},
-         {"city": 145, "from": None, "to": bot["id"]}],
+        [{"city": 1012, "from": None, "to": xod["id"]}],
+        [{"city": 1012, "from": xod["id"], "to": bot["id"]},
+         {"city": 1001, "from": None, "to": bot["id"]}],
     ]
     assert events[0]["by"] == "Goba" and events[0]["at"] <= events[1]["at"]
+
+
+@pytest.mark.asyncio
+async def test_a_fortress_is_destroyed_by_an_alliance(client_factory):
+    async with client_factory(ADMIN) as c:
+        bot = await _alliance(c)
+        xod = await _alliance(c, "XoD", "#dc2626", camp=2)
+        await c.put("/war/board", json={"changes": [{"city_id": 1012, "alliance_id": xod["id"]}]})
+        r = await c.put("/war/board", json={"changes": [
+            {"city_id": 1012, "alliance_id": bot["id"], "destroyed": True}]})
+        assert r.status_code == 200
+        assert [(h["city_id"], h["alliance_id"], h["destroyed"]) for h in r.json()] == [(1012, bot["id"], True)]
+        # Set back by hand: the history says it was a ruin.
+        await c.put("/war/board", json={"changes": [{"city_id": 1012, "alliance_id": xod["id"]}]})
+        events = (await c.get("/war/board/history")).json()
+        assert events[1]["changes"] == [{"city": 1012, "from": xod["id"], "to": bot["id"], "destroyed": True}]
+        assert events[2]["changes"] == [{"city": 1012, "from": bot["id"], "to": xod["id"], "was_destroyed": True}]
+        # Only a Fortress, and only by someone.
+        r = await c.put("/war/board", json={"changes": [{"city_id": 1001, "alliance_id": bot["id"], "destroyed": True}]})
+        assert r.status_code == 422
+        r = await c.put("/war/board", json={"changes": [{"city_id": 1012, "alliance_id": None, "destroyed": True}]})
+        assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_temple_results_are_recorded_and_removed(client_factory):
+    async with client_factory(ADMIN) as c:
+        r = await c.post("/war/temples", json={"day": "2026-12-01", "city_id": 1033, "camp": 3, "rank": 1, "mithril": 900})
+        assert r.status_code == 201, r.text
+        tid = r.json()["id"]
+        assert r.json()["created_by_name"] == "Goba"
+        r = await c.post("/war/temples", json={"day": "2026-12-01", "city_id": 1012, "camp": 3, "mithril": 900})
+        assert r.status_code == 422
+        r = await c.post("/war/temples", json={"day": "2026-12-01", "city_id": 1033, "camp": 9, "mithril": 900})
+        assert r.status_code == 422
+        assert [t["mithril"] for t in (await c.get("/war/temples")).json()] == [900]
+        assert (await c.delete(f"/war/temples/{tid}")).status_code == 204
+        assert (await c.get("/war/temples")).json() == []
+    async with client_factory(MEMBER) as c:
+        assert (await c.get("/war/temples")).status_code == 403
 
 
 @pytest.mark.asyncio

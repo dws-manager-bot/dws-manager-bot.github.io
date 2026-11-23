@@ -2,10 +2,12 @@
 
 Four things, from the longest-lived down:
 
-- **Alliances** on the season map, both camps, each in its own color.
+- **Alliances** on the season map, every camp, each in its own color.
 - **The board**: who holds each territory right now. There is one, shared, and
-  it is updated after each war. Rankings are read off it.
-- **War days**: usually a Saturday.
+  it is updated after each war. Rankings are read off it. In season 6 an enemy
+  Fortress taken is destroyed, which the board keeps as a flag on its row.
+- **War days**: every day in season 6 (12:00-13:00 ST).
+- **Temple results**: Mithril each camp won in a Temple Contest, entered by hand.
 - **Plans** for a day, shaped like the Pass War line-ups: one draft per admin,
   and one official plan that a draft is copied into when published.
 
@@ -42,7 +44,8 @@ from sqlalchemy import delete, func, select
 
 from ... import warpost
 from ...config import get_settings
-from ...models import AuditLog, WarAlliance, WarDay, WarHolding, WarPlan
+from ... import war_s6
+from ...models import AuditLog, WarAlliance, WarDay, WarHolding, WarPlan, WarTempleResult
 from ...schemas import (
     WarAllianceIn,
     WarAllianceOut,
@@ -56,6 +59,8 @@ from ...schemas import (
     WarPlanIn,
     WarPlanOut,
     WarPlanShareIn,
+    WarTempleResultIn,
+    WarTempleResultOut,
     WarPlanSummary,
     WarPostOut,
 )
@@ -69,13 +74,15 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/war", tags=["war planner"])
 
 # The season the map in the frontend is drawn from. A new season is a new map
-# and a new number here; nothing of the old one is deleted.
-SEASON = 5
+# and a new number here; nothing of the old one is deleted (season 5's rows
+# stay in every table, under season = 5).
+SEASON = 6
 
-# worldcity ids on the season 5 map: Pyramids and the Royal Court, passes,
-# Strongholds, Oases. The map itself is frontend data; this only stops a typo
-# writing a holding that can never be drawn.
-CITY_IDS = frozenset([*range(101, 174), *range(201, 225), *range(302, 528)])
+# What can be held on the season 6 map: Outposts (Camp Outposts among them),
+# Fortresses and Judgment Altars. Passes are gates and Temples are contests;
+# neither is ever held. The map itself is frontend data; this only stops a
+# typo writing a holding that can never be drawn.
+CITY_IDS = war_s6.KINDS["outpost"] | war_s6.KINDS["fortress"] | war_s6.KINDS["altar"]
 
 # A plan is a few hundred drawings at most. Past this something is wrong.
 MAX_DOC_BYTES = 1_000_000
@@ -182,6 +189,12 @@ async def change_board(payload: WarBoardIn, session: DbSession, user: AdminUser)
     if unknown:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             f"Not a territory on this map: {', '.join(map(str, unknown))}")
+    ruins = sorted({c.city_id for c in payload.changes
+                    if c.destroyed and (c.city_id not in war_s6.FORTRESSES or c.alliance_id is None)})
+    if ruins:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "Only a Fortress can be destroyed, and by an alliance: "
+                            f"{', '.join(map(str, ruins))}")
     wanted = {c.alliance_id for c in payload.changes if c.alliance_id is not None}
     if wanted:
         found = set(await session.scalars(
@@ -195,7 +208,8 @@ async def change_board(payload: WarBoardIn, session: DbSession, user: AdminUser)
     for change in payload.changes:
         row = await session.get(WarHolding, (SEASON, change.city_id))
         before = row.alliance_id if row else None
-        if before == change.alliance_id:
+        was_destroyed = bool(row and row.destroyed)
+        if before == change.alliance_id and was_destroyed == change.destroyed:
             continue
         if change.alliance_id is None:
             await session.delete(row)
@@ -204,9 +218,15 @@ async def change_board(payload: WarBoardIn, session: DbSession, user: AdminUser)
                 row = WarHolding(season=SEASON, city_id=change.city_id)
                 session.add(row)
             row.alliance_id = change.alliance_id
+            row.destroyed = change.destroyed
             row.updated_by_id = user.discord_id
             row.updated_by_name = user.username
-        log.append({"city": change.city_id, "from": before, "to": change.alliance_id})
+        entry = {"city": change.city_id, "from": before, "to": change.alliance_id}
+        if change.destroyed:
+            entry["destroyed"] = True
+        if was_destroyed:
+            entry["was_destroyed"] = True
+        log.append(entry)
 
     if log:
         # One row per edit, holding every territory it moved: this is also what a
@@ -232,6 +252,47 @@ async def board_history(session: DbSession, _: AdminUser):
     )
     return [WarBoardEventOut(at=r.at, by=r.actor_name, changes=(r.detail or {}).get("changes", []))
             for r in rows]
+
+
+# ------------------------------------------------------------------ temples
+
+@router.get("/temples", response_model=list[WarTempleResultOut],
+            summary="Temple Contest results this season, oldest first")
+async def list_temples(session: DbSession, _: AdminUser):
+    return list(await session.scalars(
+        select(WarTempleResult).where(WarTempleResult.season == SEASON)
+        .order_by(WarTempleResult.day, WarTempleResult.id)
+    ))
+
+
+@router.post("/temples", response_model=WarTempleResultOut, status_code=status.HTTP_201_CREATED,
+             summary="Record the Mithril one camp won in a Temple Contest")
+async def create_temple(payload: WarTempleResultIn, session: DbSession, user: AdminUser):
+    if payload.city_id not in war_s6.TEMPLES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            f"Not a Temple on this map: {payload.city_id}")
+    row = WarTempleResult(season=SEASON, **payload.model_dump(),
+                          created_by_id=user.discord_id, created_by_name=user.username)
+    session.add(row)
+    await session.flush()
+    await write_audit(session, user, "war.temple", "war_temple_result", row.id,
+                      payload.model_dump(mode="json"))
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+@router.delete("/temples/{result_id}", status_code=status.HTTP_204_NO_CONTENT,
+               summary="Remove a Temple result entered by mistake")
+async def delete_temple(result_id: int, session: DbSession, user: AdminUser) -> None:
+    row = await session.get(WarTempleResult, result_id)
+    if row is None or row.season != SEASON:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That Temple result is gone — reload the page")
+    await write_audit(session, user, "war.temple.delete", "war_temple_result", result_id,
+                      {"day": row.day.isoformat(), "city_id": row.city_id, "camp": row.camp,
+                       "mithril": row.mithril})
+    await session.delete(row)
+    await session.commit()
 
 
 # --------------------------------------------------------------------- days
