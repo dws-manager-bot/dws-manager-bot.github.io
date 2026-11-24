@@ -3,7 +3,10 @@ import roster from './fixtures/roster.csv?raw'
 // Made by pou-rocks.github.io's own engine (chunk 57, module 59506) from
 // roster.csv, so these tests hold the port to that site's results.
 import expected from './fixtures/expected-layouts.json'
-import { FRANKENSTEIN, SHELTER, VERSIONS, compareClaims, layoutHive } from './layout.js'
+import {
+  FRANKENSTEIN, ROTATIONS, SHELTER, VERSIONS, applySwaps, compareClaims, layoutHive, placementOf, restorePlacement,
+  rotateLayout, turn,
+} from './layout.js'
 import { readMembers } from './sheet.js'
 
 const members = readMembers(roster)
@@ -181,4 +184,89 @@ describe('members who asked for the outside', () => {
       }
     },
   )
+})
+
+describe('turning the formation', () => {
+  const dist = (c) => Math.hypot(c[0], c[1])
+  it.each(ROTATIONS)('keeps Frankenstein, every distance and every gap at %i°', (degrees) => {
+    for (const version of VERSIONS) {
+      const layout = layoutHive(members, { version, spreadTop: true, spreadIndustry: true })
+      const before = new Map(layout.memberCell)
+      rotateLayout(layout, degrees)
+      for (const m of members) {
+        expect(dist(layout.memberCell.get(m.id))).toBeCloseTo(dist(before.get(m.id)), 6)
+      }
+      const cells = [...layout.memberCell.values()]
+      for (let i = 0; i < cells.length; i += 1) {
+        expect(Math.max(Math.abs(cells[i][0]), Math.abs(cells[i][1]))).toBeGreaterThanOrEqual((FRANKENSTEIN + SHELTER) / 2)
+        for (let j = i + 1; j < cells.length; j += 1) {
+          expect(Math.max(Math.abs(cells[i][0] - cells[j][0]), Math.abs(cells[i][1] - cells[j][1]))).toBeGreaterThanOrEqual(SHELTER)
+        }
+      }
+      // Frankenstein is still inside the canvas, and so is every shelter.
+      const [fx, fy] = layout.toPx(0, 0)
+      expect(fx).toBeGreaterThan(0)
+      expect(fy).toBeGreaterThan(0)
+    }
+  })
+
+  it('turns clockwise as drawn: right goes to the bottom', () => {
+    expect(turn([10, 0], 90)).toEqual([-0, 10])
+    expect(turn([10, 0], 180)).toEqual([-10, -0])
+    expect(turn([10, 0], 270)).toEqual([0, -10])
+  })
+
+  it('puts the extra rows of the square on the side it is turned to', () => {
+    const big = singles(99)
+    const layout = layoutHive(big, { version: 1 })
+    const above = [...layout.memberCell.values()].filter((c) => c[1] < 0).length
+    rotateLayout(layout, 90)
+    const right = [...layout.memberCell.values()].filter((c) => c[0] > 0).length
+    expect(right).toBe(above)
+    expect(above).toBeGreaterThan(49)
+  })
+})
+
+describe('an applied map loaded back', () => {
+  const keyed = singles(30).map((m) => ({ ...m, key: `p${m.id}` }))
+  const saved = () => {
+    const layout = layoutHive(keyed, { version: 1 })
+    applySwaps(layout.memberCell, [[0, 29], [3, 17]])
+    return { layout, placement: placementOf(layout.memberCell, keyed) }
+  }
+
+  it('puts everyone back exactly where they were, whatever the table says now', () => {
+    const { layout, placement } = saved()
+    // Their numbers have changed since: a fresh layout would move them.
+    const now = keyed.map((m) => ({ ...m, cp: m.cp * (m.id % 3 === 0 ? 3 : 1) }))
+    const again = layoutHive(now, { version: 1 })
+    const r = restorePlacement(again, now, placement)
+    expect(r).toMatchObject({ kept: 30, added: [], empty: 0 })
+    for (const m of now) expect(again.memberCell.get(m.id)).toEqual(layout.memberCell.get(m.id))
+  })
+
+  it('finds members by player id, not by their place in the table', () => {
+    const { layout, placement } = saved()
+    const reordered = [...keyed].reverse().map((m, i) => ({ ...m, id: i, name: `${m.name}!` }))
+    const again = layoutHive(reordered, { version: 1 })
+    restorePlacement(again, reordered, placement)
+    for (const m of reordered) expect(again.memberCell.get(m.id)).toEqual(layout.memberCell.get(Number(m.key.slice(1))))
+  })
+
+  it('leaves a leaver’s shelter empty, and gives a newcomer a free one', () => {
+    const { placement } = saved()
+    const now = keyed.filter((m) => m.key !== 'p5' && m.key !== 'p6')
+      .concat([{ ...singles(1)[0], id: 100, key: 'new', name: 'New' }])
+    const again = layoutHive(now, { version: 1 })
+    const r = restorePlacement(again, now, placement)
+    expect(r.kept).toBe(28)
+    expect(r.added.map((m) => m.name)).toEqual(['New'])
+    expect(r.empty).toBe(1)
+    const cells = now.map((m) => again.memberCell.get(m.id))
+    for (let i = 0; i < cells.length; i += 1) {
+      for (let j = i + 1; j < cells.length; j += 1) {
+        expect(Math.max(Math.abs(cells[i][0] - cells[j][0]), Math.abs(cells[i][1] - cells[j][1]))).toBeGreaterThanOrEqual(SHELTER)
+      }
+    }
+  })
 })

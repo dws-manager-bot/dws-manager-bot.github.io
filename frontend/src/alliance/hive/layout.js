@@ -466,17 +466,30 @@ export function layoutHive(members, options) {
   const freeInnermostFirst = free.slice().sort(byExposure)
   remaining.forEach((m, i) => memberCell.set(m.id, freeInnermostFirst[i]))
 
-  const placed = members.map((m) => memberCell.get(m.id))
-  const xs = placed.map((c) => c[0])
-  const ys = placed.map((c) => c[1])
+  return {
+    memberCell,
+    groups,
+    ...frame(members.map((m) => memberCell.get(m.id))),
+    farthest: Math.max(...cells.map((c) => Math.hypot(c[0], c[1]))) / TILE + 1.5,
+    version,
+    N: count,
+    total: members.reduce((sum, m) => sum + m.cp, 0),
+  }
+}
+
+/**
+ * The canvas a set of placed cells needs: the formation's bounds (Frankenstein
+ * always inside them), the size in CSS pixels, `toPx` from formation to canvas,
+ * and the farthest shelter in tiles.
+ */
+export function frame(cells) {
+  const xs = cells.map((c) => c[0])
+  const ys = cells.map((c) => c[1])
   const minx = Math.min(Math.min(...xs) - SHELTER / 2, -FRANKENSTEIN / 2)
   const maxx = Math.max(Math.max(...xs) + SHELTER / 2, FRANKENSTEIN / 2)
   const miny = Math.min(Math.min(...ys) - SHELTER / 2, -FRANKENSTEIN / 2)
   const maxy = Math.max(Math.max(...ys) + SHELTER / 2, FRANKENSTEIN / 2)
-
   return {
-    memberCell,
-    groups,
     W: Math.round(maxx - minx) + 2 * MARGIN,
     H: Math.round(maxy - miny) + 2 * MARGIN + TITLE_HEIGHT + LEGEND_HEIGHT,
     minx,
@@ -484,10 +497,7 @@ export function layoutHive(members, options) {
     miny,
     maxy,
     toPx: (x, y) => [x - minx + MARGIN, y - miny + MARGIN + TITLE_HEIGHT],
-    farthest: Math.max(...cells.map((c) => Math.hypot(c[0], c[1]))) / TILE + 1.5,
-    version,
-    N: count,
-    total: members.reduce((sum, m) => sum + m.cp, 0),
+    farthest: cells.length ? Math.max(...cells.map((c) => Math.hypot(c[0], c[1]))) / TILE + 1.5 : 0,
   }
 }
 
@@ -518,6 +528,85 @@ export function memberAt(layout, x, y) {
     if (Math.abs(x - px) <= half && Math.abs(y - py) <= half) return id
   }
   return null
+}
+
+/* ---------- turning the formation ----------
+   The whole formation turns about Frankenstein's center, which stays put. The
+   lattice is the same on all four sides of it, so a quarter turn lands every
+   shelter on a cell of the same spacing, and no shelter's distance to
+   Frankenstein changes: only the side the formation's extra rows face does. */
+
+/** Clockwise, as the map is drawn (y grows downward). */
+export const ROTATIONS = [0, 90, 180, 270]
+
+export function turn([x, y], degrees) {
+  if (degrees === 90) return [-y, x]
+  if (degrees === 180) return [-x, -y]
+  if (degrees === 270) return [y, -x]
+  return [x, y]
+}
+
+/** Turns every shelter of `layout` by `degrees` clockwise, in place, and refits the canvas. */
+export function rotateLayout(layout, degrees) {
+  if (!degrees) return layout
+  for (const [id, cell] of layout.memberCell) layout.memberCell.set(id, turn(cell, degrees))
+  return Object.assign(layout, frame([...layout.memberCell.values()]))
+}
+
+/* ---------- a saved map ----------
+   Apply saves where each member ended up, by player id, so the generator can
+   pick an applied map up again exactly as it was, whatever the member table
+   has done since. A member who has left leaves their cell empty; one who has
+   joined since takes a free cell, the weakest claim the innermost, the way
+   layoutHive places the members it has left over. */
+
+/**
+ * Moves every member with a `key` in `placement` ([[key, x, y], …], unturned)
+ * back to that cell of `layout`, in place, and refits the canvas. Returns who
+ * was put back, who is new, and how many saved shelters nobody now fills.
+ */
+export function restorePlacement(layout, members, placement) {
+  const saved = new Map(placement.map(([key, x, y]) => [key, [x, y]]))
+  const memberCell = new Map()
+  const added = []
+  for (const m of members) {
+    const cell = m.key != null ? saved.get(m.key) : null
+    if (cell) memberCell.set(m.id, cell)
+    else added.push(m)
+  }
+  const keys = new Set(members.map((m) => m.key))
+  const empty = placement.filter(([key]) => !keys.has(key)).map(([, x, y]) => [x, y])
+
+  if (added.length) {
+    const taken = [...memberCell.values()]
+    const clearOf = (c) => Math.max(Math.abs(c[0]), Math.abs(c[1])) >= FRANKENSTEIN / 2 + SHELTER / 2
+      && taken.every((t) => Math.max(Math.abs(t[0] - c[0]), Math.abs(t[1] - c[1])) >= SHELTER - 0.01)
+    // The empty saved cells first, then the rest of the layout's lattice.
+    const byRadius = (a, b) => radius2(a) - radius2(b) || a[1] - b[1] || a[0] - b[0]
+    const lattice = chooseCells(layout.version, members.length + placement.length).chosen
+    const candidates = [...empty.sort(byRadius), ...lattice.sort(byRadius)]
+    for (const m of [...added].sort(byOuterClaim)) {
+      const cell = candidates.find(clearOf)
+      if (!cell) throw new Error(`No free shelter left for ${m.name}; redraw the layout instead.`)
+      memberCell.set(m.id, cell)
+      taken.push(cell)
+    }
+  }
+
+  layout.memberCell = memberCell
+  Object.assign(layout, frame(members.map((m) => memberCell.get(m.id))))
+  const filled = new Set([...memberCell.values()].map(keyOf))
+  return { kept: members.length - added.length, added, empty: empty.filter((c) => !filled.has(keyOf(c))).length }
+}
+
+/** What Apply saves: each member's cell, unturned, by player id. */
+export function placementOf(memberCell, members) {
+  return members
+    .filter((m) => m.key != null && memberCell.has(m.id))
+    .map((m) => {
+      const [x, y] = memberCell.get(m.id)
+      return [m.key, round1(x), round1(y)]
+    })
 }
 
 export { keyOf, round1 }

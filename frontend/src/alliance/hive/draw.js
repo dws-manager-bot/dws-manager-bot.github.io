@@ -7,7 +7,9 @@
  * the one the alliance has been sharing. The canvas is drawn at twice its CSS
  * size so it stays sharp on a phone and in the download.
  */
-import { FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, SHELTER, TILE, applySwaps, keyOf, layoutHive, round1 } from './layout.js'
+import {
+  FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, SHELTER, TILE, applySwaps, keyOf, layoutHive, restorePlacement, rotateLayout, round1,
+} from './layout.js'
 
 export const SCALE = 2
 const BACKGROUND = '#f5f3ee'
@@ -85,13 +87,19 @@ function fitName(ctx, name, width) {
  * Lays out `members` and draws them on `canvas`, sized to fit. Options:
  * version (1–9), showGroups, spreadTop, spreadIndustry, ts (the stamp under
  * the title), labels (see ENGLISH_LABELS), direction, the labels' ('rtl'
- * for Arabic), and swaps, pairs of member ids an admin traded by hand.
- * `picture` is Frankenstein's, drawn once it has loaded. Returns the layout,
- * swaps applied.
+ * for Arabic), placement (a saved map's cells by player id, which replace
+ * the layout's own: see restorePlacement), swaps, pairs of member ids an
+ * admin traded by hand, and rotation (0, 90, 180 or 270, clockwise about
+ * Frankenstein). `picture` is Frankenstein's, drawn once it has loaded.
+ * Returns the layout, all of that applied, with `base`, the cells before the
+ * turn (what Apply saves), and `restored` when a placement was given.
  */
 export function drawHive(canvas, members, options, picture) {
   const layout = layoutHive(members, options)
+  if (options.placement) layout.restored = restorePlacement(layout, members, options.placement)
   applySwaps(layout.memberCell, options.swaps)
+  layout.base = new Map(layout.memberCell)
+  rotateLayout(layout, options.rotation)
   canvas.width = SCALE * layout.W
   canvas.height = SCALE * layout.H
   const ctx = canvas.getContext('2d')

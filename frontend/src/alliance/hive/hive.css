@@ -26,6 +26,8 @@
 .hive-controls { display: grid; gap: 10px; }
 .hive-layout { max-width: 360px; }
 .hive-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.hive-turn { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hive-turn-label { font-size: 13px; color: var(--muted, #a1a1aa); margin-right: 2px; }
 
 .hive-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .hive-actions .btn { flex: 1 1 auto; }
@@ -66,5 +68,6 @@
 @media (min-width: 640px) {
   .hive-head h2 { font-size: 24px; }
   .hive-controls { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); align-items: end; }
+  .hive-turn { grid-column: 2; }
   .hive-actions .btn { flex: none; }
 }

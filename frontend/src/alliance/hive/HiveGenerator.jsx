@@ -10,6 +10,12 @@
  * until applied, and changing what the layout is drawn from discards them,
  * after asking: a swap trades two particular cells, and a new layout moves them.
  *
+ * The formation can be turned a quarter at a time about Frankenstein, which
+ * stays where it is; nobody's distance to it changes. Apply saves where every
+ * member ended up, by player id, and "Load applied map" picks that map up again
+ * exactly, to swap from or turn. A map applied before that was saved is
+ * redrawn from its settings and swaps instead, and checked against its picture.
+ *
  * Admin pages are in English, and so is what is drawn: the picture is shared.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -21,7 +27,7 @@ import { utcToZoned } from '../../lib/tz.js'
 import { useI18n } from '../../i18n/I18n.jsx'
 import { ENGLISH_LABELS, SCALE, drawHive } from './draw.js'
 import frankensteinUrl from './frankenstein.jpg'
-import { SHAPE_KEYS, SHELTER, VERSIONS, memberAt } from './layout.js'
+import { ROTATIONS, SHAPE_KEYS, SHELTER, VERSIONS, memberAt, placementOf } from './layout.js'
 import './hive.css'
 
 const SHAPE_EMOJI = { 5: '❤️', 6: '🐱', 7: '🖕', 8: '💀', 9: '❄️' }
@@ -36,6 +42,8 @@ export function toHiveMembers(players) {
     .filter((p) => p.active && p.total_cp > 0)
     .map((p, id) => ({
       id,
+      // The player's own id: what a saved map's placement is keyed by.
+      key: p.id,
       name: p.name,
       level: p.industry_level ?? null,
       bgbCp: p.bgb_cp ?? 0,
@@ -57,6 +65,56 @@ function usePicture(src) {
   return picture
 }
 
+/**
+ * Which shelters of the map just drawn have another color in `blob`, the
+ * picture that was applied. Only the color is compared, from a patch in each
+ * shelter's top-left corner that no text reaches: the picture was drawn on
+ * someone else's computer, with other fonts (a Korean Windows font draws "\"
+ * as "₩"), so its text never matches pixel for pixel. Null when the two pictures
+ * are not the same size, which means the formation is not the same.
+ */
+async function shelterDifferences(canvas, layout, members, blob) {
+  const bitmap = await createImageBitmap(blob)
+  const { width, height } = canvas
+  if (bitmap.width !== width || bitmap.height !== height) return null
+  const scratch = document.createElement('canvas')
+  scratch.width = width
+  scratch.height = height
+  const sctx = scratch.getContext('2d')
+  sctx.drawImage(bitmap, 0, 0)
+  const applied = sctx.getImageData(0, 0, width, height).data
+  const drawn = canvas.getContext('2d').getImageData(0, 0, width, height).data
+  const mean = (data, x0, y0, side) => {
+    const sum = [0, 0, 0]
+    for (let j = y0; j < y0 + side; j += 1) {
+      for (let i = x0; i < x0 + side; i += 1) {
+        const k = 4 * (j * width + i)
+        for (let c = 0; c < 3; c += 1) sum[c] += data[k + c]
+      }
+    }
+    return sum.map((v) => v / (side * side))
+  }
+  const out = []
+  for (const m of members) {
+    const [x, y] = layout.toPx(...layout.memberCell.get(m.id))
+    const x0 = Math.round((x - SHELTER / 2 + PATCH_INSET) * SCALE)
+    const y0 = Math.round((y - SHELTER / 2 + PATCH_INSET) * SCALE)
+    const side = PATCH * SCALE
+    const a = mean(applied, x0, y0, side)
+    const b = mean(drawn, x0, y0, side)
+    if (Math.max(...a.map((v, c) => Math.abs(v - b[c]))) > 24) out.push(m.name)
+  }
+  return out
+}
+// The color patch: clear of the border, any stick-group outline and the name.
+const PATCH_INSET = 7
+const PATCH = 6
+
+const shortDate = (iso) => new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(new Date(iso))
+const listOf = (names, most = 6) => (names.length > most
+  ? `${names.slice(0, most).join(', ')} and ${names.length - most} more`
+  : names.join(', '))
+
 const stamp = (zone) => utcToZoned(new Date().toISOString(), zone).replace(/-|:/g, '').replace('T', '_')
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
@@ -75,6 +133,12 @@ export default function HiveGenerator() {
   const [showGroups, setShowGroups] = useState(true)
   const [spreadTop, setSpreadTop] = useState(true)
   const [spreadIndustry, setSpreadIndustry] = useState(true)
+  // Degrees clockwise about Frankenstein.
+  const [rotation, setRotation] = useState(0)
+  // An applied map loaded back: its saved cells, by player id, and its caption.
+  const [pinned, setPinned] = useState(null)
+  // A map loaded back from its settings, waiting to be checked against its picture.
+  const [check, setCheck] = useState(null)
   // Pairs of member ids, in the order they were traded.
   const [swaps, setSwaps] = useState([])
   const [selected, setSelected] = useState(null)
@@ -85,6 +149,8 @@ export default function HiveGenerator() {
   const membersRef = useRef(null)
   const selectedRef = useRef(null)
   const gesture = useRef(null)
+  // What to say once a loaded map has been drawn.
+  const announce = useRef(null)
 
   const load = useCallback(() => {
     setPlayers(null)
@@ -164,7 +230,8 @@ export default function HiveGenerator() {
         canvas.current,
         members,
         {
-          version, showGroups, spreadTop, spreadIndustry, swaps, ts: stamp(zone), direction: 'ltr',
+          version, showGroups, spreadTop, spreadIndustry, swaps, rotation, placement: pinned?.placement,
+          ts: stamp(zone), direction: 'ltr',
           labels: { ...ENGLISH_LABELS, shapeName: english.shape[SHAPE_KEYS[version]] },
         },
         picture,
@@ -175,14 +242,44 @@ export default function HiveGenerator() {
         overlay.current.height = canvas.current.height
       }
       paintOverlay()
-      setDrawn({ width: layout.W, count: layout.N, farthest: layout.farthest })
+      setDrawn({ width: layout.W, count: layout.N, farthest: layout.farthest, restored: layout.restored })
     } catch (e) {
       layoutRef.current = null
       setDrawn({ error: e.message })
     }
     // `members` is rebuilt from `players` on every render; the table itself is the dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, version, showGroups, spreadTop, spreadIndustry, swaps, picture, zone, paintOverlay])
+  }, [players, version, showGroups, spreadTop, spreadIndustry, swaps, rotation, pinned, picture, zone, paintOverlay])
+
+  /* A map loaded back from its settings is only as faithful as the member
+     table it was redrawn from, so say how close it came to the picture. */
+  useEffect(() => {
+    if (!check || !drawn?.width || !layoutRef.current || !membersRef.current) return
+    const { blob, intro, lost } = check
+    setCheck(null)
+    const lostText = lost ? ` ${plural(lost, 'swap')} named someone no longer on the member table and ${lost === 1 ? 'was' : 'were'} skipped.` : ''
+    shelterDifferences(canvas.current, layoutRef.current, membersRef.current, blob)
+      .then((diff) => {
+        let verdict
+        if (diff === null) verdict = 'The formation is not the same size as the applied picture: the member table has changed since, so this is not the same map.'
+        else if (!diff.length) verdict = 'The formation and the color of every shelter match the applied picture. Two members of the same industry level look alike in a picture, so glance over the names.'
+        else verdict = `${plural(diff.length, 'shelter')} of ${membersRef.current.length} ${diff.length === 1 ? 'has' : 'have'} another color than in the applied picture, so someone there moved or changed industry level: ${listOf(diff)}.`
+        setNote(`${intro} It was applied before maps kept their shelters, so it was redrawn from its settings and swaps.${lostText} ${verdict}`)
+      })
+      .catch(() => setNote(`${intro} It was redrawn from its settings and swaps.${lostText} Could not compare it with the applied picture.`))
+  }, [check, drawn])
+
+  useEffect(() => {
+    const r = drawn?.restored
+    const intro = announce.current
+    if (!r || !intro) return
+    announce.current = null
+    const parts = [intro]
+    if (r.added.length) parts.push(`${plural(r.added.length, 'member')} joined since and took ${r.added.length === 1 ? 'a free shelter' : 'free shelters'}: ${listOf(r.added.map((m) => m.name))}.`)
+    if (r.empty) parts.push(`${plural(r.empty, 'shelter')} of members who left ${r.empty === 1 ? 'is' : 'are'} empty.`)
+    if (!r.added.length && !r.empty) parts.push('Everyone is where they were.')
+    setNote(parts.join(' '))
+  }, [drawn])
 
   useEffect(paintOverlay, [selected, paintOverlay])
 
@@ -197,13 +294,60 @@ export default function HiveGenerator() {
 
   const swap = (a, b) => setSwaps((list) => [...list, [a, b]])
 
-  /** True when there are no swaps to lose, or the admin agreed to lose them. */
-  function discardSwaps() {
-    if (!swaps.length) return true
-    if (!window.confirm(`Discard your ${plural(swaps.length, 'manual swap')}?`)) return false
+  /**
+   * True when there is nothing to lose, or the admin agreed to lose it: the
+   * swaps, and, unless `keepLoaded`, the applied map loaded back.
+   */
+  function discardSwaps({ keepLoaded = false } = {}) {
+    const loaded = Boolean(pinned) && !keepLoaded
+    if (!swaps.length && !loaded) return true
+    const lose = [loaded && 'the loaded map', swaps.length && `your ${plural(swaps.length, 'manual swap')}`].filter(Boolean)
+    const ask = loaded && !swaps.length
+      ? 'Leave the loaded map? The layout will be drawn afresh from the member table.'
+      : `Discard ${lose.join(' and ')}?`
+    if (!window.confirm(ask)) return false
     setSwaps([])
+    if (loaded) setPinned(null)
     select(null)
     return true
+  }
+
+  async function loadApplied() {
+    if (!discardSwaps()) return
+    setBusy(true)
+    setError(null)
+    setNote(null)
+    try {
+      const info = await api.hiveApplied()
+      const o = info.options || {}
+      if (!VERSIONS.includes(o.version)) throw new Error('The applied map does not say which layout it was drawn with.')
+      const intro = `Loaded the map ${info.applied_by_name || 'an admin'} applied on ${shortDate(info.applied_at)} (layout v${o.version}).`
+      setVersion(o.version)
+      setShowGroups(o.showGroups !== false)
+      setSpreadTop(Boolean(o.spreadTop))
+      setSpreadIndustry(Boolean(o.spreadIndustry))
+      setRotation(ROTATIONS.includes(o.rotation) ? o.rotation : 0)
+      select(null)
+      if (Array.isArray(o.placement) && o.placement.length) {
+        setSwaps([])
+        announce.current = intro
+        setPinned({ placement: o.placement })
+      } else {
+        // Saved before placements were: replay its swaps, by name, on today's table.
+        const idOf = new Map()
+        for (const m of members) if (!idOf.has(m.name)) idOf.set(m.name, m.id)
+        const pairs = (o.swaps || []).map(([a, b]) => [idOf.get(a), idOf.get(b)])
+        const kept = pairs.filter(([a, b]) => a != null && b != null)
+        const { blob } = await api.hiveAppliedImage()
+        setPinned(null)
+        setSwaps(kept)
+        setCheck({ blob, intro, lost: pairs.length - kept.length })
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   function undo() {
@@ -282,8 +426,9 @@ export default function HiveGenerator() {
 
   async function apply() {
     const traded = swaps.length ? `, ${plural(swaps.length, 'manual swap')}` : ''
+    const turned = rotation ? `, turned ${rotation}°` : ''
     if (!window.confirm(
-      `Make this the hive map every member sees?\n\n${drawn.count} shelters, layout v${version}${traded}.`,
+      `Make this the hive map every member sees?\n\n${drawn.count} shelters, layout v${version}${turned}${traded}.`,
     )) return
     setBusy(true)
     setError(null)
@@ -292,9 +437,11 @@ export default function HiveGenerator() {
       await api.applyHive(blob, drawn.count, {
         version, showGroups, spreadTop, spreadIndustry,
         farthest: Math.round(drawn.farthest * 10) / 10, width: drawn.width,
+        rotation,
         swaps: swaps.map(([a, b]) => [nameOf(a), nameOf(b)]),
+        placement: placementOf(layoutRef.current.base, members),
       })
-      setNote(`Applied: ${drawn.count} shelters, layout v${version}${traded}. Members see it now.`)
+      setNote(`Applied: ${drawn.count} shelters, layout v${version}${turned}${traded}. Members see it now.`)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -303,7 +450,7 @@ export default function HiveGenerator() {
   }
 
   async function download() {
-    save(await png(), `hive_map_v${version}_${stamp(zone)}.png`)
+    save(await png(), `hive_map_v${version}${rotation ? `_r${rotation}` : ''}_${stamp(zone)}.png`)
   }
 
   const toggle = (on, set, label) => (
@@ -346,9 +493,27 @@ export default function HiveGenerator() {
           {toggle(spreadTop, setSpreadTop, 'Spread Top 10')}
           {toggle(spreadIndustry, setSpreadIndustry, 'Spread Lv8')}
         </div>
+        {/* Turning keeps everyone in their shelter, so it never discards anything. */}
+        <div className="hive-turn" role="group" aria-label="Turn the formation clockwise about Frankenstein">
+          <span className="hive-turn-label">Turn</span>
+          {ROTATIONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              className={rotation === r ? 'chip on' : 'chip'}
+              aria-pressed={rotation === r}
+              onClick={() => setRotation(r)}
+            >
+              {r}°
+            </button>
+          ))}
+        </div>
       </div>
       <div className="hive-actions">
-        <button type="button" className="btn" onClick={() => discardSwaps() && load()} disabled={!players}>
+        <button type="button" className="btn" onClick={loadApplied} disabled={!members?.length || busy}>
+          <span aria-hidden="true">⤓</span> Load applied map
+        </button>
+        <button type="button" className="btn" onClick={() => discardSwaps({ keepLoaded: true }) && load()} disabled={!players}>
           <span aria-hidden="true">↻</span> Reload members
         </button>
         <button type="button" className="btn" onClick={() => setActual((a) => !a)} disabled={!ready}>
@@ -402,6 +567,8 @@ export default function HiveGenerator() {
       {ready && (
         <p className="hive-status muted small">
           {drawn.count} members · farthest ≈ {drawn.farthest.toFixed(1)} tiles
+          {rotation ? ` · turned ${rotation}° clockwise` : ''}
+          {pinned ? ' · loaded from the applied map' : ''}
           {unscanned > 0 && ` · ${unscanned} without a troop CP read count as no growth`}
         </p>
       )}
