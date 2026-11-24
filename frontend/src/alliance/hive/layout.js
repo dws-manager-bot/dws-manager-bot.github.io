@@ -609,4 +609,43 @@ export function placementOf(memberCell, members) {
     })
 }
 
+/* ---------- Frankenstein's rally range ----------
+   From the game's own data (build 1.250.672): a rally its leader launches from
+   a shelter within 25 tiles of Frankenstein marches in a fixed 3 seconds. The
+   client measures a straight line between two tiles' centers, 25 included.
+   The shelter's tile is its middle one; which of Frankenstein's tiles is used
+   is not certain. The game's code points at a corner tile of the 4×4, about
+   2.1 tiles off its middle, but not which corner. So a shelter is "sure" when
+   it is in range whichever corner that is, and "likely" when it is in range
+   only counted from the middle. Only the rally leader's shelter matters:
+   members joining a rally march to the leader, not to Frankenstein. */
+
+export const RALLY_TILES = 25
+export const RALLY_SURE = RALLY_TILES - Math.hypot(1.5, 1.5)
+
+/** Tiles from a cell's middle to Frankenstein's. */
+export const tilesFromFrankenstein = (c) => Math.hypot(c[0], c[1]) / TILE
+
+/** 'sure', 'likely' or 'out', for a shelter at `c`. */
+export function rallyReach(c) {
+  const t = tilesFromFrankenstein(c)
+  return t <= RALLY_SURE + 1e-9 ? 'sure' : t <= RALLY_TILES + 1e-9 ? 'likely' : 'out'
+}
+
+/**
+ * The empty places on the layout's own lattice where one more shelter would
+ * still be in rally range: clear of every shelter and of Frankenstein,
+ * nearest first. Turned like the formation, which leaves the lattice as it was.
+ */
+export function spareInRange(layout) {
+  const taken = [...layout.memberCell.values()]
+  const clear = FRANKENSTEIN / 2 + SHELTER / 2
+  return candidateCells(layout.version)
+    .filter((c) => tilesFromFrankenstein(c) <= RALLY_TILES + 1e-9)
+    .filter((c) => Math.max(Math.abs(c[0]), Math.abs(c[1])) >= clear)
+    .filter((c) => taken.every((t) => Math.max(Math.abs(t[0] - c[0]), Math.abs(t[1] - c[1])) >= SHELTER - 0.01))
+    .map((c) => ({ cell: c, tiles: tilesFromFrankenstein(c), reach: rallyReach(c) }))
+    .sort((a, b) => a.tiles - b.tiles)
+}
+
 export { keyOf, round1 }

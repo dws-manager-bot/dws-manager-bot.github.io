@@ -4,8 +4,8 @@ import roster from './fixtures/roster.csv?raw'
 // roster.csv, so these tests hold the port to that site's results.
 import expected from './fixtures/expected-layouts.json'
 import {
-  FRANKENSTEIN, ROTATIONS, SHELTER, VERSIONS, applySwaps, compareClaims, layoutHive, placementOf, restorePlacement,
-  rotateLayout, turn,
+  FRANKENSTEIN, RALLY_SURE, RALLY_TILES, ROTATIONS, SHELTER, TILE, VERSIONS, applySwaps, compareClaims, layoutHive,
+  placementOf, rallyReach, restorePlacement, rotateLayout, spareInRange, turn,
 } from './layout.js'
 import { readMembers } from './sheet.js'
 
@@ -268,5 +268,45 @@ describe('an applied map loaded back', () => {
         expect(Math.max(Math.abs(cells[i][0] - cells[j][0]), Math.abs(cells[i][1] - cells[j][1]))).toBeGreaterThanOrEqual(SHELTER)
       }
     }
+  })
+})
+
+describe('Frankenstein’s rally range', () => {
+  it('is 25 tiles, sure inside 25 less the corner tile’s offset', () => {
+    expect(RALLY_TILES).toBe(25)
+    expect(RALLY_SURE).toBeCloseTo(22.879, 3)
+    expect(rallyReach([22.8 * TILE, 0])).toBe('sure')
+    expect(rallyReach([24 * TILE, 0])).toBe('likely')
+    expect(rallyReach([25 * TILE, 0])).toBe('likely')
+    expect(rallyReach([25.1 * TILE, 0])).toBe('out')
+  })
+
+  it('finds the square in range at 99, and the shapes that reach past it', () => {
+    const reach = (version) => {
+      const counts = { sure: 0, likely: 0, out: 0 }
+      for (const c of layoutHive(singles(99), { version }).memberCell.values()) counts[rallyReach(c)] += 1
+      return counts
+    }
+    expect(reach(1)).toEqual({ sure: 99, likely: 0, out: 0 })
+    // A drawn shape keeps its outline, and the gap square its gaps: no pulling in.
+    expect(reach(2).out).toBeGreaterThan(0)
+    expect(reach(6).out).toBeGreaterThan(0)
+  })
+
+  it.each(ROTATIONS)('offers only empty lattice places in range, at %i°', (degrees) => {
+    const layout = layoutHive(singles(99), { version: 1 })
+    rotateLayout(layout, degrees)
+    const spots = spareInRange(layout)
+    expect(spots.length).toBeGreaterThan(0)
+    const taken = [...layout.memberCell.values()]
+    for (const { cell, tiles, reach } of spots) {
+      expect(tiles).toBeLessThanOrEqual(RALLY_TILES)
+      expect(reach).not.toBe('out')
+      expect(Math.max(Math.abs(cell[0]), Math.abs(cell[1]))).toBeGreaterThanOrEqual((FRANKENSTEIN + SHELTER) / 2)
+      for (const t of taken) expect(Math.max(Math.abs(t[0] - cell[0]), Math.abs(t[1] - cell[1]))).toBeGreaterThanOrEqual(SHELTER)
+    }
+    // The same number of places whichever way the formation faces.
+    const plain = spareInRange(layoutHive(singles(99), { version: 1 }))
+    expect(spots.length).toBe(plain.length)
   })
 })

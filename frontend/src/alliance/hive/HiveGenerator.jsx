@@ -16,6 +16,10 @@
  * exactly, to swap from or turn. A map applied before that was saved is
  * redrawn from its settings and swaps instead, and checked against its picture.
  *
+ * "Rally range" draws, for the admin only, how far each shelter is from
+ * Frankenstein against its 25-tile rally range, and the spare places still in
+ * it. Apply always sends the map without it; Download saves what is shown.
+ *
  * Admin pages are in English, and so is what is drawn: the picture is shared.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -135,6 +139,8 @@ export default function HiveGenerator() {
   const [spreadIndustry, setSpreadIndustry] = useState(true)
   // Degrees clockwise about Frankenstein.
   const [rotation, setRotation] = useState(0)
+  // Draw Frankenstein's rally range over the map (never applied).
+  const [range, setRange] = useState(false)
   // An applied map loaded back: its saved cells, by player id, and its caption.
   const [pinned, setPinned] = useState(null)
   // A map loaded back from its settings, waiting to be checked against its picture.
@@ -223,33 +229,39 @@ export default function HiveGenerator() {
     }
   }, [])
 
+  const drawOptions = (withRange) => ({
+    version, showGroups, spreadTop, spreadIndustry, swaps, rotation, placement: pinned?.placement, range: withRange,
+    ts: stamp(zone), direction: 'ltr',
+    labels: { ...ENGLISH_LABELS, shapeName: english.shape[SHAPE_KEYS[version]] },
+  })
+
+  /** The map as members get it: drawn again, off screen, without the rally range. */
+  const cleanDraw = () => {
+    if (!range) return { el: canvas.current, layout: layoutRef.current }
+    const el = document.createElement('canvas')
+    return { el, layout: drawHive(el, members, drawOptions(false), picture) }
+  }
+
   useEffect(() => {
     if (!members?.length || !canvas.current) return
     try {
-      const layout = drawHive(
-        canvas.current,
-        members,
-        {
-          version, showGroups, spreadTop, spreadIndustry, swaps, rotation, placement: pinned?.placement,
-          ts: stamp(zone), direction: 'ltr',
-          labels: { ...ENGLISH_LABELS, shapeName: english.shape[SHAPE_KEYS[version]] },
-        },
-        picture,
-      )
+      const layout = drawHive(canvas.current, members, drawOptions(range), picture)
       layoutRef.current = layout
       if (overlay.current) {
         overlay.current.width = canvas.current.width
         overlay.current.height = canvas.current.height
       }
       paintOverlay()
-      setDrawn({ width: layout.W, count: layout.N, farthest: layout.farthest, restored: layout.restored })
+      setDrawn({
+        width: layout.W, count: layout.N, farthest: layout.farthest, restored: layout.restored, range: layout.range,
+      })
     } catch (e) {
       layoutRef.current = null
       setDrawn({ error: e.message })
     }
     // `members` is rebuilt from `players` on every render; the table itself is the dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, version, showGroups, spreadTop, spreadIndustry, swaps, rotation, pinned, picture, zone, paintOverlay])
+  }, [players, version, showGroups, spreadTop, spreadIndustry, swaps, rotation, pinned, range, picture, zone, paintOverlay])
 
   /* A map loaded back from its settings is only as faithful as the member
      table it was redrawn from, so say how close it came to the picture. */
@@ -258,7 +270,8 @@ export default function HiveGenerator() {
     const { blob, intro, lost } = check
     setCheck(null)
     const lostText = lost ? ` ${plural(lost, 'swap')} named someone no longer on the member table and ${lost === 1 ? 'was' : 'were'} skipped.` : ''
-    shelterDifferences(canvas.current, layoutRef.current, membersRef.current, blob)
+    const clean = cleanDraw()
+    shelterDifferences(clean.el, clean.layout, membersRef.current, blob)
       .then((diff) => {
         let verdict
         if (diff === null) verdict = 'The formation is not the same size as the applied picture: the member table has changed since, so this is not the same map.'
@@ -422,7 +435,7 @@ export default function HiveGenerator() {
     paintOverlay()
   }
 
-  const png = () => new Promise((resolve) => canvas.current.toBlob(resolve, 'image/png'))
+  const png = (el = canvas.current) => new Promise((resolve) => el.toBlob(resolve, 'image/png'))
 
   async function apply() {
     const traded = swaps.length ? `, ${plural(swaps.length, 'manual swap')}` : ''
@@ -433,10 +446,11 @@ export default function HiveGenerator() {
     setBusy(true)
     setError(null)
     try {
-      const blob = await png()
+      const clean = cleanDraw()
+      const blob = await png(clean.el)
       await api.applyHive(blob, drawn.count, {
         version, showGroups, spreadTop, spreadIndustry,
-        farthest: Math.round(drawn.farthest * 10) / 10, width: drawn.width,
+        farthest: Math.round(clean.layout.farthest * 10) / 10, width: clean.layout.W,
         rotation,
         swaps: swaps.map(([a, b]) => [nameOf(a), nameOf(b)]),
         placement: placementOf(layoutRef.current.base, members),
@@ -450,7 +464,7 @@ export default function HiveGenerator() {
   }
 
   async function download() {
-    save(await png(), `hive_map_v${version}${rotation ? `_r${rotation}` : ''}_${stamp(zone)}.png`)
+    save(await png(), `hive_map_v${version}${rotation ? `_r${rotation}` : ''}${range ? '_range' : ''}_${stamp(zone)}.png`)
   }
 
   const toggle = (on, set, label) => (
@@ -492,6 +506,16 @@ export default function HiveGenerator() {
           {toggle(showGroups, setShowGroups, 'Stick groups')}
           {toggle(spreadTop, setSpreadTop, 'Spread Top 10')}
           {toggle(spreadIndustry, setSpreadIndustry, 'Spread Lv8')}
+          {/* A view, not a setting of the layout: it keeps the swaps. */}
+          <button
+            type="button"
+            className={range ? 'chip on' : 'chip'}
+            aria-pressed={range}
+            title="Show each shelter's distance to Frankenstein, and the spare places still in its 25-tile rally range. Not applied."
+            onClick={() => setRange(!range)}
+          >
+            Rally range
+          </button>
         </div>
         {/* Turning keeps everyone in their shelter, so it never discards anything. */}
         <div className="hive-turn" role="group" aria-label="Turn the formation clockwise about Frankenstein">
@@ -569,6 +593,8 @@ export default function HiveGenerator() {
           {drawn.count} members · farthest ≈ {drawn.farthest.toFixed(1)} tiles
           {rotation ? ` · turned ${rotation}° clockwise` : ''}
           {pinned ? ' · loaded from the applied map' : ''}
+          {drawn.range && ` · rally range: ${drawn.range.members.sure} sure, ${drawn.range.members.likely} likely`}
+          {drawn.range?.members.out ? `, ${drawn.range.members.out} out` : ''}
           {unscanned > 0 && ` · ${unscanned} without a troop CP read count as no growth`}
         </p>
       )}

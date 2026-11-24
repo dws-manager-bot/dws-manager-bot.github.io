@@ -8,7 +8,8 @@
  * size so it stays sharp on a phone and in the download.
  */
 import {
-  FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, SHELTER, TILE, applySwaps, keyOf, layoutHive, restorePlacement, rotateLayout, round1,
+  FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, RALLY_SURE, RALLY_TILES, SHELTER, TILE, applySwaps, frame, keyOf, layoutHive,
+  rallyReach, restorePlacement, rotateLayout, round1, spareInRange, tilesFromFrankenstein,
 } from './layout.js'
 
 export const SCALE = 2
@@ -16,7 +17,7 @@ const BACKGROUND = '#f5f3ee'
 const INK = '#282828'
 const FONT_STACK =
   '"Arial Unicode MS","PingFang SC","Hiragino Sans","Hiragino Kaku Gothic Pro","Apple SD Gothic Neo","Malgun Gothic","Microsoft YaHei","Noto Sans CJK SC",sans-serif'
-const font = (px) => `${px}px ${FONT_STACK}`
+const font = (px, weight) => `${weight ? `${weight} ` : ''}${px}px ${FONT_STACK}`
 
 // Industry Lv 1 (deep blue) to 8 (red), interpolated through these.
 const LEVEL_STOPS = [[30, 60, 150], [40, 160, 200], [70, 190, 110], [240, 210, 60], [210, 80, 50]]
@@ -90,7 +91,10 @@ function fitName(ctx, name, width) {
  * for Arabic), placement (a saved map's cells by player id, which replace
  * the layout's own: see restorePlacement), swaps, pairs of member ids an
  * admin traded by hand, and rotation (0, 90, 180 or 270, clockwise about
- * Frankenstein). `picture` is Frankenstein's, drawn once it has loaded.
+ * Frankenstein), and range, which draws Frankenstein's rally range over it:
+ * each shelter's distance, the spare places still in range and the circles
+ * (for the admin's eyes; Apply draws without it). `picture` is
+ * Frankenstein's, drawn once it has loaded.
  * Returns the layout, all of that applied, with `base`, the cells before the
  * turn (what Apply saves), and `restored` when a placement was given.
  */
@@ -100,12 +104,102 @@ export function drawHive(canvas, members, options, picture) {
   applySwaps(layout.memberCell, options.swaps)
   layout.base = new Map(layout.memberCell)
   rotateLayout(layout, options.rotation)
+  if (options.range) {
+    const spots = spareInRange(layout)
+    const { farthest } = layout
+    // Room for the spare places too; the farthest shelter is still a member's.
+    Object.assign(layout, frame([...layout.memberCell.values(), ...spots.map((s) => s.cell)]), { farthest })
+    layout.range = { spots, ...reachCounts(layout, members) }
+  }
   canvas.width = SCALE * layout.W
   canvas.height = SCALE * layout.H
   const ctx = canvas.getContext('2d')
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0)
   paint(ctx, layout, members, options, picture)
   return layout
+}
+
+/** How many members are sure, likely and out of rally range. */
+function reachCounts(layout, members) {
+  const counts = { sure: 0, likely: 0, out: 0 }
+  for (const m of members) counts[rallyReach(layout.memberCell.get(m.id))] += 1
+  return { members: counts }
+}
+
+const REACH_INK = { sure: 'rgb(25,120,50)', likely: 'rgb(180,110,0)', out: 'rgb(200,30,30)' }
+const REACH_FILL = { sure: 'rgba(46,160,67,0.22)', likely: 'rgba(230,160,20,0.22)' }
+
+/* Under the shelters: the two circles and the spare places, each with its
+   distance in tiles from its middle to Frankenstein's. */
+function paintRangeUnder(ctx, layout) {
+  const [fx, fy] = layout.toPx(0, 0)
+  const half = SHELTER / 2 - 3
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.direction = 'ltr'
+  for (const { cell, tiles, reach } of layout.range.spots) {
+    const [x, y] = layout.toPx(...cell)
+    ctx.fillStyle = REACH_FILL[reach]
+    ctx.fillRect(x - half, y - half, 2 * half, 2 * half)
+    ctx.strokeStyle = REACH_INK[reach]
+    ctx.lineWidth = 2
+    ctx.setLineDash(reach === 'sure' ? [] : [6, 4])
+    ctx.strokeRect(x - half, y - half, 2 * half, 2 * half)
+    ctx.fillStyle = REACH_INK[reach]
+    ctx.font = font(15, 700)
+    ctx.fillText(tiles.toFixed(1), x, y)
+  }
+  ctx.lineWidth = 2
+  for (const [r, dash, reach] of [[RALLY_SURE, [], 'sure'], [RALLY_TILES, [10, 7], 'likely']]) {
+    ctx.beginPath()
+    ctx.setLineDash(dash)
+    ctx.strokeStyle = REACH_INK[reach]
+    ctx.arc(fx, fy, r * TILE, 0, 2 * Math.PI)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
+
+/* Over the shelters: each member's distance, in a tag in the top-left corner. */
+function paintRangeOver(ctx, layout, members) {
+  const half = SHELTER / 2
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.direction = 'ltr'
+  ctx.font = font(10, 700)
+  for (const m of members) {
+    const cell = layout.memberCell.get(m.id)
+    const [x, y] = layout.toPx(...cell)
+    const text = tilesFromFrankenstein(cell).toFixed(1)
+    const w = Math.ceil(ctx.measureText(text).width) + 6
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx.fillRect(x - half + 2, y - half + 2, w, 12)
+    ctx.fillStyle = REACH_INK[rallyReach(cell)]
+    ctx.fillText(text, x - half + 5, y - half + 8.5)
+  }
+}
+
+/* The key, on the stamp's line at the right. */
+function paintRangeKey(ctx, layout) {
+  const { spots, members } = layout.range
+  const sure = spots.filter((s) => s.reach === 'sure').length
+  const parts = [
+    [`Rally range ${RALLY_TILES} tiles (march fixed at 3 s): `, 'rgb(90,90,90)'],
+    [`■ sure ≤ ${RALLY_SURE.toFixed(1)}  `, REACH_INK.sure],
+    [`■ likely ≤ ${RALLY_TILES}  `, REACH_INK.likely],
+    members.out ? [`${members.out} out  `, REACH_INK.out] : null,
+    [`· spare places: ${sure} sure, ${spots.length - sure} likely`, 'rgb(90,90,90)'],
+  ].filter(Boolean)
+  ctx.font = font(13)
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.direction = 'ltr'
+  let x = layout.W - MARGIN - parts.reduce((w, [t]) => w + ctx.measureText(t).width, 0)
+  for (const [text, color] of parts) {
+    ctx.fillStyle = color
+    ctx.fillText(text, x, 58)
+    x += ctx.measureText(text).width
+  }
 }
 
 function paint(ctx, layout, members, options, picture) {
@@ -126,6 +220,7 @@ function paint(ctx, layout, members, options, picture) {
 
   ctx.fillStyle = BACKGROUND
   ctx.fillRect(0, 0, W, H)
+  if (layout.range) paintRangeUnder(ctx, layout)
 
   const shelters = []
   for (const m of members) {
@@ -202,6 +297,7 @@ function paint(ctx, layout, members, options, picture) {
   ctx.strokeRect(fx - frankHalf, fy - frankHalf, FRANKENSTEIN, FRANKENSTEIN)
 
   if (options.showGroups !== false) drawGroups(ctx, groups, memberCell, toPx, line)
+  if (layout.range) paintRangeOver(ctx, layout, members)
 
   ctx.fillStyle = INK
   ctx.textAlign = 'left'
@@ -213,6 +309,7 @@ function paint(ctx, layout, members, options, picture) {
   ctx.font = font(14)
   ctx.direction = 'ltr'
   ctx.fillText(options.ts || '', MARGIN, 58)
+  if (layout.range) paintRangeKey(ctx, layout)
   ctx.direction = readerDirection
   ctx.fillStyle = 'rgb(90,90,90)'
   ctx.textAlign = 'right'
