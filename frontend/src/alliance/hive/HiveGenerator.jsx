@@ -4,11 +4,13 @@
  * ranking — and "Apply" turns the drawing into the picture members are shown.
  * Members are never sent the table, only that picture.
  *
- * After the layout has placed everyone, an admin can trade two shelters by hand:
- * drag one onto another, or click one and then the other (the way a phone does
- * it, since a drag there scrolls the page). The swaps live only in this page
- * until applied, and changing what the layout is drawn from discards them,
- * after asking: a swap trades two particular cells, and a new layout moves them.
+ * After the layout has placed everyone, an admin can change it by hand: drag a
+ * shelter onto another to trade them, or onto empty ground to move it there,
+ * snapped to whole tiles and refused where it would overlap. On a phone, where
+ * a drag scrolls the page, it is tap a shelter, then tap the other or the
+ * ground. The changes live only in this page until applied, and changing what
+ * the layout is drawn from discards them, after asking: they name particular
+ * cells, and a new layout moves them.
  *
  * The formation can be turned a quarter at a time about Frankenstein, which
  * stays where it is; nobody's distance to it changes. Apply saves where every
@@ -31,7 +33,9 @@ import { utcToZoned } from '../../lib/tz.js'
 import { useI18n } from '../../i18n/I18n.jsx'
 import { ENGLISH_LABELS, SCALE, drawHive } from './draw.js'
 import frankensteinUrl from './frankenstein.jpg'
-import { ROTATIONS, SHAPE_KEYS, SHELTER, VERSIONS, memberAt, placementOf } from './layout.js'
+import {
+  ROTATIONS, SHAPE_KEYS, SHELTER, VERSIONS, fitsAt, isMove, memberAt, placementOf, snapToTile, tilesFromFrankenstein, turn,
+} from './layout.js'
 import './hive.css'
 
 const SHAPE_EMOJI = { 5: '❤️', 6: '🐱', 7: '🖕', 8: '💀', 9: '❄️' }
@@ -122,6 +126,22 @@ const listOf = (names, most = 6) => (names.length > most
 const stamp = (zone) => utcToZoned(new Date().toISOString(), zone).replace(/-|:/g, '').replace('T', '_')
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
+/** "2 swaps and 1 move". */
+function editsText(edits) {
+  const moves = edits.filter(isMove).length
+  const swaps = edits.length - moves
+  return [swaps && plural(swaps, 'swap'), moves && plural(moves, 'move')].filter(Boolean).join(' and ')
+}
+
+/**
+ * Where member `id`'s shelter would land with the pointer at canvas point
+ * (x, y): the nearest whole-tile place, and whether it fits there.
+ */
+function landing(layout, id, x, y) {
+  const cell = snapToTile(...layout.fromPx(x, y))
+  return { cell, ok: fitsAt(layout.memberCell, id, cell) }
+}
+
 export default function HiveGenerator() {
   const { zone } = useI18n()
   const canvas = useRef(null)
@@ -145,8 +165,11 @@ export default function HiveGenerator() {
   const [pinned, setPinned] = useState(null)
   // A map loaded back from its settings, waiting to be checked against its picture.
   const [check, setCheck] = useState(null)
-  // Pairs of member ids, in the order they were traded.
+  // Changes by hand, in order: a swap is a pair of member ids, a move
+  // { move: id, to: [x, y] } with the cell unturned (see applySwaps).
   const [swaps, setSwaps] = useState([])
+  // Why the last tap could not move the selected shelter.
+  const [blocked, setBlocked] = useState(false)
   const [selected, setSelected] = useState(null)
 
   // What the pointer handlers read between renders: the layout as last drawn
@@ -155,6 +178,9 @@ export default function HiveGenerator() {
   const membersRef = useRef(null)
   const selectedRef = useRef(null)
   const gesture = useRef(null)
+  // Where the selected shelter would land, while the mouse is over empty ground.
+  const hover = useRef(null)
+  const rotationRef = useRef(0)
   // What to say once a loaded map has been drawn.
   const announce = useRef(null)
 
@@ -169,13 +195,18 @@ export default function HiveGenerator() {
   const unscanned = members ? members.filter((m) => !m.growth).length : 0
   const nameOf = (id) => members?.find((m) => m.id === id)?.name ?? '?'
 
+  rotationRef.current = rotation
+
   const select = (id) => {
     selectedRef.current = id
+    hover.current = null
     setSelected(id)
+    setBlocked(false)
   }
 
   /* The highlight layer over the map: the selected shelter, or, mid-drag, the
-     one being moved, the one it would trade with, and a ghost at the pointer.
+     one being moved, the one it would trade with or the place it would land,
+     and a ghost at the pointer.
      It is a canvas of its own so the map itself, which is what gets applied and
      downloaded, never carries a highlight. */
   const paintOverlay = useCallback(() => {
@@ -200,9 +231,28 @@ export default function HiveGenerator() {
       ctx.strokeRect(x - half + 3, y - half + 3, SHELTER - 6, SHELTER - 6)
       ctx.setLineDash([])
     }
+    // The place a shelter would land: green where it fits, red where it does
+    // not, with its distance to Frankenstein in tiles.
+    const spot = ({ cell, ok }) => {
+      const [x, y] = layout.toPx(...cell)
+      const ink = ok ? 'rgb(25,140,60)' : 'rgb(210,40,40)'
+      ctx.fillStyle = ok ? 'rgba(46,160,67,0.25)' : 'rgba(220,40,40,0.22)'
+      ctx.fillRect(x - half, y - half, SHELTER, SHELTER)
+      ctx.setLineDash([6, 4])
+      ctx.lineWidth = 3
+      ctx.strokeStyle = ink
+      ctx.strokeRect(x - half + 1.5, y - half + 1.5, SHELTER - 3, SHELTER - 3)
+      ctx.setLineDash([])
+      ctx.fillStyle = ink
+      ctx.font = '700 12px system-ui, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ok ? `${tilesFromFrankenstein(cell).toFixed(1)} tiles` : 'No room', x, y + half - 12)
+    }
     const g = gesture.current
     if (g?.dragging) {
       box(g.from, 3, [7, 5])
+      if (g.spot) spot(g.spot)
       if (g.over !== null && g.over !== g.from) {
         const [x, y] = layout.toPx(...layout.memberCell.get(g.over))
         ctx.fillStyle = 'rgba(212,167,44,0.28)'
@@ -225,6 +275,7 @@ export default function HiveGenerator() {
       while (label.length > 1 && ctx.measureText(label).width > SHELTER - 8) label = label.slice(0, -1)
       ctx.fillText(label === name ? name : `${label.slice(0, -1)}…`, g.x, g.y)
     } else if (selectedRef.current !== null) {
+      if (hover.current) spot(hover.current)
       box(selectedRef.current, 5)
     }
   }, [])
@@ -306,6 +357,8 @@ export default function HiveGenerator() {
   }, [selected])
 
   const swap = (a, b) => setSwaps((list) => [...list, [a, b]])
+  // The map may be turned; a move is kept in the layout's own, unturned cells.
+  const move = (id, cell) => setSwaps((list) => [...list, { move: id, to: turn(cell, (360 - rotationRef.current) % 360) }])
 
   /**
    * True when there is nothing to lose, or the admin agreed to lose it: the
@@ -314,7 +367,7 @@ export default function HiveGenerator() {
   function discardSwaps({ keepLoaded = false } = {}) {
     const loaded = Boolean(pinned) && !keepLoaded
     if (!swaps.length && !loaded) return true
-    const lose = [loaded && 'the loaded map', swaps.length && `your ${plural(swaps.length, 'manual swap')}`].filter(Boolean)
+    const lose = [loaded && 'the loaded map', swaps.length && `your ${editsText(swaps)}`].filter(Boolean)
     const ask = loaded && !swaps.length
       ? 'Leave the loaded map? The layout will be drawn afresh from the member table.'
       : `Discard ${lose.join(' and ')}?`
@@ -349,8 +402,10 @@ export default function HiveGenerator() {
         // Saved before placements were: replay its swaps, by name, on today's table.
         const idOf = new Map()
         for (const m of members) if (!idOf.has(m.name)) idOf.set(m.name, m.id)
-        const pairs = (o.swaps || []).map(([a, b]) => [idOf.get(a), idOf.get(b)])
-        const kept = pairs.filter(([a, b]) => a != null && b != null)
+        const pairs = (o.swaps || []).map((e) => (Array.isArray(e)
+          ? [idOf.get(e[0]), idOf.get(e[1])]
+          : { move: idOf.get(e.move), to: e.to }))
+        const kept = pairs.filter((e) => (Array.isArray(e) ? e[0] != null && e[1] != null : e.move != null))
         const { blob } = await api.hiveAppliedImage()
         setPinned(null)
         setSwaps(kept)
@@ -399,12 +454,25 @@ export default function HiveGenerator() {
         g.x = x
         g.y = y
         g.over = memberAt(layout, x, y)
+        g.spot = g.over === null || g.over === g.from ? landing(layout, g.from, x, y) : null
         e.currentTarget.style.cursor = 'grabbing'
         paintOverlay()
         return
       }
     }
-    e.currentTarget.style.cursor = memberAt(layout, x, y) !== null ? 'grab' : 'default'
+    const under = memberAt(layout, x, y)
+    // With a shelter selected, show where a click on empty ground would put it.
+    if (selectedRef.current !== null && e.pointerType === 'mouse') {
+      hover.current = under === null ? landing(layout, selectedRef.current, x, y) : null
+      paintOverlay()
+    }
+    e.currentTarget.style.cursor = under !== null ? 'grab' : selectedRef.current !== null ? 'crosshair' : 'default'
+  }
+
+  function onPointerLeave() {
+    if (!hover.current) return
+    hover.current = null
+    paintOverlay()
   }
 
   function onPointerUp(e) {
@@ -413,6 +481,7 @@ export default function HiveGenerator() {
     if (!g || g.pointer !== e.pointerId || !layoutRef.current) return
     if (g.dragging) {
       if (g.over !== null && g.over !== g.from) swap(g.from, g.over)
+      else if (g.spot?.ok && !sameCell(g.spot.cell, layoutRef.current.memberCell.get(g.from))) move(g.from, g.spot.cell)
       e.currentTarget.style.cursor = 'grab'
       paintOverlay()
       return
@@ -422,13 +491,23 @@ export default function HiveGenerator() {
     const [x, y] = toLayout(e)
     const id = memberAt(layoutRef.current, x, y)
     const current = selectedRef.current
-    if (id === null || id === current) select(null)
+    if (id === current || (id === null && current === null)) select(null)
     else if (current === null) select(id)
-    else {
+    else if (id !== null) {
       swap(current, id)
       select(null)
+    } else {
+      const spot = landing(layoutRef.current, current, x, y)
+      if (spot.ok) {
+        move(current, spot.cell)
+        select(null)
+      } else {
+        setBlocked(true)
+      }
     }
   }
+
+  const sameCell = (a, b) => Math.abs(a[0] - b[0]) < 0.01 && Math.abs(a[1] - b[1]) < 0.01
 
   function onPointerCancel() {
     gesture.current = null
@@ -438,7 +517,7 @@ export default function HiveGenerator() {
   const png = (el = canvas.current) => new Promise((resolve) => el.toBlob(resolve, 'image/png'))
 
   async function apply() {
-    const traded = swaps.length ? `, ${plural(swaps.length, 'manual swap')}` : ''
+    const traded = swaps.length ? `, ${editsText(swaps)} by hand` : ''
     const turned = rotation ? `, turned ${rotation}°` : ''
     if (!window.confirm(
       `Make this the hive map every member sees?\n\n${drawn.count} shelters, layout v${version}${turned}${traded}.`,
@@ -452,7 +531,7 @@ export default function HiveGenerator() {
         version, showGroups, spreadTop, spreadIndustry,
         farthest: Math.round(clean.layout.farthest * 10) / 10, width: clean.layout.W,
         rotation,
-        swaps: swaps.map(([a, b]) => [nameOf(a), nameOf(b)]),
+        swaps: swaps.map((e) => (isMove(e) ? { move: nameOf(e.move), to: e.to } : [nameOf(e[0]), nameOf(e[1])])),
         placement: placementOf(layoutRef.current.base, members),
       })
       setNote(`Applied: ${drawn.count} shelters, layout v${version}${turned}${traded}. Members see it now.`)
@@ -554,13 +633,15 @@ export default function HiveGenerator() {
         <div className="hive-swapbar">
           <p className="hive-hint muted" role="status">
             {selected !== null
-              ? `${nameOf(selected)} selected. Click another shelter to swap them, or Esc to cancel.`
-              : 'Drag a shelter onto another to swap them, or click one and then the other.'}
+              ? (blocked
+                ? `No room there for ${nameOf(selected)}: it would overlap a shelter or Frankenstein. Pick another place, or Esc to cancel.`
+                : `${nameOf(selected)} selected. Click another shelter to swap them, or empty ground to move it there; Esc cancels.`)
+              : 'Drag a shelter onto another to swap them, or onto empty ground to move it. Or click one, then the other or the ground. Rally range makes room further out.'}
           </p>
           {/* Always there, so the map does not jump when the first swap is made. */}
           <div className="hive-swaps">
             <span className={swaps.length ? 'hive-swapcount' : 'hive-swapcount none'}>
-              {swaps.length ? plural(swaps.length, 'manual swap') : 'No manual swaps'}
+              {swaps.length ? `${editsText(swaps)} by hand` : 'No changes by hand'}
             </span>
             <button type="button" className="btn" onClick={undo} disabled={!swaps.length}>
               <span aria-hidden="true">↶</span> Undo
@@ -582,6 +663,7 @@ export default function HiveGenerator() {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
+            onPointerLeave={onPointerLeave}
           />
         </div>
       </div>

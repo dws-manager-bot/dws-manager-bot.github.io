@@ -497,28 +497,57 @@ export function frame(cells) {
     miny,
     maxy,
     toPx: (x, y) => [x - minx + MARGIN, y - miny + MARGIN + TITLE_HEIGHT],
+    fromPx: (x, y) => [x + minx - MARGIN, y + miny - MARGIN - TITLE_HEIGHT],
     farthest: cells.length ? Math.max(...cells.map((c) => Math.hypot(c[0], c[1]))) / TILE + 1.5 : 0,
   }
 }
 
-/* ---------- swapping by hand ----------
-   An admin can trade two members' shelters after the layout has placed them.
-   A swap moves nobody to a new cell, only exchanges two, so the formation's
-   outline, its bounds and its farthest shelter stay what layoutHive made them. */
+/* ---------- changing it by hand ----------
+   After the layout has placed everyone, an admin can trade two members'
+   shelters, or move one to empty ground. A swap moves nobody to a new cell,
+   only exchanges two. A move puts one shelter on any whole-tile place that
+   overlaps neither another shelter nor Frankenstein: the lanes are the admin's
+   to keep or give up. The caller refits the canvas after a move. */
+
+/** A shelter's middle, as the nearest place where it covers whole tiles. */
+export function snapToTile(x, y) {
+  // Frankenstein's 4×4 is centered on a tile corner, so a 3×3 shelter's middle
+  // sits on a tile's middle: half a tile off the grid lines through it.
+  const snap = (v) => (Math.round(v / TILE - 0.5) + 0.5) * TILE
+  return [snap(x), snap(y)]
+}
+
+/** True when member `id`'s shelter could stand at `cell` without overlapping anything. */
+export function fitsAt(memberCell, id, cell) {
+  const clearOfFrankenstein = Math.max(Math.abs(cell[0]), Math.abs(cell[1])) >= (FRANKENSTEIN + SHELTER) / 2 - 0.01
+  if (!clearOfFrankenstein) return false
+  for (const [other, c] of memberCell) {
+    if (other !== id && Math.max(Math.abs(c[0] - cell[0]), Math.abs(c[1] - cell[1])) < SHELTER - 0.01) return false
+  }
+  return true
+}
 
 /**
- * Applies `swaps`, pairs of member ids, in order, to `memberCell` in place. A
- * pair naming a member who is not on the map is skipped.
+ * Applies `edits`, in order, to `memberCell` in place. An edit is a swap, a
+ * pair of member ids, or a move, { move: id, to: [x, y] }. A swap naming a
+ * member who is not on the map is skipped, and so is a move that no longer fits.
  */
-export function applySwaps(memberCell, swaps) {
-  for (const [a, b] of swaps || []) {
-    if (a === b || !memberCell.has(a) || !memberCell.has(b)) continue
-    const cell = memberCell.get(a)
-    memberCell.set(a, memberCell.get(b))
-    memberCell.set(b, cell)
+export function applySwaps(memberCell, edits) {
+  for (const edit of edits || []) {
+    if (Array.isArray(edit)) {
+      const [a, b] = edit
+      if (a === b || !memberCell.has(a) || !memberCell.has(b)) continue
+      const cell = memberCell.get(a)
+      memberCell.set(a, memberCell.get(b))
+      memberCell.set(b, cell)
+    } else if (edit && memberCell.has(edit.move) && fitsAt(memberCell, edit.move, edit.to)) {
+      memberCell.set(edit.move, edit.to)
+    }
   }
   return memberCell
 }
+
+export const isMove = (edit) => !Array.isArray(edit)
 
 /** The id of the member whose shelter covers canvas point (x, y), in CSS pixels, or null. */
 export function memberAt(layout, x, y) {

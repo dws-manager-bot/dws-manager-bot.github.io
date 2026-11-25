@@ -8,7 +8,7 @@
  * size so it stays sharp on a phone and in the download.
  */
 import {
-  FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, RALLY_SURE, RALLY_TILES, SHELTER, TILE, applySwaps, frame, keyOf, layoutHive,
+  FRANKENSTEIN, LEGEND_HEIGHT, MARGIN, RALLY_SURE, RALLY_TILES, SHELTER, TILE, applySwaps, frame, isMove, keyOf, layoutHive,
   rallyReach, restorePlacement, rotateLayout, round1, spareInRange, tilesFromFrankenstein,
 } from './layout.js'
 
@@ -90,7 +90,7 @@ function fitName(ctx, name, width) {
  * the title), labels (see ENGLISH_LABELS), direction, the labels' ('rtl'
  * for Arabic), placement (a saved map's cells by player id, which replace
  * the layout's own: see restorePlacement), swaps, pairs of member ids an
- * admin traded by hand, and rotation (0, 90, 180 or 270, clockwise about
+ * admin traded by hand, or moves, { move: id, to } (see applySwaps), and rotation (0, 90, 180 or 270, clockwise about
  * Frankenstein), and range, which draws Frankenstein's rally range over it:
  * each shelter's distance, the spare places still in range and the circles
  * (for the admin's eyes; Apply draws without it). `picture` is
@@ -102,6 +102,8 @@ export function drawHive(canvas, members, options, picture) {
   const layout = layoutHive(members, options)
   if (options.placement) layout.restored = restorePlacement(layout, members, options.placement)
   applySwaps(layout.memberCell, options.swaps)
+  // A move can take a shelter past the layout's own bounds.
+  if (options.swaps?.some(isMove)) Object.assign(layout, frame(members.map((m) => layout.memberCell.get(m.id))))
   layout.base = new Map(layout.memberCell)
   rotateLayout(layout, options.rotation)
   if (options.range) {

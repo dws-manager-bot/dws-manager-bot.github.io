@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { SHELTER, applySwaps, layoutHive, memberAt } from './layout.js'
+import { FRANKENSTEIN, SHELTER, TILE, applySwaps, fitsAt, layoutHive, memberAt, snapToTile } from './layout.js'
 
 const singles = (count) =>
   Array.from({ length: count }, (_, i) => ({
@@ -66,5 +66,49 @@ describe('memberAt', () => {
     const [x, y] = swapped.toPx(...swapped.memberCell.get(10))
     applySwaps(swapped.memberCell, [[10, 20]])
     expect(memberAt(swapped, x, y)).toBe(20)
+  })
+})
+
+describe('moving by hand', () => {
+  const members = singles(30)
+  const outside = (layout) => {
+    const far = Math.max(...[...layout.memberCell.values()].map((c) => Math.abs(c[0])))
+    return [far + 2 * SHELTER, 0.5 * TILE]
+  }
+
+  it('snaps a shelter’s middle to a tile’s middle, where the lattice keeps it', () => {
+    expect(snapToTile(0, 0)).toEqual([0.5 * TILE, 0.5 * TILE])
+    expect(snapToTile(2.4 * TILE, -2.6 * TILE)).toEqual([2.5 * TILE, -2.5 * TILE])
+    const layout = layoutHive(members, { version: 1 })
+    for (const c of layout.memberCell.values()) expect(snapToTile(...c)).toEqual(c)
+  })
+
+  it('fits a shelter only clear of the others and of Frankenstein', () => {
+    const layout = layoutHive(members, { version: 1 })
+    const [x0, y0] = layout.memberCell.get(0)
+    expect(fitsAt(layout.memberCell, 0, [x0, y0])).toBe(true)
+    expect(fitsAt(layout.memberCell, 1, [x0 + TILE, y0])).toBe(false)
+    expect(fitsAt(layout.memberCell, 1, [0.5 * TILE, 0.5 * TILE])).toBe(false)
+    expect(fitsAt(layout.memberCell, 1, [(FRANKENSTEIN + SHELTER) / 2 - TILE / 2, 0.5 * TILE])).toBe(false)
+    expect(fitsAt(layout.memberCell, 1, outside(layout))).toBe(true)
+  })
+
+  it('moves one shelter to empty ground and leaves the rest', () => {
+    const layout = layoutHive(members, { version: 1 })
+    const before = new Map(layout.memberCell)
+    const to = outside(layout)
+    applySwaps(layout.memberCell, [{ move: 4, to }])
+    expect(layout.memberCell.get(4)).toEqual(to)
+    for (const m of members) if (m.id !== 4) expect(layout.memberCell.get(m.id)).toBe(before.get(m.id))
+  })
+
+  it('mixes swaps and moves in order, and skips a move that no longer fits', () => {
+    const layout = layoutHive(members, { version: 1 })
+    const before = new Map(layout.memberCell)
+    const to = outside(layout)
+    applySwaps(layout.memberCell, [{ move: 4, to }, [4, 9], { move: 2, to }])
+    expect(layout.memberCell.get(9)).toEqual(to)
+    expect(layout.memberCell.get(4)).toEqual(before.get(9))
+    expect(layout.memberCell.get(2)).toEqual(before.get(2))  // 9 is there now
   })
 })
