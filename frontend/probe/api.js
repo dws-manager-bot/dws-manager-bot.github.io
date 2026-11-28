@@ -407,12 +407,41 @@ export const api = {
   me: () => ok({ username: 'Goba', is_admin: role !== 'member' }),
   health: () => ok({ status: 'ok' }),
   // /lineups returns a list; /lineups/<slug> a single plan.
-  raw: (path, opts) => (liveData && String(path).startsWith('/war/')
+  raw: (path, opts) => (String(path).startsWith('/temple-plans') ? templeRaw(String(path), opts)
+    : liveData && String(path).startsWith('/war/')
     ? liveData.then((live) => JSON.parse(JSON.stringify(liveRaw(live, String(path)))))
     : ok(String(path).startsWith('/war/')
       ? warRaw(String(path), opts)
       : String(path).split('/').length > 2 ? {} : [])),
 }
+/* Temple Strife plans, kept in memory for the page's life: drafts per admin
+   and one official plan, as /temple-plans keeps them. */
+const templePlans = new Map()
+function templeRaw(path, opts = {}) {
+  const parts = path.split('/').filter(Boolean)          // ['temple-plans', slug?, 'publish'?]
+  const method = opts.method || 'GET'
+  const now = new Date().toISOString()
+  const row = (slug, r) => ({ slug, plan: {}, owner_name: null, updated_by_name: null, updated_at: null, ...r })
+  if (parts.length === 1) {
+    return ok([...templePlans.values()]
+      .map((r) => ({ ...r, shelters: (r.plan.placed || []).length }))
+      .sort((a, b) => (a.slug !== 'official') - (b.slug !== 'official')))
+  }
+  const slug = decodeURIComponent(parts[1])
+  if (parts[2] === 'publish') {
+    const src = templePlans.get(slug)
+    if (!src) return Promise.reject(new Error('That plan is empty or does not exist'))
+    templePlans.set('official', row('official', { plan: src.plan, updated_by_name: 'Goba', updated_at: now }))
+    return ok(templePlans.get('official'))
+  }
+  if (method === 'PUT') {
+    templePlans.set(slug, row(slug, { plan: JSON.parse(opts.body).plan, owner_name: 'Goba', updated_by_name: 'Goba', updated_at: now }))
+    return ok(templePlans.get(slug))
+  }
+  if (method === 'DELETE') { templePlans.delete(slug); return ok(null) }
+  return ok(templePlans.get(slug) || row(slug))
+}
+
 export const getToken = () => (role === 'anon' ? null : 'x')
 export const clearToken = () => {}
 export const consumeTokenFromUrl = () => null

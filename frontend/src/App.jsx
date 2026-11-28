@@ -16,6 +16,7 @@ const PassWar = lazy(() => import('./pages/PassWar.jsx'))
 const Season = lazy(() => import('./pages/Season.jsx'))
 const Setup = lazy(() => import('./pages/Setup.jsx'))
 const WarPlanner = lazy(() => import('./pages/WarPlanner.jsx'))
+const TempleStrife = lazy(() => import('./pages/TempleStrife.jsx'))
 const Planner = lazy(() => import('./alliance/planner/Planner.jsx'))
 const AllianceEvents = lazy(() => import('./alliance/events/Events.jsx'))
 const Calculators = lazy(() => import('./alliance/calculators/Calculators.jsx'))
@@ -48,6 +49,7 @@ const PAGES = [
   { id: 'warplan', path: '/admin/war-planner', label: 'War planner', Component: WarPlanner, admin: true },
   { id: 'passwar', path: '/admin/pass-war', label: 'Pass War map', Component: PassWar, admin: true },
   { id: 'hivegen', path: '/admin/hive-map', label: 'Hive map', Component: HiveGenerator, admin: true },
+  { id: 'temple', path: '/admin/temple', label: 'Temple Strife', Component: TempleStrife, admin: true },
 ]
 
 /* Addresses a page used to have. /pass-war was an alliance page for a day, and

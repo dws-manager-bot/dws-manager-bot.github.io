@@ -1,0 +1,294 @@
+/* Temple Strife planner. Desktop-first like the War planner: the map beside the
+   member list on a wide screen, stacked on a phone. */
+
+main:has(.tp-layout) { max-width: 1680px; }
+
+.tp-layout { display: grid; grid-template-columns: 1fr; gap: 12px; min-width: 0; }
+.tp-map-col, .tp-side-col { min-width: 0; display: grid; gap: 12px; align-content: start; }
+
+@media (min-width: 1100px) {
+  .tp-layout { grid-template-columns: minmax(0, 1fr) minmax(400px, 440px); gap: 16px; }
+  .tp-side-col { position: sticky; top: 12px; max-height: calc(100vh - 24px); grid-template-rows: auto minmax(0, 1fr); }
+}
+
+.tp-map {
+  background: #f5f3ee;
+  border-radius: var(--radius);
+  display: flex;
+  justify-content: center;
+}
+/* The whole map in view: as wide as the card, but never taller than the window. */
+.tp-map canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 230px);
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.tp-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  min-height: 20px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.tp-tile { flex: none; color: var(--text); }
+
+.tp-spacer { flex: 1 1 auto; }
+
+.tp-paste { margin-top: 12px; }
+.tp-paste textarea {
+  width: 100%;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.tp-field { display: grid; gap: 6px; margin-top: 10px; }
+.tp-label { font-size: 13px; color: var(--muted); }
+.tp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tp-field input[type='range'] { width: 100%; accent-color: var(--accent); }
+.tp-note { margin: 12px 0 0; }
+
+.tp-members { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; min-height: 0; }
+.tp-filter { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.tp-filter input[type='search'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.tp-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+.tp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 60vh;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 1100px) { .tp-list { max-height: none; } }
+
+.tp-list li {
+  display: grid;
+  gap: 4px;
+  padding: 7px 8px 7px 10px;
+  border-bottom: 1px solid rgba(82, 82, 91, 0.45);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  font-size: 14px;
+}
+.tp-list li:hover { background: var(--card-hover); }
+.tp-list li.sel { background: rgba(251, 191, 36, 0.14); }
+.tp-list li.tp-empty { cursor: default; }
+.tp-row1, .tp-row2 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tp-row1 .tp-name { flex: 1 1 auto; font-weight: 600; }
+.tp-list li.placed .tp-name { color: var(--muted); }
+.tp-row2 { font-size: 12px; color: var(--muted); }
+.tp-rank { font-size: 12px; color: var(--muted); flex: none; width: 22px; }
+.tp-num { font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+.tp-num.on { color: var(--text); font-weight: 600; }
+.tp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-at { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--accent); white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.tp-at.muted { color: var(--muted); font-size: 12px; }
+
+.tp-vsel, .tp-gsel {
+  margin-left: auto;
+  flex: none;
+  font-size: 12px;
+  padding: 3px 6px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  max-width: 120px;
+}
+.tp-vsel { width: 46px; margin-left: auto; text-align: center; font-weight: 700; }
+.tp-gsel { margin-left: 0; width: 96px; border-width: 1px 1px 1px 4px; }
+
+.tp-vote {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.tp-vote.none { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+
+.tp-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tp-x:hover { color: var(--bad); background: rgba(248, 113, 113, 0.12); }
+
+.tp-float {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-side { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; align-content: start; }
+.tp-side > * { min-width: 0; }
+@media (min-width: 1100px) {
+  .tp-side-col { grid-template-rows: minmax(0, 1fr); }
+  .tp-side { max-height: calc(100vh - 24px); overflow: hidden; display: flex; flex-direction: column; }
+  .tp-side .tp-list, .tp-side .tp-groups, .tp-side .tp-poll { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+}
+
+.tp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 10px; }
+.tp-tab {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.tp-tab.on { color: var(--text); border-bottom-color: var(--accent); }
+
+.tp-sorts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.chip.small { padding: 4px 10px; min-height: 30px; font-size: 12px; }
+.tp-filter select {
+  font-size: 13px;
+  padding: 6px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 120px;
+}
+.tp-side .tp-check { margin-bottom: 8px; }
+
+.tp-groups { display: grid; gap: 12px; align-content: start; }
+.tp-group {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+.tp-group .card-actions { margin-top: 2px; }
+.tp-group-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tp-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.tp-anchor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tp-anchor select {
+  font-size: 14px;
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 200px;
+}
+.tp-glist { list-style: none; margin: 0; padding: 0; display: grid; }
+.tp-glist li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto 20px 82px 28px;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(82, 82, 91, 0.35);
+  cursor: pointer;
+}
+.tp-glist li.sel { background: rgba(251, 191, 36, 0.14); }
+.tp-gi { color: var(--muted); font-size: 12px; text-align: right; }
+.tp-glist .tp-at { justify-content: flex-end; }
+
+.tp-poll { display: grid; gap: 8px; align-content: start; }
+.tp-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tp-options li { display: grid; grid-template-columns: 20px minmax(0, 1fr) 36px; gap: 8px; align-items: center; }
+.tp-options input {
+  font-size: 14px;
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.tp-count { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.tp-novote { padding-left: 2px; }
+.tp-gap { margin-top: 10px; }
+.tp-votes {
+  width: 100%;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  resize: vertical;
+}
+.tp-poll code { font-size: 12px; }
+
+/* The app styles every label as a stacked field; these sit in a row. */
+.tp label.tp-check, .tp label.tp-anchor { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.tp label.tp-check input { width: 18px; height: 18px; margin: 0; flex: none; }
+.tp label.tp-anchor .tp-label { flex: none; }
+
+/* The vote picker: the colored badge shows; an invisible select over it opens the choices. */
+.tp-vpick { position: relative; flex: none; margin-left: auto; display: inline-grid; }
+.tp-vpick .tp-vote { width: 26px; height: 26px; font-size: 12px; }
+.tp-vpick select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; font-size: 16px; }
+.tp-vpick:focus-within .tp-vote { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tp-planbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tp-planbar select {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 14px;
+  min-height: 44px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}

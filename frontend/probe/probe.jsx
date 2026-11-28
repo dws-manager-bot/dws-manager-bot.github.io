@@ -15,10 +15,11 @@ import Setup from '../src/pages/Setup.jsx'
 import PassWar from '../src/pages/PassWar.jsx'
 import Season from '../src/pages/Season.jsx'
 import WarPlanner from '../src/pages/WarPlanner.jsx'
+import TempleStrife from '../src/pages/TempleStrife.jsx'
 import '../src/styles.css'
 
 const which = new URLSearchParams(location.search).get('p') || 'announcements'
-const Page = { app: App, planner: Planner, aevents: AllianceEvents, calculators: Calculators, hive: HiveMap, hivegen: HiveGenerator, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner, giftcodes: GiftCodes }[which]
+const Page = { app: App, planner: Planner, aevents: AllianceEvents, calculators: Calculators, hive: HiveMap, hivegen: HiveGenerator, announcements: Announcements, events: Events, members: Members, setup: Setup, passwar: PassWar, bgb: Bgb, season: Season, warplan: WarPlanner, giftcodes: GiftCodes, temple: TempleStrife }[which]
 const user = { discord_id: '1', username: 'Goba', is_admin: true }
 
 window.onerror = (m) => { document.title = 'ERROR: ' + m }
