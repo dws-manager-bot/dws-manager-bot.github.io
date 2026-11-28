@@ -338,3 +338,69 @@ async def test_a_season_never_timed_has_no_online_total(client_factory):
     async with client_factory() as c:
         member = (await c.get("/season")).json()["members"][0]
     assert (member["online_minutes"], member["online_of"]) == (None, 0)
+
+
+async def add_war(maker, ids, season, kind, day, minutes):
+    """One war in `season`, with `minutes` online per member name (0 = away)."""
+    async with maker() as s:
+        event = AttendanceEvent(kind=kind, season=season, held_on=day, title=f"{kind} {day}")
+        s.add(event)
+        await s.flush()
+        for name, m in minutes.items():
+            s.add(AttendanceRecord(event_id=event.id, player_id=ids[name], name=name,
+                                   present=m > 0, online_minutes=m))
+        await s.commit()
+
+
+@pytest.mark.asyncio
+async def test_each_season_counts_only_its_own_wars(client_factory):
+    """Season 6 starts from nothing; season 5 reads exactly as before."""
+    ids = await seed(client_factory.maker, {
+        "Old": [(True, 100, 120)] * 4,
+        "New": [(False, None, 0)] * 4,
+    })
+    await add_war(client_factory.maker, ids, 6, "temple_strife", date(2026, 11, 28),
+                  {"Old": 0, "New": 110})
+    async with client_factory() as c:
+        s5 = (await c.get("/season?season=5")).json()
+        s6 = (await c.get("/season?season=6")).json()
+        default = (await c.get("/season")).json()
+    assert default == s5
+    assert (s5["season"], len(s5["events"]), s6["season"], len(s6["events"])) == (5, 4, 6, 1)
+    m5 = {x["name"]: x for x in s5["members"]}
+    m6 = {x["name"]: x for x in s6["members"]}
+    assert (m5["Old"]["attended"], m5["Old"]["online_minutes"]) == (4, 480)
+    assert (m6["Old"]["attended"], m6["Old"]["online_minutes"], m6["Old"]["online_of"]) == (0, 0, 120)
+    assert (m6["New"]["attended"], m6["New"]["of"], m6["New"]["online_minutes"]) == (1, 1, 110)
+    assert [x["name"] for x in s6["members"]] == ["New", "Old"]
+
+
+@pytest.mark.asyncio
+async def test_a_season_with_no_wars_yet_is_empty_not_an_error(client_factory):
+    await seed(client_factory.maker, {"Someone": [(True, 100)] * 4})
+    async with client_factory() as c:
+        body = (await c.get("/season?season=6")).json()
+    assert body["events"] == []
+    assert [(m["attended"], m["of"], m["online_minutes"]) for m in body["members"]] == [(0, 0, None)]
+
+
+@pytest.mark.asyncio
+async def test_kind_narrows_a_season_when_asked(client_factory):
+    ids = await seed(client_factory.maker, {"A": [(True, 1)] * 4})
+    await add_war(client_factory.maker, ids, 6, "temple_strife", date(2026, 11, 28), {"A": 60})
+    await add_war(client_factory.maker, ids, 6, "other_war", date(2026, 11, 30), {"A": 30})
+    async with client_factory() as c:
+        both = (await c.get("/season?season=6")).json()
+        one = (await c.get("/season?season=6&kind=temple_strife")).json()
+    assert (len(both["events"]), both["members"][0]["online_minutes"]) == (2, 90)
+    assert (len(one["events"]), one["members"][0]["online_minutes"], one["kind"]) == (1, 60, "temple_strife")
+
+
+@pytest.mark.asyncio
+async def test_a_season_without_merits_breaks_ties_on_online_time(client_factory):
+    ids = await seed(client_factory.maker, {"Aaa": [(True, 1)] * 4, "Zzz": [(True, 1)] * 4})
+    await add_war(client_factory.maker, ids, 6, "temple_strife", date(2026, 11, 28),
+                  {"Aaa": 40, "Zzz": 120})
+    async with client_factory() as c:
+        s6 = (await c.get("/season?season=6")).json()
+    assert [m["name"] for m in s6["members"]] == ["Zzz", "Aaa"]

@@ -700,7 +700,8 @@ class SeasonMemberOut(BaseModel):
 
 
 class SeasonOut(BaseModel):
-    kind: str
+    season: int = 5
+    kind: str | None = None      # null when every kind of war in the season counts
     events: list[SeasonEventOut] = Field(default_factory=list)
     members: list[SeasonMemberOut] = Field(default_factory=list)
 

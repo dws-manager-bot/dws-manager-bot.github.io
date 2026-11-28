@@ -13,11 +13,15 @@ Merits are averaged only over the days they were recorded. One conquest mattered
 less than the others and its ranking was never captured; counting that as a zero
 would punish everyone who turned up to it.
 
-Online time is reported beside them and decides nothing. It is a season total,
+Online time is reported beside them and decides nothing -- except in a season
+with no merit ranking at all, where it breaks the attendance ties instead. It is a season total,
 120 minutes a conquest at most, over the conquests it was worked out for; a
 member missing from one of those sheets was away, so it adds nothing. It is a
 best case: a screenshot shows when a member was last seen, never when they
 arrived.
+
+Each season stands alone. Season 5 counted its Strife Pass conquests; season 6
+counts its own wars from scratch, because rewards are judged afresh each season.
 
 BGB is deliberately absent. Only twenty of a hundred get a seat, so it cannot
 be counted here without punishing a member who was never picked -- and it has
@@ -45,15 +49,14 @@ from ..deps import AdminUser, DbSession, write_audit
 
 router = APIRouter(prefix="/season", tags=["season"])
 
-STRIFE_PASS = "strife_pass"
-
 # The game's own bands, and its own numbers. There is one leader and it is
 # the R5. Contributors are not capped here because they are the remainder --
 # an alliance holds a hundred, so the rest is sixty-three at the most.
 CAPS = {"leader": 1, "backbone": 6, "key": 30}
 CONTRIBUTORS = 63
 
-# The war window, 11:00-13:00 ST: the most anyone can be online for in a conquest.
+# The war window, two hours (11:00-13:00 ST in season 5, 12:00-14:00 ST in
+# season 6): the most anyone can be online for in one war.
 WAR_MINUTES = 120
 
 
@@ -73,11 +76,13 @@ def _percentiles(merits: dict) -> dict:
 async def season(
     session: DbSession,
     _: AdminUser,
-    kind: str = Query(STRIFE_PASS, description="Which run of events to count"),
+    season: int = Query(5, ge=1, le=99, description="Which game season to count"),
+    kind: str | None = Query(None, description="Only this kind of event; every kind if left out"),
 ):
-    events = list(await session.scalars(
-        select(AttendanceEvent).where(AttendanceEvent.kind == kind)
-        .order_by(AttendanceEvent.held_on)))
+    query = select(AttendanceEvent).where(AttendanceEvent.season == season)
+    if kind:
+        query = query.where(AttendanceEvent.kind == kind)
+    events = list(await session.scalars(query.order_by(AttendanceEvent.held_on)))
     records = list(await session.scalars(
         select(AttendanceRecord).where(
             AttendanceRecord.event_id.in_([e.id for e in events]))
@@ -135,11 +140,16 @@ async def season(
         ))
 
     # Attendance first, then who was there at the first wave. A member with no
-    # merit day at all sorts below one who has a standing, never above it.
+    # merit day at all sorts below one who has a standing, never above it. A
+    # season with no merit ranking at all (season 6 so far) breaks the ties on
+    # online time instead, rather than on the alphabet.
+    no_merits = not any(r.merits is not None for r in records)
     members.sort(key=lambda m: (-m.attended,
                                 -(m.merit_standing if m.merit_standing is not None else -1),
+                                -((m.online_minutes or 0) if no_merits else 0),
                                 m.name.lower()))
     return SeasonOut(
+        season=season,
         kind=kind,
         events=[SeasonEventOut(
             id=e.id, held_on=e.held_on, title=e.title,

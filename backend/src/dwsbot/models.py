@@ -258,7 +258,12 @@ class AttendanceEvent(Base, TimestampMixin):
     season's rewards can be handed out on something better than memory.
 
     `kind` is a plain string with no check constraint, so a new sort of event
-    needs no migration. "strife_pass" is the first.
+    needs no migration. "strife_pass" is the first, season 5's conquests;
+    "temple_strife" is season 6's.
+
+    `season` is the game season it counts towards. The season page shows one
+    season at a time, and rewards are judged afresh each season, so one season's
+    attendance never leaks into the next.
 
     BGB is deliberately not stored here. Its attendance lives on the roster it
     was fought from, because only the registered could attend at all -- and a
@@ -269,6 +274,8 @@ class AttendanceEvent(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    season: Mapped[int] = mapped_column(SmallInteger, nullable=False, index=True,
+                                        default=5, server_default="5")
     held_on: Mapped[date] = mapped_column(Date, nullable=False)
     # The game's own heading, e.g. "Declare war on Lv.6 Strife Pass (East)".
     title: Mapped[str | None] = mapped_column(String(200))
@@ -291,11 +298,12 @@ class AttendanceRecord(Base, TimestampMixin):
     null where it was not -- which is not the same as zero, and is why turning
     up and contributing are two separate columns.
 
-    `online_minutes` is how much of the two-hour war window (11:00-13:00 ST) the
-    member was online, 0 to 120. The Members-list screenshots show when someone
-    was last seen but never when they arrived, so it counts every minute they
-    were not shown to be offline: a best case, not a stopwatch. Null where it
-    was never worked out.
+    `online_minutes` is how much of the two-hour war window the member was
+    online, 0 to 120. The game says when someone went offline but never when
+    they arrived, so it counts every minute they were not shown to be offline:
+    a best case, not a stopwatch. Null where it was never worked out. Season 5
+    read it off Members-list screenshots; season 6 off the game's own member
+    list, captured every ten minutes of the war.
     """
 
     __tablename__ = "attendance_records"
