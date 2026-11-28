@@ -193,7 +193,7 @@ export const api = {
   },
 
   /* The season standing, ranked and ready to tier. */
-  season: (kind) => request(`/season${kind ? `?kind=${kind}` : ''}`),
+  season: (season) => request(`/season${season ? `?season=${season}` : ''}`),
   seasonAwards: (season) => request(`/season/awards${season ? `?season=${season}` : ''}`),
   setSeasonAwards: (data) =>
     request('/season/awards', { method: 'PUT', body: JSON.stringify(data) }),

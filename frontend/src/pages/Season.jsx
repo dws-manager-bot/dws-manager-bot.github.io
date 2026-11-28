@@ -19,13 +19,20 @@ import { short } from '../lib/cp.js'
  *
  * Online time sits beside them as one more thing to judge by, not a third
  * tiebreak. It is the minutes of each two-hour war a member was online, added
- * up over the season, and a best case: the screenshots show when someone left,
- * never when they came.
+ * up over the season, and a best case: the game says when someone left, never
+ * when they came.
+ *
+ * One season at a time. Season 5 is kept as it was, Strife Pass conquests and
+ * its own board; season 6 counts its own wars from the first one, and its board
+ * is separate. Season 6 has no merit ranking captured, so its standing falls
+ * back to attendance alone.
  *
  * Dragging is not the only way in. A touch screen has no HTML5 drag, and this
  * is read on a phone, so a member can be picked with a tap and the bands become
  * buttons — the same two steps, without the pointer.
  */
+
+const SEASONS = [['6', 'Season 6'], ['5', 'Season 5']]
 
 const TIERS = [
   ['leader', 'Alliance Leader', 'the R5, and only the R5'],
@@ -60,6 +67,7 @@ const csv = (rows) =>
   }).join(',')).join('\n')
 
 export default function Season() {
+  const [season, setSeason] = useState(SEASONS[0][0])
   const [data, setData] = useState(null)
   const [caps, setCaps] = useState({})
   const [placed, setPlaced] = useState({})      // player id -> tier
@@ -72,15 +80,22 @@ export default function Season() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    Promise.all([api.season(), api.seasonAwards()])
+    let live = true
+    setData(null)
+    setHeld(null)
+    setNote(null)
+    setError(null)
+    Promise.all([api.season(season), api.seasonAwards(season)])
       .then(([standing, awards]) => {
+        if (!live) return
         setData(standing)
         setCaps(awards.caps)
         setPlaced(awards.awards)
         setSaved(awards.awards)
       })
-      .catch((e) => setError(e.message))
-  }, [])
+      .catch((e) => { if (live) setError(e.message) })
+    return () => { live = false }
+  }, [season])
 
   const byTier = useMemo(() => {
     const out = { leader: [], backbone: [], key: [], contributor: [] }
@@ -89,10 +104,15 @@ export default function Season() {
     return out
   }, [data, placed])
 
+  /* No merit ranking anywhere this season: online time breaks the ties instead. */
+  const meritless = !data?.events.some((e) => e.has_merits)
+
   const candidates = useMemo(() => {
     const rest = byTier.contributor
     const key = {
-      standing: (m) => [-m.attended, -(m.merit_standing ?? -1)],
+      standing: (m) => (meritless
+        ? [-m.attended, -(m.online_minutes ?? -1)]
+        : [-m.attended, -(m.merit_standing ?? -1)]),
       rank: (m) => [-(m.rank ?? 0), -m.attended],
       attended: (m) => [-m.attended, -(m.merit_standing ?? -1)],
       online: (m) => [-(m.online_minutes ?? -1), -m.attended],
@@ -105,7 +125,7 @@ export default function Season() {
       for (let i = 0; i < l.length; i += 1) if (l[i] !== r[i]) return l[i] - r[i]
       return a.name.localeCompare(b.name)
     })
-  }, [byTier, sort])
+  }, [byTier, sort, meritless])
 
   const dirty = useMemo(() => {
     const a = Object.entries(placed).filter(([, t]) => t !== 'contributor')
@@ -154,7 +174,7 @@ export default function Season() {
       const awards = Object.entries(placed)
         .filter(([, tier]) => tier !== 'contributor')
         .map(([player_id, tier]) => ({ player_id, tier }))
-      const done = await api.setSeasonAwards({ season: '5', awards })
+      const done = await api.setSeasonAwards({ season, awards })
       setSaved(done.awards)
       setPlaced(done.awards)
       setNote('Board saved.')
@@ -177,11 +197,31 @@ export default function Season() {
       }
     }
     save(new Blob([csv(rows)], { type: 'text/csv;charset=utf-8' }),
-      `pou-season-rewards-${new Date().toISOString().slice(0, 10)}.csv`)
+      `pou-season${season}-rewards-${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
-  if (error && !data) return <div className="page"><Banner tone="error">{error}</Banner></div>
-  if (!data) return <div className="page"><p className="muted">Loading…</p></div>
+  const switcher = (
+    <div className="row wrap" role="tablist" aria-label="Season">
+      {SEASONS.map(([value, label]) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={season === value}
+          key={value}
+          className={season === value ? 'chip on' : 'chip'}
+          onClick={() => {
+            if (value === season) return
+            if (!dirty || window.confirm('Leave this season\'s board without saving it?')) setSeason(value)
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (error && !data) return <div className="page">{switcher}<Banner tone="error">{error}</Banner></div>
+  if (!data) return <div className="page">{switcher}<p className="muted">Loading…</p></div>
 
   const events = data.events
 
@@ -207,7 +247,7 @@ export default function Season() {
       </span>
       <span className="season-online muted"
             title={m.online_minutes == null ? 'Online time not worked out'
-              : `Online ${m.online_minutes} of ${m.online_of} min, over ${m.online_of / 120} conquest${
+              : `Online ${m.online_minutes} of ${m.online_of} min, over ${m.online_of / 120} war${
                 m.online_of === 120 ? '' : 's'}`}>
         {minutes(m.online_minutes)}
       </span>
@@ -219,7 +259,7 @@ export default function Season() {
   return (
     <div className="page">
       <div className="page-head">
-        <h2>Season rewards</h2>
+        <h2>Season {season} rewards</h2>
         <div className="row">
           <button className="btn" onClick={fillFromStanding} disabled={busy}>
             Fill from the standing
@@ -231,15 +271,22 @@ export default function Season() {
         </div>
       </div>
 
+      {switcher}
+
       <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
       <Banner tone="ok" onDismiss={() => setNote(null)}>{note}</Banner>
+
+      {events.length === 0 && <p><b>No wars recorded for Season {season} yet.</b></p>}
 
       <p className="muted small">
         Four bands, and the sizes are the game's. Only the first three are filled — everybody
         left over is a contributor. Candidates are ordered by how many of the {events.length}{' '}
-        conquests they attended, ties broken on merit standing, but the placing is yours.
-        The minutes are how long each was online, added up over the conquests — 120 a war,{' '}
+        {season === '5' ? 'conquest' : 'war'}{events.length === 1 ? '' : 's'} they attended,
+        ties broken on {meritless ? 'online time' : 'merit standing'}, but the
+        placing is yours. The minutes are how long each was online, added up over the{' '}
+        {season === '5' ? 'conquests' : 'wars'} — 120 a war,{' '}
         {120 * events.filter((e) => e.has_minutes).length} at most.
+        {season !== '5' && ' Attended means online at some point during the war.'}
         {held && <b> Holding {held.name} — choose a band.</b>}
       </p>
 

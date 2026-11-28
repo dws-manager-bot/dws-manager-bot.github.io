@@ -154,7 +154,20 @@ for (const m of seasonMembers) {
   m.online_minutes = m.days.reduce((n, d) => n + (d.online_minutes ?? 0), 0)
   m.online_of = 120 * SEASON_DAYS.length
 }
-let probeAwards = { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }
+/* Season 6 so far: one war, timed off the member list, no merit ranking. */
+const s6Members = NAMES.map((name, i) => {
+  const mins = i === 12 || i === 24 ? 0 : 120 - ((i * 17) % 7) * 15
+  return {
+    player_id: `p${i}`, name,
+    rank: i === 0 ? 5 : i < 6 ? 4 : i < 16 ? 3 : i < 28 ? 2 : 1,
+    bgb_cp: 292_000_000 - i * 6_500_000,
+    total_cp: 1_694_000_000 - i * 31_000_000,
+    attended: mins > 0 ? 1 : 0, of: 1,
+    days: [{ event_id: 7, held_on: '2026-11-28', present: mins > 0, recorded: true, merits: null, online_minutes: mins }],
+    merit_standing: null, merit_days: 0, online_minutes: mins, online_of: 120,
+  }
+}).sort((a, b) => b.attended - a.attended || a.name.localeCompare(b.name))
+const probeAwardsBy = { 5: { p0: 'leader', p1: 'backbone', p2: 'backbone', p3: 'key' }, 6: {} }
 
 /* The War planner, season 6. Invented line-up, real map ids: our camp is
    Camp 3 (the base at the right edge, x 876-976), with Camp 4 and Camp 2 on
@@ -316,23 +329,32 @@ export const api = {
     name: 'hive_map.png',
   }),
   applyHive: () => ok({ id: 2 }),
-  seasonAwards: () => ok({
-    season: '5', awards: probeAwards,
+  seasonAwards: (s = '5') => ok({
+    season: s, awards: probeAwardsBy[s] || {},
     caps: { leader: 1, backbone: 6, key: 30, contributor: 63 },
   }),
   setSeasonAwards: (data) => {
-    probeAwards = Object.fromEntries(data.awards.map((a) => [a.player_id, a.tier]))
-    return ok({ season: data.season, awards: probeAwards,
+    probeAwardsBy[data.season] = Object.fromEntries(data.awards.map((a) => [a.player_id, a.tier]))
+    return ok({ season: data.season, awards: probeAwardsBy[data.season],
       caps: { leader: 1, backbone: 6, key: 30, contributor: 63 } })
   },
-  season: () => ok({
-    kind: 'strife_pass',
+  season: (s = '5') => (String(s) === '6' ? ok({
+    season: 6, kind: null,
+    events: new URLSearchParams(location.search).get('empty') ? [] : [{
+      id: 7, held_on: '2026-11-28', title: 'Ancient Temple (428,926)',
+      present: 38, recorded: 40, has_merits: false, has_minutes: true,
+    }],
+    members: new URLSearchParams(location.search).get('empty')
+      ? s6Members.map((m) => ({ ...m, attended: 0, of: 0, days: [], online_minutes: null, online_of: 0 }))
+      : s6Members,
+  }) : ok({
+    season: 5, kind: 'strife_pass',
     events: SEASON_DAYS.map((d, i) => ({
       id: i + 1, held_on: d, title: `Declare war on Lv.${i === 3 ? 6 : 4} Strife Pass (East)`,
       present: [86, 88, 86, 83][i], recorded: [101, 91, 89, 95][i], has_merits: i < 3, has_minutes: true,
     })),
     members: seasonMembers,
-  }),
+  })),
   rosterTemplate: () => asFile({ blob: new Blob(['template']), name: 'pou-roster.xlsx' }),
   previewRosterImport: () => ok({
     as_of: '2026-09-25', fingerprint: 'abc123', unchanged: 88, problems: [],
