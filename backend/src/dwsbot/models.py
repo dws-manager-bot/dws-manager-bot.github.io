@@ -662,6 +662,29 @@ class WarLineup(Base, TimestampMixin):
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
 
 
+class TemplePlan(Base, TimestampMixin):
+    """A Temple Strife plan: shelters round one Ancient Temple, groups and the poll.
+
+    Same two kinds as the Pass War line-ups, in a table of their own so neither
+    page lists the other's drafts: "official" is the plan admins agreed on, and
+    "draft:<discord_id>" is one admin's working copy. Publishing copies a draft
+    into "official" and leaves the draft where it was.
+
+    `plan` is the page's own document (placements, groups, anchors, votes, option
+    labels), kept whole: the server stores it and never reads inside it.
+    """
+
+    __tablename__ = "temple_plans"
+
+    slug: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    owner_name: Mapped[str | None] = mapped_column(String(100))
+    title: Mapped[str | None] = mapped_column(String(80))
+    plan: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
 class AuditLog(Base):
     """Append-only record of backoffice mutations."""
 

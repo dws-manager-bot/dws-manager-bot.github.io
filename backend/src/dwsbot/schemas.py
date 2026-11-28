@@ -476,6 +476,31 @@ class LineupSummary(ORMModel):
     mercs: int = 0
 
 
+class TemplePlanIn(BaseModel):
+    plan: dict = Field(default_factory=dict)
+    title: str | None = Field(default=None, max_length=80)
+
+
+class TemplePlanOut(ORMModel):
+    slug: str
+    plan: dict
+    title: str | None = None
+    owner_id: int | None = None
+    owner_name: str | None = None
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+
+
+class TemplePlanSummary(ORMModel):
+    slug: str
+    title: str | None = None
+    owner_id: int | None = None
+    owner_name: str | None = None
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+    shelters: int = 0
+
+
 class HealthOut(BaseModel):
     status: str
     database: bool
